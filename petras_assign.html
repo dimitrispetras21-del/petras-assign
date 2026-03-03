@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Petras Group — Trip Assignment</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --orange:#e87722; --dark:#0f1a24; --navy:#1a2a3a; --mid:#2a3f54;
+  --light:#dce8f5; --muted:#6b8cae; --bg:#0a1520; --card:#111e2b;
+  --border:#1e3a5f; --green:#4caf8a; --red:#e85050;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--light);font-family:'Barlow',sans-serif;min-height:100vh}
+
+header{background:var(--card);border-bottom:2px solid var(--orange);padding:14px 32px;display:flex;align-items:center;justify-content:space-between}
+.logo{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;letter-spacing:2px;color:#fff}
+.logo span{color:var(--orange)}
+.logo small{display:block;font-size:9px;color:var(--muted);letter-spacing:3px;font-weight:400}
+
+.container{max-width:1100px;margin:0 auto;padding:28px 24px}
+
+/* WEEK FILTER */
+.week-bar{display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap;align-items:center}
+.week-bar label{color:var(--muted);font-size:11px;letter-spacing:2px;text-transform:uppercase;margin-right:4px}
+.week-pill{padding:6px 16px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-family:'Barlow',sans-serif;font-size:12px;font-weight:600;transition:all .15s}
+.week-pill:hover{border-color:var(--orange);color:#fff}
+.week-pill.active{background:var(--orange);border-color:var(--orange);color:#fff}
+.week-pill.all{border-color:var(--mid)}
+
+/* TABLE */
+.table-wrap{background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+table{width:100%;border-collapse:collapse}
+thead th{background:var(--navy);color:var(--muted);font-size:10px;letter-spacing:2px;text-transform:uppercase;padding:12px 16px;text-align:left;font-weight:600}
+tbody tr{border-bottom:1px solid var(--border);transition:background .15s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:#162235}
+td{padding:13px 16px;font-size:13px}
+.week-badge{background:var(--navy);color:var(--orange);font-size:10px;font-weight:700;padding:3px 8px;border-radius:3px;letter-spacing:1px}
+.trip-name{font-weight:600;color:#fff;font-size:13px}
+.trip-sub{color:var(--muted);font-size:11px;margin-top:2px}
+.assigned{color:var(--green);font-weight:600}
+.partner-tag{color:#7eb3e8;font-weight:600}
+.unassigned{color:var(--muted);font-style:italic;font-size:12px}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:5px;border:none;border-radius:5px;cursor:pointer;font-family:'Barlow',sans-serif;font-weight:600;font-size:12px;letter-spacing:.5px;padding:7px 14px;transition:all .15s}
+.btn-assign{background:var(--orange);color:#fff}
+.btn-assign:hover{background:#ff8c35;transform:translateY(-1px)}
+.btn-pdf{background:var(--navy);color:var(--light);border:1px solid var(--border)}
+.btn-pdf:hover{background:var(--mid);border-color:var(--orange)}
+.btn-pdf:disabled{opacity:.3;cursor:not-allowed;transform:none}
+.btn-gap{display:flex;gap:6px}
+
+.loading{text-align:center;padding:50px;color:var(--muted)}
+.empty{text-align:center;padding:40px;color:var(--muted);font-size:13px}
+
+/* MODAL */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:100;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+.overlay.open{display:flex}
+.modal{background:var(--card);border:1px solid var(--border);border-top:3px solid var(--orange);border-radius:10px;width:520px;max-width:95vw;max-height:90vh;overflow-y:auto;padding:26px;animation:slideUp .18s ease}
+@keyframes slideUp{from{transform:translateY(16px);opacity:0}}
+.modal-header{margin-bottom:18px}
+.modal-header h3{font-family:'Barlow Condensed',sans-serif;font-size:21px;font-weight:700;color:#fff}
+.modal-header p{color:var(--muted);font-size:12px;margin-top:3px}
+
+.type-toggle{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px}
+.type-btn{padding:13px;border-radius:6px;border:2px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;letter-spacing:1px;transition:all .15s;text-align:center}
+.type-btn:hover{border-color:var(--orange);color:#fff}
+.type-btn.active{border-color:var(--orange);background:rgba(232,119,34,.1);color:var(--orange)}
+
+.form-section{display:none}
+.form-section.visible{display:block}
+.field{margin-bottom:14px}
+.field label{display:block;color:var(--muted);font-size:10px;letter-spacing:2px;text-transform:uppercase;margin-bottom:5px;font-weight:600}
+select,input[type=text]{width:100%;background:var(--dark);border:1px solid var(--border);border-radius:5px;color:var(--light);padding:10px 12px;font-size:13px;font-family:'Barlow',sans-serif;outline:none;transition:border-color .15s}
+select:focus,input[type=text]:focus{border-color:var(--orange)}
+select option{background:var(--dark)}
+
+.confirm-bar{display:flex;gap:10px;margin-top:22px;padding-top:18px;border-top:1px solid var(--border)}
+.btn-save{background:var(--orange);color:#fff;padding:10px 20px;font-size:14px;flex:1}
+.btn-save:hover{background:#ff8c35}
+.btn-cancel{background:transparent;border:1px solid var(--border);color:var(--muted);padding:10px 16px;font-size:14px}
+.btn-cancel:hover{border-color:var(--muted);color:#fff}
+
+.status{text-align:center;padding:9px;font-size:13px;border-radius:5px;margin-top:10px;display:none}
+.status.success{background:rgba(76,175,138,.1);color:var(--green);border:1px solid rgba(76,175,138,.3);display:block}
+.status.error{background:rgba(232,80,80,.1);color:var(--red);border:1px solid rgba(232,80,80,.3);display:block}
+.status.loading{background:rgba(232,119,34,.1);color:var(--orange);border:1px solid rgba(232,119,34,.3);display:block}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">PETRAS<span> GROUP</span><small>TRIP ASSIGNMENT SYSTEM</small></div>
+  <div style="font-size:12px;color:var(--muted)">Dispatcher: <span style="color:#fff">Dimitrios Petras</span></div>
+</header>
+
+<div class="container">
+  <!-- WEEK FILTER -->
+  <div class="week-bar">
+    <label>Week:</label>
+    <button class="week-pill all active" onclick="filterWeek('all')">Όλα</button>
+    <div id="weekPills"></div>
+  </div>
+
+  <div class="table-wrap">
+    <div id="loadingMsg" class="loading">Φόρτωση δεδομένων...</div>
+    <table id="tripsTable" style="display:none">
+      <thead>
+        <tr>
+          <th>Week</th>
+          <th>Trip</th>
+          <th>Delivery</th>
+          <th>Assignment</th>
+          <th style="text-align:center">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="tripsBody"></tbody>
+    </table>
+    <div id="emptyMsg" class="empty" style="display:none">Δεν υπάρχουν trips για αυτή την εβδομάδα.</div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modalTitle">ΑΝΑΘΕΣΗ</h3>
+      <p id="modalSub"></p>
+    </div>
+
+    <div class="type-toggle">
+      <button class="type-btn active" onclick="setType('own')">🚛 OWN FLEET</button>
+      <button class="type-btn" onclick="setType('partner')">🤝 PARTNER</button>
+    </div>
+
+    <div class="form-section visible" id="ownSection">
+      <div class="field"><label>Truck</label><select id="truckSelect"><option value="">Επιλογή...</option></select></div>
+      <div class="field"><label>Trailer</label><select id="trailerSelect"><option value="">Επιλογή...</option></select></div>
+      <div class="field"><label>Driver</label><select id="driverSelect"><option value="">Επιλογή...</option></select></div>
+    </div>
+
+    <div class="form-section" id="partnerSection">
+      <div class="field"><label>Partner</label><select id="partnerSelect"><option value="">Επιλογή...</option></select></div>
+      <div class="field"><label>Πινακίδες Φορτηγού</label><input type="text" id="partnerPlates" placeholder="π.χ. MK-123AB"></div>
+      <div class="field"><label>Τιμή (EUR)</label><input type="text" id="partnerRate" placeholder="π.χ. 2500"></div>
+      <div class="field"><label>Όροι Πληρωμής</label><input type="text" id="partnerTerms" placeholder="π.χ. 30 days"></div>
+    </div>
+
+    <div id="modalStatus" class="status"></div>
+    <div class="confirm-bar">
+      <button class="btn btn-cancel" onclick="closeModal()">Ακύρωση</button>
+      <button class="btn btn-save" onclick="saveAssignment()">💾 Αποθήκευση</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const AT_BASE = "appElT5CQV6JQvym8";
+const DISPATCHER = "Dimitrios Petras";
+
+let AT_TOKEN = localStorage.getItem("at_token");
+if (!AT_TOKEN) {
+  AT_TOKEN = prompt("Εισαγε το Airtable API Token:");
+  if (AT_TOKEN) localStorage.setItem("at_token", AT_TOKEN);
+}
+
+let allTrips=[], allTrucks=[], allTrailers=[], allDrivers=[], allPartners=[];
+let currentTrip=null, currentType='own', activeWeek='all';
+
+async function atGet(table) {
+  let records=[], offset=null;
+  do {
+    let url = `https://api.airtable.com/v0/${AT_BASE}/${encodeURIComponent(table)}?pageSize=100`;
+    if (offset) url += `&offset=${offset}`;
+    const r = await fetch(url, {headers:{Authorization:`Bearer ${AT_TOKEN}`}});
+    const d = await r.json();
+    records = records.concat(d.records||[]);
+    offset = d.offset||null;
+  } while(offset);
+  return records;
+}
+
+async function atPatch(table, id, fields) {
+  const r = await fetch(`https://api.airtable.com/v0/${AT_BASE}/${encodeURIComponent(table)}/${id}`, {
+    method:'PATCH',
+    headers:{Authorization:`Bearer ${AT_TOKEN}`,'Content-Type':'application/json'},
+    body:JSON.stringify({fields})
+  });
+  return r.json();
+}
+
+async function loadAll() {
+  try {
+    [allTrips, allTrucks, allTrailers, allDrivers, allPartners] = await Promise.all([
+      atGet('TRIPS'), atGet('TRUCKS'), atGet('TRAILERS'), atGet('DRIVERS'), atGet('PARTNERS')
+    ]);
+    buildWeekPills();
+    populateDropdowns();
+    renderTable();
+    document.getElementById('loadingMsg').style.display='none';
+    document.getElementById('tripsTable').style.display='table';
+  } catch(e) {
+    document.getElementById('loadingMsg').textContent = '❌ Σφάλμα: ' + e.message;
+  }
+}
+
+function buildWeekPills() {
+  const weeks = [...new Set(allTrips.map(r=>r.fields['Week Number']).filter(Boolean))].sort((a,b)=>b-a);
+  const container = document.getElementById('weekPills');
+  container.innerHTML = '';
+  weeks.forEach(w => {
+    const btn = document.createElement('button');
+    btn.className = 'week-pill';
+    btn.textContent = `W${w}`;
+    btn.onclick = () => filterWeek(w);
+    container.appendChild(btn);
+  });
+}
+
+function filterWeek(week) {
+  activeWeek = week;
+  document.querySelectorAll('.week-pill').forEach(p => {
+    const isAll = p.classList.contains('all');
+    p.classList.toggle('active',
+      (week==='all' && isAll) || p.textContent===`W${week}`
+    );
+  });
+  renderTable();
+}
+
+function renderTable() {
+  const trips = activeWeek==='all'
+    ? allTrips
+    : allTrips.filter(r => String(r.fields['Week Number'])===String(activeWeek));
+
+  const sorted = [...trips].sort((a,b)=>{
+    const wa=parseInt(a.fields['Week Number'])||0, wb=parseInt(b.fields['Week Number'])||0;
+    return wb-wa;
+  });
+
+  const tbody = document.getElementById('tripsBody');
+  tbody.innerHTML='';
+
+  if (!sorted.length) {
+    document.getElementById('tripsTable').style.display='none';
+    document.getElementById('emptyMsg').style.display='block';
+    return;
+  }
+  document.getElementById('tripsTable').style.display='table';
+  document.getElementById('emptyMsg').style.display='none';
+
+  sorted.forEach(trip => {
+    const f = trip.fields;
+    const summary = f['Trip Summary'] || f['Export Delivery Location'] || '—';
+    const client = f['Export Client'] || f['Import Client'] || '';
+    const delivery = f['Export Delivery Location'] || f['Import Delivery Location'] || '—';
+    const week = f['Week Number'] || '—';
+    const isPartner = f['Is Partner Trip'];
+    const driverName = f['Driver Name'];
+    const partnerName = f['Partner Name'];
+    const assignText = isPartner && partnerName
+      ? `<span class="partner-tag">🤝 ${partnerName}</span>`
+      : !isPartner && driverName
+      ? `<span class="assigned">🚛 ${driverName}</span>`
+      : `<span class="unassigned">Χωρίς ανάθεση</span>`;
+
+    const hasAssignment = (isPartner && partnerName) || (!isPartner && driverName);
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><span class="week-badge">W${week}</span></td>
+      <td><div class="trip-name">${summary}</div><div class="trip-sub">${client}</div></td>
+      <td style="color:var(--muted);font-size:12px">${delivery}</td>
+      <td>${assignText}</td>
+      <td>
+        <div class="btn-gap" style="justify-content:center">
+          <button class="btn btn-assign" onclick="openModal('${trip.id}')">📋 Assign</button>
+          <button class="btn btn-pdf" onclick="generatePDF('${trip.id}')" ${!hasAssignment?'disabled':''}>🖨 PDF</button>
+        </div>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function populateDropdowns() {
+  const ts = document.getElementById('truckSelect');
+  ts.innerHTML='<option value="">Επιλογή...</option>';
+  allTrucks.filter(r=>r.fields['Active']!==false).forEach(r=>{
+    ts.innerHTML+=`<option value="${r.id}">${r.fields['License Plate']} — ${r.fields['Brand']||''} ${r.fields['Model']||''}</option>`;
+  });
+
+  const trs = document.getElementById('trailerSelect');
+  trs.innerHTML='<option value="">Επιλογή...</option>';
+  allTrailers.filter(r=>r.fields['Active']!==false).forEach(r=>{
+    trs.innerHTML+=`<option value="${r.id}">${r.fields['License Plate']} — ${r.fields['Brand']||''}</option>`;
+  });
+
+  const ds = document.getElementById('driverSelect');
+  ds.innerHTML='<option value="">Επιλογή...</option>';
+  allDrivers.filter(r=>r.fields['Active']!==false).forEach(r=>{
+    ds.innerHTML+=`<option value="${r.id}">${r.fields['Full Name']}${r.fields['Phone']?' | '+r.fields['Phone']:''}</option>`;
+  });
+
+  const ps = document.getElementById('partnerSelect');
+  ps.innerHTML='<option value="">Επιλογή...</option>';
+  allPartners.filter(r=>r.fields['Active']!==false).forEach(r=>{
+    ps.innerHTML+=`<option value="${r.id}">${r.fields['Company Name']}${r.fields['Country']?' | '+r.fields['Country']:''}</option>`;
+  });
+}
+
+function openModal(tripId) {
+  currentTrip = allTrips.find(r=>r.id===tripId);
+  const f = currentTrip.fields;
+  document.getElementById('modalTitle').textContent = f['Trip Summary'] || 'ΑΝΑΘΕΣΗ TRIP';
+  document.getElementById('modalSub').textContent = `W${f['Week Number']||'—'} | ${f['Export Delivery Location']||f['Import Delivery Location']||'—'}`;
+  document.getElementById('modalStatus').className='status';
+
+  // Pre-fill existing assignment
+  if (f['Is Partner Trip'] && f['Partner'] && f['Partner'][0]) {
+    setType('partner');
+    selectOption('partnerSelect', f['Partner'][0]);
+    document.getElementById('partnerPlates').value = f['Partner Truck Plates']||'';
+  } else if (f['Truck'] && f['Truck'][0]) {
+    setType('own');
+    selectOption('truckSelect', f['Truck'][0]);
+    if (f['Trailer'] && f['Trailer'][0]) selectOption('trailerSelect', f['Trailer'][0]);
+    if (f['Driver'] && f['Driver'][0]) selectOption('driverSelect', f['Driver'][0]);
+  } else {
+    setType('own');
+  }
+
+  document.getElementById('overlay').classList.add('open');
+}
+
+function selectOption(selectId, value) {
+  const sel = document.getElementById(selectId);
+  for (let o of sel.options) if (o.value===value) { o.selected=true; break; }
+}
+
+function closeModal() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('id')) {
+    window.close(); // Κλεισε το tab αν ηρθε απο κουμπι
+  } else {
+    document.getElementById('overlay').classList.remove('open');
+  }
+}
+
+function setType(type) {
+  currentType=type;
+  document.querySelectorAll('.type-btn').forEach((b,i)=>{
+    b.classList.toggle('active',(type==='own'&&i===0)||(type==='partner'&&i===1));
+  });
+  document.getElementById('ownSection').classList.toggle('visible',type==='own');
+  document.getElementById('partnerSection').classList.toggle('visible',type==='partner');
+}
+
+function showStatus(msg,type) {
+  const s=document.getElementById('modalStatus');
+  s.textContent=msg; s.className='status '+type;
+}
+
+async function saveAssignment() {
+  if (!currentTrip) return;
+  showStatus('Αποθήκευση...','loading');
+  try {
+    let fields={};
+    if (currentType==='own') {
+      const truckId=document.getElementById('truckSelect').value;
+      const trailerId=document.getElementById('trailerSelect').value;
+      const driverId=document.getElementById('driverSelect').value;
+      if (!truckId||!trailerId||!driverId){showStatus('Συμπλήρωσε όλα τα πεδία','error');return;}
+      fields={'Truck':[{id:truckId}],'Trailer':[{id:trailerId}],'Driver':[{id:driverId}],'Is Partner Trip':false,'Partner':[],'Partner Truck Plates':''};
+      const driver=allDrivers.find(r=>r.id===driverId);
+      if(driver) { const idx=allTrips.findIndex(r=>r.id===currentTrip.id); allTrips[idx].fields['Driver Name']=driver.fields['Full Name']; allTrips[idx].fields['Partner Name']=null; }
+    } else {
+      const partnerId=document.getElementById('partnerSelect').value;
+      const plates=document.getElementById('partnerPlates').value;
+      if (!partnerId||!plates){showStatus('Συμπλήρωσε Partner και πινακίδες','error');return;}
+      fields={'Is Partner Trip':true,'Partner':[{id:partnerId}],'Partner Truck Plates':plates,'Truck':[],'Trailer':[],'Driver':[]};
+      const partner=allPartners.find(r=>r.id===partnerId);
+      if(partner) { const idx=allTrips.findIndex(r=>r.id===currentTrip.id); allTrips[idx].fields['Partner Name']=partner.fields['Company Name']; allTrips[idx].fields['Driver Name']=null; }
+    }
+    await atPatch('TRIPS', currentTrip.id, fields);
+    const idx=allTrips.findIndex(r=>r.id===currentTrip.id);
+    Object.assign(allTrips[idx].fields, fields);
+    showStatus('✅ Αποθηκεύτηκε!','success');
+    renderTable();
+    setTimeout(closeModal,900);
+  } catch(e) { showStatus('❌ Σφάλμα: '+e.message,'error'); }
+}
+
+function formatDT(dt) {
+  if(!dt) return '—';
+  const d=new Date(dt);
+  return d.toLocaleDateString('el-GR')+' '+d.toLocaleTimeString('el-GR',{hour:'2-digit',minute:'2-digit'})+' fix';
+}
+
+function generatePDF(tripId) {
+  const trip=allTrips.find(r=>r.id===tripId);
+  if(!trip) return;
+  const f=trip.fields;
+  let html='';
+
+  if(f['Is Partner Trip']) {
+    const partner=allPartners.find(r=>f['Partner']&&r.id===f['Partner'][0])||{};
+    const pf=partner.fields||{};
+    html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Arial,sans-serif;font-size:12px;color:#1a2a3a;padding:24px}
+table.ht{width:100%;border-collapse:collapse;margin-bottom:16px;border:1px solid #1a2a3a}
+table.ht td{padding:14px;border:1px solid #1a2a3a;vertical-align:top}
+.brand{font-size:18px;font-weight:900}.brand span{color:#e87722}
+.title{text-align:center;font-size:15px;font-weight:700;padding:10px;border:2px solid #1a2a3a;margin-bottom:12px}
+table.meta{width:100%;border-collapse:collapse;margin-bottom:12px}
+table.meta td{border:1px solid #1a2a3a;padding:6px 10px}
+.price{border:2px solid #e87722;border-radius:4px;padding:10px 16px;margin-bottom:14px;display:flex;justify-content:space-between}
+.pval{font-size:20px;font-weight:700;color:#e87722}
+.sh{font-weight:700;border-left:3px solid #e87722;padding-left:8px;margin:12px 0 6px}
+.stop{border:1px solid #ccc;border-radius:4px;padding:10px 14px;margin-bottom:10px}
+.stop p{margin-bottom:3px}
+table.sig{width:100%;border-collapse:collapse;margin-top:36px;border:1px solid #1a2a3a}
+table.sig td{padding:14px;border:1px solid #1a2a3a;text-align:center;width:50%}
+@media print{body{padding:12px}}
+</style></head><body>
+<table class="ht"><tr>
+<td style="width:50%">
+  <div style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Carrier</div>
+  <div style="font-weight:700;font-size:14px">${pf['Company Name']||f['Partner Name']||'—'}</div>
+  ${pf['VAT Number']?`<div>VAT: ${pf['VAT Number']}</div>`:''}
+  ${pf['Adress']?`<div>${pf['Adress']}</div>`:''}
+  ${pf['Email']?`<div>${pf['Email']}</div>`:''}
+  <div style="margin-top:8px;color:#e87722;font-weight:700;font-size:14px">${f['Partner Truck Plates']||'—'}</div>
+</td>
+<td style="width:50%;text-align:right">
+  <div class="brand">PETRAS<span> GROUP</span></div>
+  <div style="font-size:9px;color:#888;letter-spacing:2px">INTERNATIONAL ROAD TRANSPORT SERVICES</div>
+  <div style="margin-top:6px;font-weight:700">VERMION FRESH SA</div>
+  <div>Kopanos, Naousa — Imathia, Greece</div>
+  <div>VAT: EL800816168</div>
+  <div>vermionfresh@petrasgroup.com</div>
+</td></tr></table>
+<div class="title">PARTNER ASSIGNMENT ORDER No: PAO-${trip.name||tripId.slice(-6)}</div>
+<table class="meta">
+<tr><td><b>Date</b></td><td>${new Date().toLocaleDateString('el-GR')}</td><td><b>Week</b></td><td>W${f['Week Number']||'—'}</td></tr>
+<tr><td><b>Category</b></td><td>${f['Export Order']?'Export':'Import'}</td><td><b>Dispatcher</b></td><td>${DISPATCHER}</td></tr>
+</table>
+<div class="price">
+  <div><div style="font-size:9px;color:#888;text-transform:uppercase">Agreed Rate</div><div class="pval">— EUR</div></div>
+  <div style="text-align:right"><div style="font-size:9px;color:#888;text-transform:uppercase">Payment Terms</div><div style="font-size:13px;font-weight:600">30 days</div></div>
+</div>
+${f['Export Order']?`
+<div class="sh">LOADING PLACE:</div>
+<div class="stop"><p><b>1. Vermion Fresh SA — Cross-dock Kopanos</b></p><p>Kopanos, Naousa, Imathia, Greece</p><p><b>Date:</b> ${formatDT(f['Export Loading DateTime'])}</p><p><b>Goods:</b> ${f['Export Order']}</p><p><b>Pallets:</b> ${f['Export Pallets']||'—'} Europallets 0.8x1.2</p><p><b>Temp:</b> 0°C / -20°C &nbsp; <b>Refrigerator:</b> Continuous</p></div>
+<div class="sh">DELIVERY PLACE:</div>
+<div class="stop"><p><b>1. ${f['Export Delivery Location']||'—'}</b></p><p><b>Date:</b> ${formatDT(f['Export Delivery DateTime'])}</p><p><b>Goods:</b> ${f['Export Order']}</p><p><b>Pallets:</b> ${f['Export Pallets']||'—'} Europallets 0.8x1.2</p></div>`:''}
+${f['Import Order']?`
+<div class="sh">LOADING PLACE — IMPORT:</div>
+<div class="stop"><p><b>1. ${f['Import Delivery Location']||'—'}</b></p><p><b>Date:</b> ${formatDT(f['Import Loading DateTime'])}</p><p><b>Goods:</b> ${f['Import Order']}</p><p><b>Pallets:</b> ${f['Import Pallets']||'—'} Europallets 0.8x1.2</p></div>
+<div class="sh">DELIVERY PLACE — IMPORT:</div>
+<div class="stop"><p><b>1. Vermion Fresh SA — Cross-dock Kopanos</b></p><p><b>Date:</b> ${formatDT(f['Import Delivery DateTime'])}</p></div>`:''}
+<table class="sig"><tr>
+  <td><div style="font-weight:700">For PETRAS GROUP</div><div style="margin-top:40px;border-top:1px solid #ccc;padding-top:6px;font-size:10px;color:#aaa">Signature & Stamp</div><div style="margin-top:6px;font-size:10px;color:#aaa">Date: ___________</div></td>
+  <td><div style="font-weight:700">For CARRIER — ${pf['Company Name']||f['Partner Name']||'—'}</div><div style="margin-top:40px;border-top:1px solid #ccc;padding-top:6px;font-size:10px;color:#aaa">Signature & Stamp</div><div style="margin-top:6px;font-size:10px;color:#aaa">Date: ___________</div></td>
+</tr></table></body></html>`;
+  } else {
+    const driver=allDrivers.find(r=>f['Driver']&&r.id===f['Driver'][0])||{};
+    const truck=allTrucks.find(r=>f['Truck']&&r.id===f['Truck'][0])||{};
+    const trailer=allTrailers.find(r=>f['Trailer']&&r.id===f['Trailer'][0])||{};
+    html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Arial,sans-serif;font-size:12px;color:#1a2a3a;padding:24px}
+.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;border-bottom:3px solid #e87722;padding-bottom:14px}
+.brand{font-size:18px;font-weight:900}.brand span{color:#e87722}
+.veh{background:#f5f8fc;border-left:4px solid #e87722;padding:12px 18px;margin-bottom:16px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.veh b{color:#e87722}
+.sec{background:#e87722;color:#fff;padding:5px 12px;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase}
+table{width:100%;border-collapse:collapse;margin-bottom:14px}
+th{background:#1a2a3a;color:#fff;padding:6px 10px;font-size:10px;text-align:left}
+td{padding:6px 10px;font-size:11px;border-bottom:1px solid #e8eef5}
+tr:nth-child(even) td{background:#f5f8fc}
+.sig{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:36px}
+.sig-box{border-top:2px solid #1a2a3a;padding-top:8px;text-align:center}
+@media print{body{padding:12px}}
+</style></head><body>
+<div class="header">
+  <div>
+    <div style="font-size:15px;font-weight:700;margin-bottom:3px">DRIVER ORDER</div>
+    <div style="font-size:11px;color:#555">Trip: <b>${f['Trip Summary']||trip.name}</b> &nbsp;|&nbsp; Week: <b>W${f['Week Number']||'—'}</b></div>
+    <div style="font-size:11px;color:#555">Date: <b>${new Date().toLocaleDateString('el-GR')}</b> &nbsp;|&nbsp; Dispatcher: <b>${DISPATCHER}</b></div>
+  </div>
+  <div style="text-align:right">
+    <div class="brand">PETRAS<span> GROUP</span></div>
+    <div style="font-size:9px;color:#888;letter-spacing:2px">INTERNATIONAL ROAD TRANSPORT</div>
+    <div style="font-size:10px;color:#555;margin-top:3px">Kopanos, Naousa, Imathia<br>EL800816168</div>
+  </div>
+</div>
+<div class="veh">
+  <div><b>DRIVER:</b> ${driver.fields?.['Full Name']||f['Driver Name']||'—'}${driver.fields?.['Phone']?' | '+driver.fields['Phone']:''}</div>
+  <div><b>TRUCK:</b> ${truck.fields?.['License Plate']||'—'} — ${truck.fields?.['Brand']||''} ${truck.fields?.['Model']||''}</div>
+  <div><b>TRAILER:</b> ${trailer.fields?.['License Plate']||'—'}</div>
+</div>
+${f['Export Order']?`
+<div class="sec">LOADING PLACE — EXPORT</div>
+<table><tr><th>Location</th><th>Date/Time</th><th>Goods</th><th>Pallets</th><th>Temp</th><th>Refrigerator</th></tr>
+<tr><td>Vermion Fresh SA — Kopanos</td><td>${formatDT(f['Export Loading DateTime'])}</td><td>${f['Export Order']}</td><td>${f['Export Pallets']||'—'}</td><td>0°C/-20°C</td><td>Continuous</td></tr></table>
+<div class="sec">DELIVERY PLACE — EXPORT</div>
+<table><tr><th>Location</th><th>Date/Time</th></tr>
+<tr><td>${f['Export Delivery Location']||'—'}</td><td>${formatDT(f['Export Delivery DateTime'])}</td></tr></table>`:''}
+${f['Import Order']?`
+<div class="sec">LOADING PLACE — IMPORT</div>
+<table><tr><th>Location</th><th>Date/Time</th><th>Goods</th><th>Pallets</th></tr>
+<tr><td>${f['Import Delivery Location']||'—'}</td><td>${formatDT(f['Import Loading DateTime'])}</td><td>${f['Import Order']}</td><td>${f['Import Pallets']||'—'}</td></tr></table>
+<div class="sec">DELIVERY PLACE — IMPORT</div>
+<table><tr><th>Location</th><th>Date/Time</th></tr>
+<tr><td>Vermion Fresh SA — Kopanos</td><td>${formatDT(f['Import Delivery DateTime'])}</td></tr></table>`:''}
+<div class="sig">
+  <div class="sig-box"><div style="font-weight:700">VERMION FRESH SA</div><div style="font-size:10px;color:#888">For PETRAS GROUP</div><div style="margin-top:44px;border-top:1px solid #ccc;padding-top:5px;font-size:10px;color:#aaa">Signature</div></div>
+  <div class="sig-box"><div style="font-weight:700">${driver.fields?.['Full Name']||f['Driver Name']||'—'}</div><div style="font-size:10px;color:#888">Driver — Παραλαβή εντολής</div><div style="margin-top:44px;border-top:1px solid #ccc;padding-top:5px;font-size:10px;color:#aaa">Signature</div></div>
+</div></body></html>`;
+  }
+  const w=window.open('','_blank');
+  w.document.write(html);
+  w.document.close();
+  setTimeout(()=>w.print(),500);
+}
+
+async function init() {
+  const params = new URLSearchParams(window.location.search);
+  const recordId = params.get('id');
+  const pdfId = params.get('pdf');
+
+  await loadAll();
+
+  if (recordId) {
+    // Κρυψε ολα εκτος απο τη φορμα
+    document.querySelector('.week-bar').style.display = 'none';
+    document.querySelector('.table-wrap').style.display = 'none';
+    // Δειξε τη φορμα inline αντι για overlay
+    const overlay = document.getElementById('overlay');
+    overlay.style.position = 'relative';
+    overlay.style.background = 'none';
+    overlay.style.backdropFilter = 'none';
+    overlay.style.display = 'flex';
+    overlay.style.justifyContent = 'center';
+    overlay.style.paddingTop = '20px';
+    openModal(recordId);
+  } else if (pdfId) {
+    generatePDF(pdfId);
+  }
+}
+
+init();
+</script>
+</body>
+</html>
