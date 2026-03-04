@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Petras — DEBUG</title>
+<style>
+body{background:#0a1520;color:#dce8f5;font-family:monospace;padding:20px}
+#log{background:#000;border:2px solid #e87722;border-radius:8px;padding:16px;font-size:13px;line-height:1.8}
+.err{color:#f55}.ok{color:#4caf8a}.warn{color:#ff0}
+</style>
+</head>
+<body>
+<h2 style="color:#e87722">PETRAS ASSIGN — DEBUG MODE</h2>
+<div id="log"></div>
+<script>
+function log(msg, type='') {
+  const el = document.getElementById('log');
+  el.innerHTML += `<div class="${type}">[${new Date().toLocaleTimeString()}] ${msg}</div>`;
+}
+
+const AT_BASE = "appElT5CQV6JQvym8";
+let AT_TOKEN = localStorage.getItem("at_token");
+
+log("Token: " + (AT_TOKEN ? AT_TOKEN.substring(0,10) + "..." : "NONE"), AT_TOKEN ? 'ok' : 'err');
+
+if (!AT_TOKEN) {
+  AT_TOKEN = prompt("Token:");
+  if (AT_TOKEN) localStorage.setItem("at_token", AT_TOKEN);
+}
+
+const params = new URLSearchParams(window.location.search);
+log("URL id param: " + (params.get('id') || 'none'));
+log("Full URL: " + window.location.href);
+
+async function test() {
+  try {
+    log("Fetching TRIPS...");
+    const url = `https://api.airtable.com/v0/${AT_BASE}/TRIPS?pageSize=10`;
+    log("URL: " + url);
+    const r = await fetch(url, {headers:{Authorization:`Bearer ${AT_TOKEN}`}});
+    log("Response status: " + r.status, r.ok ? 'ok' : 'err');
+    const data = await r.json();
+    if (data.error) {
+      log("API Error: " + JSON.stringify(data.error), 'err');
+    } else {
+      log("Records found: " + (data.records||[]).length, 'ok');
+      (data.records||[]).forEach(rec => {
+        log("  → " + rec.id + " | " + (rec.fields['Trip Summary']||'no summary'));
+      });
+    }
+
+    const targetId = params.get('id');
+    if (targetId) {
+      const found = (data.records||[]).find(r => r.id === targetId);
+      log("Looking for " + targetId + ": " + (found ? "FOUND" : "NOT in first 10 records"), found ? 'ok' : 'warn');
+    }
+
+  } catch(e) {
+    log("FETCH ERROR: " + e.message, 'err');
+    log("Error type: " + e.name, 'err');
+    log("This usually means: CORS issue, network block, or invalid token", 'warn');
+  }
+}
+
+test();
+</script>
+</body>
+</html>
