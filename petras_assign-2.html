@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Petras Group — Trip Assignment</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;900&family=Barlow+Condensed:wght@700;900&display=swap" rel="stylesheet">
+<style>
+:root{--primary:#2D7FF9;--primary-dark:#1A6DE3;--dark:#1B2A4A;--navy:#2B3F60;--mid:#4A6280;--light:#333;--muted:#7A8BA5;--bg:#F5F7FA;--card:#FFFFFF;--border:#E0E5EC;--green:#20C997;--red:#E85050}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--light);font-family:'Barlow',sans-serif;min-height:100vh}
+header{background:var(--card);border-bottom:2px solid var(--primary);padding:14px 32px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.logo{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;letter-spacing:2px;color:var(--dark)}
+.logo small{display:block;font-size:9px;letter-spacing:3px;color:var(--primary);font-weight:600;font-family:'Barlow',sans-serif}
+.container{max-width:1100px;margin:0 auto;padding:28px 20px}
+.card{background:var(--card);border:1px solid var(--border);border-top:3px solid var(--primary);border-radius:10px;padding:28px;margin-bottom:20px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+h3{font-size:17px;font-weight:700;color:var(--dark);margin-bottom:6px}
+label{display:block;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:2px;margin-bottom:5px;font-weight:600}
+select,input[type=text]{width:100%;background:#fff;border:1px solid var(--border);border-radius:5px;color:var(--dark);padding:10px 12px;font-size:13px;font-family:'Barlow',sans-serif;outline:none;transition:border-color .15s}
+select:focus,input[type=text]:focus{border-color:var(--primary)}
+select option{background:#fff}
+.field{margin-bottom:14px}
+.type-toggle{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}
+.type-btn{padding:12px;text-align:center;border:2px solid var(--border);border-radius:8px;cursor:pointer;font-weight:600;font-size:13px;transition:all .15s;background:var(--card);color:var(--dark)}
+.type-btn:hover{border-color:var(--primary)}
+.type-btn.active{border-color:var(--primary);background:rgba(45,127,249,.08);color:var(--primary)}
+.btn{padding:12px 20px;border:none;border-radius:6px;font-weight:700;font-size:13px;cursor:pointer;font-family:'Barlow',sans-serif;transition:all .12s;letter-spacing:.5px}
+.btn:hover{transform:translateY(-1px)}
+.btn-save{background:var(--primary);color:#fff;width:100%;margin-top:8px}
+.btn-save:hover{background:var(--primary-dark)}
+.btn-assign{background:var(--primary);color:#fff;border:none;font-size:11px;padding:6px 12px;border-radius:4px}
+.btn-pdf{background:var(--dark);color:#fff;border:none;font-size:11px;padding:6px 10px;border-radius:4px}
+.btn-pdf:hover{background:var(--mid)}
+.btn-pdf:disabled{opacity:.3;cursor:not-allowed;transform:none}
+.status{display:none;text-align:center;padding:10px;border-radius:6px;font-size:13px;font-weight:600;margin-top:10px}
+.status.loading-status{background:rgba(45,127,249,.08);color:var(--primary);border:1px solid rgba(45,127,249,.3);display:block}
+.status.success{background:rgba(32,201,151,.08);color:var(--green);border:1px solid rgba(32,201,151,.3);display:block}
+.status.error{background:rgba(232,80,80,.08);color:var(--red);border:1px solid rgba(232,80,80,.3);display:block}
+.loading{text-align:center;color:var(--primary);padding:60px;font-size:15px}
+/* Table mode */
+.week-pills{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px}
+.week-pill{padding:6px 14px;border-radius:20px;border:1px solid var(--border);cursor:pointer;font-size:12px;font-weight:600;color:var(--muted);background:var(--card);transition:all .15s}
+.week-pill:hover{border-color:var(--primary);color:var(--dark)}
+.week-pill.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+.table-wrap{background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+table.trips{width:100%;border-collapse:collapse}
+thead th{background:var(--primary);color:#fff;font-size:10px;letter-spacing:2px;text-transform:uppercase;padding:12px 16px;text-align:left;font-weight:600}
+tbody td{padding:12px 16px;border-bottom:1px solid var(--border);font-size:12px;vertical-align:middle}
+tbody tr:hover{background:#EBF2FE}
+.trip-name{font-weight:600;color:var(--dark);font-size:13px}
+.week-badge{background:#EBF2FE;color:var(--primary);font-size:10px;font-weight:700;padding:3px 8px;border-radius:3px;letter-spacing:1px}
+.partner-tag{color:var(--primary);font-weight:600}
+.driver-tag{color:var(--green);font-weight:600}
+.actions{display:flex;gap:6px;align-items:center}
+/* Modal */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:100;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+.overlay.show{display:flex}
+.modal{background:var(--card);border:1px solid var(--border);border-top:3px solid var(--primary);border-radius:10px;width:520px;max-width:95vw;max-height:90vh;overflow-y:auto;padding:26px;animation:slideUp .18s ease;box-shadow:0 8px 30px rgba(0,0,0,.15)}
+@keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+.close-btn{float:right;cursor:pointer;font-size:18px;color:var(--muted);background:none;border:none}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">PETRAS GROUP<small>TRIP ASSIGNMENT SYSTEM</small></div>
+  <div style="font-size:12px;color:var(--muted)">Dispatcher: <span style="color:var(--dark);font-weight:600">Dimitrios Petras</span></div>
+</header>
+<div id="app"></div>
+
+<script>
+const AT_BASE='appElT5CQV6JQvym8';
+const DISPATCHER='Dimitrios Petras';
+const APP_VERSION='v2.8';
+console.log('Petras Assign '+APP_VERSION);
+const params=new URLSearchParams(window.location.search);
+const DIRECT_ID=params.get('id');
+const PDF_ID=params.get('pdf');
+const PDF_LEG=params.get('leg');
+
+let AT_TOKEN='patpPJXnFYnxdgoK3.a2162b09fbb214628114ff2ce68bb5a7b30aea2061b14f9562a1ab222585cf08';
+
+let allTrips=[],allTrucks=[],allTrailers=[],allDrivers=[],allPartners=[];
+let allOrders=[],allLocations=[];
+let currentTrip=null,currentType='own',activeWeek='all';
+
+// Helper: flatten Airtable values (lookups return arrays)
+function fv(val){
+  if(val===null||val===undefined) return '';
+  if(Array.isArray(val)) return val[0]||'';
+  return val;
+}
+
+async function atGet(table){
+  let records=[],offset=null;
+  do{
+    let url=`https://api.airtable.com/v0/${AT_BASE}/${encodeURIComponent(table)}?pageSize=100`;
+    if(offset) url+=`&offset=${offset}`;
+    const r=await fetch(url,{headers:{Authorization:`Bearer ${AT_TOKEN}`}});
+    if(!r.ok) throw new Error(`${table}: ${r.status}`);
+    const d=await r.json();
+    records=records.concat(d.records);offset=d.offset;
+  }while(offset);
+  return records;
+}
+
+async function atPatch(table,id,fields){
+  const r=await fetch(`https://api.airtable.com/v0/${AT_BASE}/${encodeURIComponent(table)}/${id}`,{
+    method:'PATCH',headers:{Authorization:`Bearer ${AT_TOKEN}`,'Content-Type':'application/json'},
+    body:JSON.stringify({fields})
+  });
+  if(!r.ok) throw new Error(`Save failed: ${r.status}`);
+  return r.json();
+}
+
+async function atCreate(table,fields){
+  const r=await fetch(`https://api.airtable.com/v0/${AT_BASE}/${encodeURIComponent(table)}`,{
+    method:'POST',headers:{Authorization:`Bearer ${AT_TOKEN}`,'Content-Type':'application/json'},
+    body:JSON.stringify({records:[{fields}]})
+  });
+  if(!r.ok) throw new Error(`Create failed: ${r.status}`);
+  return r.json();
+}
+
+document.getElementById('app').innerHTML='<div class="loading">Φόρτωση δεδομένων...</div>';
+
+async function init(){
+  document.getElementById('app').innerHTML='<div style="padding:60px;text-align:center;color:#888;font-size:14px">⏳ Loading data...</div>';
+  try{
+    [allTrips,allTrucks,allTrailers,allDrivers,allPartners,allOrders]=await Promise.all([
+      atGet('TRIPS'),atGet('TRUCKS'),atGet('TRAILERS'),atGet('DRIVERS'),atGet('PARTNERS'),atGet('ORDERS')
+    ]);
+  }catch(e){
+    document.getElementById('app').innerHTML='<div style="color:#e85050;padding:40px;text-align:center;font-size:16px">❌ '+e.message+'</div>';
+    alert('Load error: '+e.message);
+    return;
+  }
+  // Load optional tables (don't crash if they fail)
+  try{allLocations=await atGet('LOCATIONS');}catch(e){allLocations=[];}
+  // LOADING STOPS and UNLOADING STOPS no longer needed - data is in ORDER fields
+  try{
+    if(DIRECT_ID){showDirectForm(DIRECT_ID);}
+    else if(PDF_ID){generatePDF(PDF_ID,PDF_LEG||'export');}
+    else{showTable();}
+  }catch(e2){
+    document.getElementById('app').innerHTML='<div style="color:#e85050;padding:40px;text-align:center">❌ Render error: '+e2.message+'</div>';
+    alert('Render error: '+e2.message);
+  }
+}
+
+// ========== DIRECT FORM MODE ==========
+function showDirectForm(recId){
+  const trip=allTrips.find(r=>r.id===recId);
+  if(!trip){document.getElementById('app').innerHTML='<div style="color:#e85050;padding:40px;text-align:center">❌ Trip not found: '+recId+'</div>';return;}
+  currentTrip=trip;
+  const f=trip.fields;
+  if(!window._directFormLoaded){
+    const isP=f['Is Partner Trip']&&f['Partner']&&f['Partner'][0];
+    currentType=isP?'partner':'own';
+    window._directFormLoaded=true;
+  }
+  const isP=currentType==='partner';
+  document.getElementById('app').innerHTML=`
+  <div class="container"><div class="card">
+    <h3>ΑΝΑΘΕΣΗ TRIP</h3>
+    <p style="color:var(--muted);font-size:12px;margin-top:3px">W${fv(f['Week Number'])||'—'} | ${fv(f['Trip Summary'])||fv(f['Export Delivery Location'])||'—'}</p>
+    <div style="margin-top:16px" class="type-toggle">
+      <div class="type-btn ${!isP?'active':''}" onclick="currentType='own';showDirectForm('${recId}')">🚛 OWN FLEET</div>
+      <div class="type-btn ${isP?'active':''}" onclick="currentType='partner';showDirectForm('${recId}')">🤝 PARTNER</div>
+    </div>
+    ${!isP?`
+      <div class="field"><label>Truck</label><select id="df_truck"><option value="">— Επιλογή —</option>${allTrucks.map(r=>`<option value="${r.id}" ${f['Truck']&&f['Truck'][0]===r.id?'selected':''}>${r.fields['License Plate']||r.id}</option>`).join('')}</select></div>
+      <div class="field"><label>Trailer</label><select id="df_trailer"><option value="">— Επιλογή —</option>${allTrailers.map(r=>`<option value="${r.id}" ${f['Trailer']&&f['Trailer'][0]===r.id?'selected':''}>${r.fields['License Plate']||r.id}</option>`).join('')}</select></div>
+      <div class="field"><label>Driver</label><select id="df_driver"><option value="">— Επιλογή —</option>${allDrivers.map(r=>`<option value="${r.id}" ${f['Driver']&&f['Driver'][0]===r.id?'selected':''}>${r.fields['Full Name']||r.id}</option>`).join('')}</select></div>
+    `:`
+      <div class="field"><label>Partner</label><select id="df_partner"><option value="">— Επιλογή —</option>${allPartners.filter(r=>r.fields['Active']).map(r=>`<option value="${r.id}" ${f['Partner']&&f['Partner'][0]===r.id?'selected':''}>${r.fields['Company Name']||r.id}</option>`).join('')}</select></div>
+      <div class="field"><label>Πινακίδες</label><input type="text" id="df_plates" value="${f['Partner Truck Plates']||''}" placeholder="π.χ. MK-123AB"></div>
+      <div class="field"><label>Τιμή Export (EUR)</label><input type="text" id="df_rate_export" value="${f['Partner Rate Export']||''}" placeholder="π.χ. 2500"></div>
+      <div class="field"><label>Τιμή Import (EUR)</label><input type="text" id="df_rate_import" value="${f['Partner Rate Import']||''}" placeholder="π.χ. 1800"></div>
+      <div class="field"><label>Όροι Πληρωμής</label><input type="text" id="df_terms" value="30 days"></div>
+    `}
+    <button class="btn btn-save" onclick="saveDirectForm('${recId}')">💾 Αποθήκευση</button>
+    <div id="dfStatus" class="status"></div>
+  </div></div>`;
+}
+
+async function saveDirectForm(recId){
+  const s=document.getElementById('dfStatus');
+  s.textContent='⏳ Αποθήκευση...';s.className='status loading-status';
+  try{
+    let fields={};
+    if(currentType==='own'){
+      const t=document.getElementById('df_truck').value,tr=document.getElementById('df_trailer').value,d=document.getElementById('df_driver').value;
+      if(!t||!tr||!d){s.textContent='Συμπλήρωσε όλα τα πεδία';s.className='status error';return;}
+      fields={'Truck':[t],'Trailer':[tr],'Driver':[d],'Is Partner Trip':false,'Partner':null,'Partner Truck Plates':''};
+    }else{
+      const p=document.getElementById('df_partner').value;
+      const pl=document.getElementById('df_plates').value;
+      if(!p||!pl){s.textContent='Συμπλήρωσε Partner και πινακίδες';s.className='status error';return;}
+      fields={'Is Partner Trip':true,'Partner':[p],'Partner Truck Plates':pl,'Truck':null,'Trailer':null,'Driver':null};
+      const rateExp=document.getElementById('df_rate_export')?.value;
+      const rateImp=document.getElementById('df_rate_import')?.value;
+      if(rateExp) fields['Partner Rate Export']=parseFloat(rateExp);
+      if(rateImp) fields['Partner Rate Import']=parseFloat(rateImp);
+    }
+    await atPatch('TRIPS',recId,fields);
+
+    // Create PARTNER ASSIGNMENT records if partner
+    if(currentType==='partner'){
+      await createPartnerAssignments(recId);
+    }
+
+    s.textContent='✅ Αποθηκεύτηκε στο Airtable!';s.className='status success';
+    setTimeout(()=>{try{window.close()}catch(e){}},1500);
+  }catch(e){s.textContent='❌ '+e.message;s.className='status error';}
+}
+
+// ========== PARTNER ASSIGNMENT CREATION ==========
+async function createPartnerAssignments(tripId){
+  const trip=allTrips.find(r=>r.id===tripId);
+  if(!trip) return;
+  const f=trip.fields;
+  const partnerId=document.getElementById('df_partner')?.value||document.getElementById('mPartner')?.value;
+  const plates=document.getElementById('df_plates')?.value||document.getElementById('mPlates')?.value||'';
+  const rateExp=document.getElementById('df_rate_export')?.value||document.getElementById('mRateExport')?.value||'';
+  const rateImp=document.getElementById('df_rate_import')?.value||document.getElementById('mRateImport')?.value||'';
+  const terms=document.getElementById('df_terms')?.value||document.getElementById('mTerms')?.value||'30 days';
+
+  // Get export order record IDs from TRIPS
+  const exportOrderIds=f['Export Order'];  // linked field → array of record IDs
+  const importOrderIds=f['Import Order'];  // linked field → array of record IDs
+
+  // Create Export assignment if export order exists
+  if(rateExp && exportOrderIds && exportOrderIds.length>0){
+    const rec={
+      'Partner':[partnerId],
+      'Partner Rate':parseFloat(rateExp),
+      'TRIPS 2':[tripId],
+      'Assignment Date':new Date().toISOString().split('T')[0],
+      'Status':'Pending',
+      'Payment Terms':terms,
+      'Order':[exportOrderIds[0]]
+    };
+    try{await atCreate('PARTNER ASSIGNMENTS',rec);}catch(e){console.error('Export PA:',e);}
+  }
+
+  // Create Import assignment if import order exists
+  if(rateImp && importOrderIds && importOrderIds.length>0){
+    const rec={
+      'Partner':[partnerId],
+      'Partner Rate':parseFloat(rateImp),
+      'TRIPS 2':[tripId],
+      'Assignment Date':new Date().toISOString().split('T')[0],
+      'Status':'Pending',
+      'Payment Terms':terms,
+      'Order':[importOrderIds[0]]
+    };
+    try{await atCreate('PARTNER ASSIGNMENTS',rec);}catch(e){console.error('Import PA:',e);}
+  }
+}
+
+// ========== TABLE MODE ==========
+function showTable(){
+  document.getElementById('app').innerHTML=`
+  <div class="container">
+    <div id="weekFilter" class="week-pills"></div>
+    <div class="table-wrap"><table class="trips">
+      <thead><tr><th>Week</th><th>Trip</th><th>Assigned To</th><th>Actions</th></tr></thead>
+      <tbody id="tripsBody"></tbody>
+    </table></div>
+  </div>`;
+  const weeks=[...new Set(allTrips.map(r=>fv(r.fields['Week Number'])).filter(Boolean))].sort((a,b)=>b-a);
+  let whtml='<div class="week-pill active" onclick="filterWeek(\'all\')">All</div>';
+  weeks.forEach(w=>{whtml+=`<div class="week-pill" onclick="filterWeek('${w}')">W${w}</div>`;});
+  document.getElementById('weekFilter').innerHTML=whtml;
+  renderTable();
+}
+
+function filterWeek(w){
+  activeWeek=w;
+  document.querySelectorAll('.week-pill').forEach(el=>{el.classList.toggle('active',el.textContent==='All'&&w==='all'||el.textContent==='W'+w);});
+  renderTable();
+}
+
+function renderTable(){
+  const trips=activeWeek==='all'?allTrips:allTrips.filter(r=>String(fv(r.fields['Week Number']))===String(activeWeek));
+  const sorted=[...trips].sort((a,b)=>(parseInt(fv(b.fields['Week Number']))||0)-(parseInt(fv(a.fields['Week Number']))||0));
+  let html='';
+  sorted.forEach(trip=>{
+    const f=trip.fields;
+    const week=fv(f['Week Number'])||'—';
+    const name=fv(f['Trip Summary'])||`${fv(f['Export Delivery Location'])||''}${fv(f['Import Delivery Location'])?' / '+fv(f['Import Delivery Location']):''}`;
+    const isP=f['Is Partner Trip'];
+    const assigned=isP?`<span class="partner-tag">🤝 ${fv(f['Partner Name'])||'Partner'}</span>`
+      :f['Driver']?`<span class="driver-tag">🚛 ${fv(f['Driver Name'])||'Driver'}</span>`
+      :'<span style="color:var(--muted)">— Unassigned —</span>';
+    const has=isP?(f['Partner']&&f['Partner'][0]):(f['Driver']&&f['Driver'][0]);
+    html+=`<tr>
+      <td><span class="week-badge">W${week}</span></td>
+      <td><span class="trip-name">${name||trip.id.slice(-6)}</span></td>
+      <td>${assigned}</td>
+      <td class="actions">
+        <button class="btn btn-assign" onclick="openModal('${trip.id}')">📋 Assign</button>
+        <button class="btn btn-pdf" onclick="openPDF('${trip.id}','export')" ${!has?'disabled':''}>🖨 Exp</button>
+        <button class="btn btn-pdf" onclick="openPDF('${trip.id}','import')" ${!has?'disabled':''}>🖨 Imp</button>
+      </td>
+    </tr>`;
+  });
+  document.getElementById('tripsBody').innerHTML=html||'<tr><td colspan="4" style="text-align:center;padding:30px;color:var(--muted)">Δεν βρέθηκαν trips</td></tr>';
+}
+
+// PDF opens via URL (avoids popup blocking)
+function openPDF(tripId,leg){
+  window.open(`${window.location.pathname}?pdf=${tripId}&leg=${leg}`,'_blank');
+}
+
+// ========== MODAL ==========
+function openModal(tripId){
+  const trip=allTrips.find(r=>r.id===tripId);if(!trip)return;
+  currentTrip=trip;
+  const f=trip.fields;
+  const isP=f['Is Partner Trip']&&f['Partner']&&f['Partner'][0];
+  currentType=isP?'partner':'own';
+
+  const overlay=document.createElement('div');
+  overlay.className='overlay show';overlay.id='modalOverlay';
+  overlay.innerHTML=`<div class="modal">
+    <button class="close-btn" onclick="closeModal()">✕</button>
+    <h3>ΑΝΑΘΕΣΗ TRIP</h3>
+    <p style="color:var(--muted);font-size:12px;margin-top:3px">W${fv(f['Week Number'])||'—'} | ${fv(f['Export Delivery Location'])||fv(f['Import Delivery Location'])||'—'}</p>
+    <div style="margin-top:16px" class="type-toggle">
+      <div class="type-btn ${!isP?'active':''}" onclick="currentType='own';closeModal();openModal('${tripId}')">🚛 OWN FLEET</div>
+      <div class="type-btn ${isP?'active':''}" onclick="currentType='partner';closeModal();openModal('${tripId}')">🤝 PARTNER</div>
+    </div>
+    <div id="modalFields"></div>
+    <button class="btn btn-save" onclick="saveModal()">💾 Αποθήκευση</button>
+    <div id="mStatus" class="status"></div>
+  </div>`;
+  document.body.appendChild(overlay);
+
+  const mf=document.getElementById('modalFields');
+  if(currentType==='own'){
+    mf.innerHTML=`
+      <div class="field"><label>Truck</label><select id="mTruck"><option value="">— Επιλογή —</option>${allTrucks.map(r=>`<option value="${r.id}" ${f['Truck']&&f['Truck'][0]===r.id?'selected':''}>${r.fields['License Plate']||r.id}</option>`).join('')}</select></div>
+      <div class="field"><label>Trailer</label><select id="mTrailer"><option value="">— Επιλογή —</option>${allTrailers.map(r=>`<option value="${r.id}" ${f['Trailer']&&f['Trailer'][0]===r.id?'selected':''}>${r.fields['License Plate']||r.id}</option>`).join('')}</select></div>
+      <div class="field"><label>Driver</label><select id="mDriver"><option value="">— Επιλογή —</option>${allDrivers.map(r=>`<option value="${r.id}" ${f['Driver']&&f['Driver'][0]===r.id?'selected':''}>${r.fields['Full Name']||r.id}</option>`).join('')}</select></div>`;
+  }else{
+    mf.innerHTML=`
+      <div class="field"><label>Partner</label><select id="mPartner"><option value="">— Επιλογή —</option>${allPartners.filter(r=>r.fields['Active']).map(r=>`<option value="${r.id}" ${f['Partner']&&f['Partner'][0]===r.id?'selected':''}>${r.fields['Company Name']||r.id}</option>`).join('')}</select></div>
+      <div class="field"><label>Πινακίδες</label><input type="text" id="mPlates" value="${f['Partner Truck Plates']||''}" placeholder="π.χ. MK-123AB"></div>
+      <div class="field"><label>Τιμή Export (EUR)</label><input type="text" id="mRateExport" value="${f['Partner Rate Export']||''}" placeholder="π.χ. 2500"></div>
+      <div class="field"><label>Τιμή Import (EUR)</label><input type="text" id="mRateImport" value="${f['Partner Rate Import']||''}" placeholder="π.χ. 1800"></div>
+      <div class="field"><label>Όροι Πληρωμής</label><input type="text" id="mTerms" value="30 days"></div>`;
+  }
+}
+
+function closeModal(){const o=document.getElementById('modalOverlay');if(o)o.remove();}
+
+async function saveModal(){
+  const s=document.getElementById('mStatus');
+  s.textContent='⏳ Αποθήκευση...';s.className='status loading-status';
+  try{
+    let fields={};
+    if(currentType==='own'){
+      const t=document.getElementById('mTruck').value,tr=document.getElementById('mTrailer').value,d=document.getElementById('mDriver').value;
+      if(!t||!tr||!d){s.textContent='Συμπλήρωσε όλα τα πεδία';s.className='status error';return;}
+      fields={'Truck':[t],'Trailer':[tr],'Driver':[d],'Is Partner Trip':false,'Partner':null,'Partner Truck Plates':''};
+      const drv=allDrivers.find(r=>r.id===d);
+      if(drv){const i=allTrips.findIndex(r=>r.id===currentTrip.id);allTrips[i].fields['Driver Name']=drv.fields['Full Name'];allTrips[i].fields['Partner Name']=null;allTrips[i].fields['Is Partner Trip']=false;}
+    }else{
+      const p=document.getElementById('mPartner').value,pl=document.getElementById('mPlates').value;
+      if(!p||!pl){s.textContent='Συμπλήρωσε Partner και πινακίδες';s.className='status error';return;}
+      fields={'Is Partner Trip':true,'Partner':[p],'Partner Truck Plates':pl,'Truck':null,'Trailer':null,'Driver':null};
+      const rateExp=document.getElementById('mRateExport')?.value;
+      const rateImp=document.getElementById('mRateImport')?.value;
+      if(rateExp) fields['Partner Rate Export']=parseFloat(rateExp);
+      if(rateImp) fields['Partner Rate Import']=parseFloat(rateImp);
+      const prt=allPartners.find(r=>r.id===p);
+      if(prt){const i=allTrips.findIndex(r=>r.id===currentTrip.id);allTrips[i].fields['Partner Name']=prt.fields['Company Name'];allTrips[i].fields['Driver Name']=null;allTrips[i].fields['Is Partner Trip']=true;}
+    }
+    await atPatch('TRIPS',currentTrip.id,fields);
+    Object.assign(allTrips[allTrips.findIndex(r=>r.id===currentTrip.id)].fields,fields);
+
+    // Create PARTNER ASSIGNMENT records if partner
+    if(currentType==='partner'){
+      await createPartnerAssignments(currentTrip.id);
+    }
+
+    s.textContent='✅ Αποθηκεύτηκε!';s.className='status success';
+    setTimeout(()=>{closeModal();renderTable();},800);
+  }catch(e){s.textContent='❌ '+e.message;s.className='status error';}
+}
+
+// ========== PDF ==========
+function formatDate(dt){if(!dt)return'—';return new Date(dt).toLocaleDateString('el-GR');}
+function formatTime(dt){if(!dt)return'—';return new Date(dt).toLocaleTimeString('el-GR',{hour:'2-digit',minute:'2-digit'});}
+
+
+
+
+// Resolve location details from LOCATIONS table
+function getLoc(locIds){
+  if(!locIds||!Array.isArray(locIds)||!locIds.length) return null;
+  var loc=allLocations.find(function(r){return r.id===locIds[0]});
+  if(!loc) return null;
+  var l=loc.fields;
+  var addr=l['Address']||'';
+  var city=l['City']||'';
+  var country=l['Country']||'';
+  var full=l['Name']||'';
+  var parts=[];
+  if(addr) parts.push(addr);
+  if(city) parts.push(city);
+  if(l['State/province']) parts.push(l['State/province']);
+  if(country) parts.push(country);
+  return {
+    name: full,
+    address: parts.join(', '),
+    lat: l['Latitude']||'',
+    lng: l['Longitude']||''
+  };
+}
+
+// Resolve a field value: if it's a record ID array, look up in LOCATIONS; if text, return as-is
+function resolvePlace(val){
+  if(!val) return '—';
+  if(Array.isArray(val)){
+    // Array of record IDs or text values
+    var names=val.map(function(v){
+      if(typeof v==='string' && v.startsWith('rec')){
+        var loc=allLocations.find(function(r){return r.id===v});
+        return loc?loc.fields['Name']:v;
+      }
+      return v;
+    });
+    return names.join(' / ');
+  }
+  if(typeof val==='string' && val.startsWith('rec')){
+    var loc=allLocations.find(function(r){return r.id===val});
+    return loc?loc.fields['Name']:val;
+  }
+  return val;
+}
+
+// Resolve place with full details (address + coords)
+function resolvePlaceFull(val){
+  if(!val) return null;
+  var id=Array.isArray(val)?val[0]:val;
+  if(typeof id==='string' && id.startsWith('rec')){
+    return getLoc([id]);
+  }
+  return null;
+}
+
+function generatePDF(tripId,leg){
+  var trip=allTrips.find(function(r){return r.id===tripId});
+  if(!trip){document.getElementById('app').innerHTML='<div style="color:#e85050;padding:40px;text-align:center">❌ Trip not found</div>';return;}
+  var f=trip.fields;
+  var isExport=leg==='export';
+  var legLabel=isExport?'Export':'Import';
+  var rate=isExport?(f['Partner Rate Export']||'—'):(f['Partner Rate Import']||'—');
+  var wk=fv(f['Week Number'])||'—';
+
+  // Get order for this leg
+  var orderIds=isExport?f['Export Order']:f['Import Order'];
+  var orders=[];
+  if(orderIds&&Array.isArray(orderIds)){
+    orderIds.forEach(function(id){
+      var o=allOrders.find(function(r){return r.id===id});
+      if(o) orders.push(o);
+    });
+  }
+
+  // Stops now read directly from ORDER fields (Loading/Unloading Location 1-5)
+
+
+  // ===== VEROIA SWITCH =====
+  // Detected after orderData is set (below)
+
+  // ===== ORDER DATA =====
+  // Use the order for this leg
+  var orderData=orders.length>0?orders[0].fields:null;
+  // If no order for this leg, try the other leg (same physical load)
+  if(!orderData){
+    var altIds=isExport?f['Import Order']:f['Export Order'];
+    if(altIds && Array.isArray(altIds) && altIds.length>0){
+      var alt=allOrders.find(function(r){return r.id===altIds[0]});
+      if(alt) orderData=alt.fields;
+    }
+  }
+  var goods=orderData?fv(orderData['Goods']):'';
+  var veroiaSwitch=!!(orderData && orderData['Veroia Cross-dock']);
+  console.log('DEBUG: veroiaSwitch=', veroiaSwitch, 'Veroia Cross-dock=', orderData?orderData['Veroia Cross-dock']:'no orderData');
+  console.log('DEBUG: orderData exists=', !!orderData);
+  if(orderData) console.log('DEBUG: Notes=', orderData['Notes'], 'Goods=', orderData['Goods']);
+  var totalPals=orderData?fv(orderData['Total Pallets']):'';
+  var palType=orderData?fv(orderData['Pallet Type']):'';
+  var pe=orderData&&orderData['Pallet Exchange']?'YES':'NO';
+  var gw=orderData?fv(orderData['Gross Weight kg']):'';
+  var temp=orderData?fv(orderData['Temperature °C']):'';
+  var refr=orderData?fv(orderData['Refrigerator Mode']):'';
+  if(!palType) palType='Europallets 0.8x1.2';
+  if(!refr) refr='Continuous';
+
+  var VEROIA='Vermion Fresh SA — Cross-dock Kopanos';
+  var VEROIA_ADDR='Kopanos, Naousa, Imathia, Greece';
+
+  // ===== RESOLVE LOCATION FROM ORDER FIELD =====
+  function resolveLoc(locField){
+    if(!locField || !Array.isArray(locField) || !locField.length) return null;
+    var loc=allLocations.find(function(r){return r.id===locField[0]});
+    if(!loc) return null;
+    var l=loc.fields;
+    var parts=[];
+    if(l['Address']) parts.push(l['Address']);
+    if(l['City']) parts.push(l['City']);
+    if(l['State/province']) parts.push(l['State/province']);
+    if(l['Country']) parts.push(l['Country']);
+    return {
+      name: l['Name']||'—',
+      address: parts.join(', '),
+      lat: l['Latitude']||'',
+      lng: l['Longitude']||''
+    };
+  }
+
+  // ===== BUILD STOP CARD =====
+  function buildCard(num, loc, dtLabel, dt, pals, showDetails, notes){
+    var html='<div class="stop-card"><div class="stop-name">'+num+'. '+loc.name+'</div>';
+    if(loc.address) html+='<div class="stop-addr">📍 '+loc.address+'</div>';
+    if(loc.lat && loc.lng) html+='<div class="stop-addr"><a href="https://www.google.com/maps?q='+loc.lat+','+loc.lng+'" target="_blank" style="color:#2D7FF9;text-decoration:none">Open in Maps ('+loc.lat+', '+loc.lng+')</a></div>';
+    html+='<div class="stop-grid">';
+    html+='<div class="stop-field"><b>Date of '+dtLabel+':</b> <span>'+formatDate(dt)+'</span></div>';
+    if(showDetails){
+      if(goods) html+='<div class="stop-field"><b>Goods:</b> <span>'+goods+'</span></div>';
+      html+='<div class="stop-field"><b>Pallet no:</b> <span>'+(pals||'—')+' '+palType+'</span></div>';
+      html+='<div class="stop-field"><b>Pallet Exchange:</b> <span>'+pe+'</span></div>';
+      if(gw) html+='<div class="stop-field"><b>Gross Weight:</b> <span>'+gw+' KG</span></div>';
+      if(temp) html+='<div class="stop-field"><b>Temperature:</b> <span>'+temp+'°C</span></div>';
+      html+='<div class="stop-field"><b>Refrigerator:</b> <span>'+refr+'</span></div>';
+    } else {
+      html+='<div class="stop-field"><b>Pallet no:</b> <span>'+(pals||'—')+' '+palType+'</span></div>';
+    }
+    html+='</div>';
+
+    html+='</div>';
+    return html;
+  }
+
+  // ===== BUILD LOADING HTML =====
+  function buildLoadHTML(){
+    var dt=isExport?fv(f['Export Loading DateTime']):fv(f['Import Loading DateTime']);
+    var od=orderData||{};
+
+    if(veroiaSwitch && isExport){
+      // Export + Veroia Switch = Vermion Cross-dock, date +1 day
+      var pals=fv(f['Export Pallets'])||totalPals||'—';
+      var vDt=dt?new Date(new Date(dt).getTime()+86400000).toISOString():'';
+      return buildCard(1, {name:VEROIA, address:VEROIA_ADDR, lat:'40.6098', lng:'22.0672'}, 'loading', vDt, pals, true, '');
+    }
+
+    // Loop through Loading Location 1-5 from ORDER
+    var html='';
+    var count=0;
+    for(var i=1;i<=5;i++){
+      var locField=od['Loading Location '+i];
+      if(!locField) continue;
+      var loc=resolveLoc(locField);
+      if(!loc) continue;
+      count++;
+      var pals=fv(od['Loading Pallets '+i])||'';
+      var stopNotes=fv(od['Notes'])||'';
+      html+=buildCard(count, loc, 'loading', dt, pals, true, stopNotes);
+    }
+    if(count>0) return html;
+
+    // Fallback: trip-level
+    var placesField=isExport?f['Export Loading Places']:f['Import Loading Places'];
+    if(placesField && Array.isArray(placesField)){
+      var locs=[];
+      placesField.forEach(function(id){
+        var loc=allLocations.find(function(r){return r.id===id});
+        if(loc) locs.push({name:loc.fields['Name']||'—', address:'', lat:loc.fields['Latitude']||'', lng:loc.fields['Longitude']||''});
+      });
+      if(locs.length>0){
+        var h='';
+        locs.forEach(function(loc,i){
+          h+=buildCard(i+1, loc, 'loading', dt, totalPals, true, '');
+        });
+        return h;
+      }
+    }
+
+    // Last resort
+    var pals=isExport?fv(f['Export Pallets']):fv(f['Import Pallets'])||totalPals||'—';
+    return buildCard(1, {name:'—', address:'', lat:'', lng:''}, 'loading', dt, pals, true, '');
+  }
+
+  // ===== BUILD DELIVERY HTML =====
+  function buildDeliveryHTML(){
+    var dt=isExport?fv(f['Export Delivery DateTime']):fv(f['Import Delivery DateTime']);
+    var od=orderData||{};
+
+    if(veroiaSwitch && !isExport){
+      // Import + Veroia Switch = Vermion Cross-dock, date -1 day
+      var pals=fv(f['Import Pallets'])||totalPals||'—';
+      var vDt=dt?new Date(new Date(dt).getTime()-86400000).toISOString():'';
+      return buildCard(1, {name:VEROIA, address:VEROIA_ADDR, lat:'40.6098', lng:'22.0672'}, 'delivery', vDt, pals, false, '');
+    }
+
+    // Loop through Unloading Location 1-5 from ORDER
+    var html='';
+    var count=0;
+    for(var i=1;i<=5;i++){
+      var locField=od['Unloading Location '+i];
+      if(!locField) continue;
+      var loc=resolveLoc(locField);
+      if(!loc) continue;
+      count++;
+      var pals=fv(od['Unloading Pallets '+i])||'';
+      html+=buildCard(count, loc, 'delivery', dt, pals, false, fv(od['Notes'])||'');
+    }
+    if(count>0) return html;
+
+    // Fallback: trip-level
+    var placesField=isExport?f['Export Delivery Places']:f['Import Delivery Places'];
+    if(placesField && Array.isArray(placesField)){
+      var locs=[];
+      placesField.forEach(function(id){
+        var loc=allLocations.find(function(r){return r.id===id});
+        if(loc) locs.push({name:loc.fields['Name']||'—', address:'', lat:loc.fields['Latitude']||'', lng:loc.fields['Longitude']||''});
+      });
+      if(locs.length>0){
+        var h='';
+        locs.forEach(function(loc,i){
+          h+=buildCard(i+1, loc, 'delivery', dt, totalPals, false, '');
+        });
+        return h;
+      }
+    }
+
+    // Last resort
+    var pals=isExport?fv(f['Export Pallets']):fv(f['Import Pallets'])||totalPals||'—';
+    return buildCard(1, {name:'—', address:'', lat:'', lng:''}, 'delivery', dt, pals, false, '');
+  }
+
+
+
+
+  var css='*{margin:0;padding:0;box-sizing:border-box}body{font-family:Segoe UI,Arial,sans-serif;font-size:11.5px;color:#1B2A4A;padding:32px 40px;line-height:1.5}.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:16px;border-bottom:3px solid #2D7FF9}.brand{font-size:20px;font-weight:900;letter-spacing:1px;color:#1B2A4A}.brand-sub{font-size:8px;color:#888;letter-spacing:2.5px;text-transform:uppercase;margin-top:2px}.company{margin-top:8px;font-size:11px;line-height:1.6}.company b{font-size:12px}.title{text-align:center;font-size:14px;font-weight:700;padding:10px 0;margin:16px 0;border-top:2px solid #1B2A4A;border-bottom:2px solid #1B2A4A;letter-spacing:1px;text-transform:uppercase}.meta{display:grid;grid-template-columns:1fr 1fr;gap:0;margin-bottom:16px;border:1px solid #ddd;border-radius:4px;overflow:hidden}.meta-item{padding:8px 14px;border-bottom:1px solid #eee;display:flex;gap:8px}.meta-item:nth-child(odd){border-right:1px solid #eee}.meta-label{font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;min-width:70px}.meta-value{font-weight:600}.price-bar{display:flex;justify-content:space-between;align-items:center;background:#f0f6ff;border:2px solid #2D7FF9;border-radius:6px;padding:12px 20px;margin-bottom:20px}.price-amount{font-size:22px;font-weight:900;color:#2D7FF9}.price-label{font-size:9px;color:#888;text-transform:uppercase;letter-spacing:1.5px}.section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:#fff;background:#1B2A4A;padding:6px 14px;margin:18px 0 10px;border-left:4px solid #2D7FF9}.stop-card{border:1px solid #ddd;border-radius:6px;padding:18px 20px;margin-bottom:12px;background:#fafbfc}.stop-name{font-size:15px;font-weight:700;color:#1B2A4A;margin-bottom:2px}.stop-addr{font-size:12px;color:#666;margin-bottom:4px}.stop-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 20px}.stop-field{display:flex;gap:6px;padding:3px 0}.stop-field b{color:#1B2A4A;min-width:120px;font-size:12px}.stop-field span{font-size:12.5px}.sig-table{width:100%;margin-top:20px;border-collapse:collapse}.sig-table td{width:50%;padding:14px 20px;border:1px solid #1B2A4A;vertical-align:top}.sig-name{font-weight:700;font-size:12px;margin-bottom:4px}.sig-role{font-size:9px;color:#888;text-transform:uppercase;letter-spacing:1px}.sig-line{margin-top:30px;border-top:1px solid #aaa;padding-top:6px;font-size:10px;color:#aaa;text-align:center}.info-left b{color:#1B2A4A}.plates-tag{display:inline-block;background:#2D7FF9;color:#fff;font-weight:700;font-size:13px;padding:4px 12px;border-radius:4px;margin-top:8px;letter-spacing:1px}@media print{body{padding:20px 28px}}';
+
+  var html='';
+
+  if(f['Is Partner Trip']){
+    var partner=allPartners.find(function(r){return f['Partner']&&r.id===f['Partner'][0]})||{};
+    var pf=partner.fields||{};
+    html='<!DOCTYPE html><html><head><meta charset="UTF-8"><style>'+css+'</style></head><body>'+
+    '<div class="header"><div><div style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:2px;margin-bottom:4px">Carrier</div><div style="font-size:15px;font-weight:700">'+(pf['Company Name']||fv(f['Partner Name'])||'—')+'</div>'+(pf['VAT Number']?'<div style="margin-top:4px">VAT: '+pf['VAT Number']+'</div>':'')+(pf['Adress']?'<div>'+pf['Adress']+'</div>':'')+(pf['Email']?'<div>'+pf['Email']+'</div>':'')+'<div class="plates-tag">'+(f['Partner Truck Plates']||'—')+'</div></div><div style="text-align:right"><div class="brand">PETRAS GROUP</div><div class="brand-sub">International Road Transport Services</div><div class="company"><b>VERMION FRESH SA</b><br>Kopanos, Naousa — Imathia, Greece<br>VAT: EL800816168<br>vermionfresh@petrasgroup.com</div></div></div>'+
+    '<div class="title">Partner Assignment Order — '+legLabel+' — PAO-W'+wk+'-'+(fv(f['Trip No'])||tripId.slice(-4))+'</div>'+
+    '<div class="meta"><div class="meta-item"><span class="meta-label">Date</span><span class="meta-value">'+new Date().toLocaleDateString('el-GR')+'</span></div><div class="meta-item"><span class="meta-label">Week</span><span class="meta-value">W'+wk+'</span></div><div class="meta-item"><span class="meta-label">Category</span><span class="meta-value">'+legLabel+'</span></div><div class="meta-item"><span class="meta-label">Dispatcher</span><span class="meta-value">'+DISPATCHER+'</span></div></div>'+
+    '<div class="price-bar"><div><div class="price-label">Agreed Rate — '+legLabel+'</div><div class="price-amount">'+rate+' EUR</div></div><div style="text-align:right"><div class="price-label">Payment Terms</div><div style="font-size:14px;font-weight:700">30 days</div></div></div>'+
+    '<div class="section-title">Loading Place</div>'+buildLoadHTML()+
+    '<div class="section-title">Delivery Place</div>'+buildDeliveryHTML()+
+    (orderData&&orderData['Notes']?'<div style="margin:16px 0;padding:12px 18px;border:1px solid #ddd;border-radius:6px;background:#fafbfc;font-size:12.5px"><b>Notes:</b> '+orderData['Notes']+'</div>':'')+
+    '</body></html>';
+  }else{
+    var driver=allDrivers.find(function(r){return f['Driver']&&r.id===f['Driver'][0]})||{};
+    var truck=allTrucks.find(function(r){return f['Truck']&&r.id===f['Truck'][0]})||{};
+    var trailer=allTrailers.find(function(r){return f['Trailer']&&r.id===f['Trailer'][0]})||{};
+    var df2=driver.fields||{};var tf=truck.fields||{};var trf=trailer.fields||{};
+    html='<!DOCTYPE html><html><head><meta charset="UTF-8"><style>'+css+'</style></head><body>'+
+    '<div class="header"><div><div class="info-left" style="font-size:11.5px;line-height:1.7"><b>DRIVER:</b> <b>'+(df2['Full Name']||fv(f['Driver Name'])||'—')+'</b><br><b>TRUCK:</b> <b>'+(tf['License Plate']||'—')+'</b><br><b>TRAILER:</b> <b>'+(trf['License Plate']||'—')+'</b><br><b>TOTAL WEIGHT:</b> <b>'+((parseFloat(tf['Gross Vehicle Weight kg']||0)+parseFloat(trf['Weight kg']||0))).toLocaleString('de-DE')+' KG</b></div></div><div style="text-align:right"><div class="brand">PETRAS GROUP</div><div class="brand-sub">International Road Transport Services</div><div class="company"><b>VERMION FRESH SA</b><br>Kopanos, Naousa<br>EL800816168<br>vermionfresh@petrasgroup.com</div></div></div>'+
+    '<div class="title">Driver Order — '+legLabel+' <span style="font-size:9px;color:#999;font-weight:400">'+APP_VERSION+'</span></div>'+
+    '<div class="meta"><div class="meta-item"><span class="meta-label">Date</span><span class="meta-value">'+new Date().toLocaleDateString('el-GR')+'</span></div><div class="meta-item"><span class="meta-label">Week</span><span class="meta-value">W'+wk+'</span></div><div class="meta-item"><span class="meta-label">Category</span><span class="meta-value">'+legLabel+'</span></div><div class="meta-item"><span class="meta-label">Dispatcher</span><span class="meta-value">'+DISPATCHER+'</span></div></div>'+
+    '<div class="section-title">Loading Place</div>'+buildLoadHTML()+
+    '<div class="section-title">Delivery Place</div>'+buildDeliveryHTML()+
+    (orderData&&orderData['Notes']?'<div style="margin:16px 0;padding:12px 18px;border:1px solid #ddd;border-radius:6px;background:#fafbfc;font-size:12.5px"><b>Notes:</b> '+orderData['Notes']+'</div>':'')+
+    '</body></html>';
+  }
+
+  document.open();
+  document.write(html);
+  document.close();
+  setTimeout(function(){window.print()},600);
+}
+
+init();
+</script>
+</body>
+</html>
