@@ -344,10 +344,10 @@ async function getAllRecords(table,fields){
 async function loadData(){
   try{
     const[cr,lr]=await Promise.all([
-      getAllRecords('CLIENTS',['Client Name']),
+      getAllRecords('CLIENTS',['Company Name']),
       getAllRecords('LOCATIONS',['Name'])
     ]);
-    clients=cr.map(r=>({id:r.id,name:r.fields['Client Name']||''})).filter(c=>c.name);
+    clients=cr.map(r=>({id:r.id,name:r.fields['Company Name']||r.fields['Client Name']||''})).filter(c=>c.name);
     locations=lr.map(r=>({id:r.id,name:r.fields['Name']||''})).filter(l=>l.name);
   }catch(e){console.warn('Load error:',e.message);}
 }
