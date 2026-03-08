@@ -377,48 +377,58 @@ async function startAnalysis(){
   st.innerHTML='<div class="spinner"></div><span>Το AI διαβάζει την εντολή...</span>';
 
   const clientList=clients.slice(0,80).map(c=>c.name).join(', ');
-  const locList=locations.slice(0,120).map(l=>l.name).join(', ');
-
   const cb=(fileType==='application/pdf')
     ?{type:'document',source:{type:'base64',media_type:'application/pdf',data:fileB64}}
     :{type:'image',source:{type:'base64',media_type:fileType||'image/jpeg',data:fileB64}};
 
-  const prompt=`You are extracting data from a freight/carrier order for Petras Group, a Greek transport company.
+  const locList=locations.slice(0,300).map(l=>l.name).join('\n');
 
-CRITICAL RULE: Petras Group / Vermion Fresh S.A. is THE CARRIER (us). They are NEVER the client.
-The CLIENT is the company that hired us to transport goods - typically a trading/food company (e.g. OGL Food Trade, Lidl, etc.).
-Look for the company that ISSUED the order (top of document, letterhead, "from" company).
+  const prompt=`You are a precise data extraction assistant for Petras Group, a Greek transport company.
+Extract data from this freight/carrier order document.
 
-Extract and return ONLY this JSON:
+CRITICAL - WHO IS THE CLIENT:
+- Petras Group / Vermion Fresh S.A. = WE ARE THE CARRIER, never the client
+- The CLIENT = the company whose LETTERHEAD/LOGO is on the document (e.g. OGL Food Trade)
+- Look at the top of the document for the issuing company
+
+CRITICAL - STOPS EXTRACTION:
+Loading stops = places in GREECE where we PICK UP goods (marked with loading arrow ↓)
+- Extract EACH unique pickup address as a SEPARATE stop
+- Use the address line (e.g. "IRINOUPOLI SUD - ASPROPIRGOS", "MEDIFRESH - SKYDRA", "LEVENTOGIANNIS - ARGOS", "NATURA GREEN - ARTA")
+- DO NOT combine multiple addresses into one string with slashes or "/"
+- Pallets = total pallets picked up at that specific address
+
+Unloading stops = places in EU where we DELIVER goods (marked with unloading arrow ↑)
+- Extract EACH unique delivery address as a SEPARATE stop  
+- Use specific location name (e.g. "Lidl Wundschuh", "Lidl Laakirchen")
+- DO NOT just say "Lidl" - include the city/location name
+- Pallets = total pallets delivered to that specific address
+
+AVAILABLE LOCATIONS (match location_name exactly to one of these):
+\${locList}
+
+Return ONLY this JSON, no markdown:
 {
-  "client_name": "the company that issued this order (NOT Vermion/Petras)",
+  "client_name": "issuing company name",
   "direction": "Export or Import",
-  "goods": "comma-separated list of products",
-  "temperature": single number (e.g. 7 or 2 or -18) — use the MAX temperature value,
+  "goods": "main product(s)",
+  "temperature": temperature as integer number only (e.g. 7 not +7),
   "weight_kg": number or null,
-  "pallets_no": total pallet count or null,
+  "pallets_no": total pallets number or null,
   "price_eur": freight cost number or null,
   "loading_datetime": "YYYY-MM-DDTHH:MM" or null,
   "delivery_datetime": "YYYY-MM-DDTHH:MM" or null,
   "pallet_exchange": true or false,
-  "veroia_switch": true or false,
+  "veroia_switch": false,
   "reefer_mode": "Continuous or Cycling or Fresh or null",
-  "loading_stops": [{"location_name":"address/city where goods are PICKED UP","pallets": number or null}],
-  "unloading_stops": [{"location_name":"address/city where goods are DELIVERED","pallets": number or null}],
+  "loading_stops": [
+    {"location_name": "exact name from locations list above", "pallets": number}
+  ],
+  "unloading_stops": [
+    {"location_name": "exact name from locations list above", "pallets": number}
+  ],
   "notes": "special instructions or null"
-}
-
-STOPS rules:
-- loading_stops = each SEPARATE pickup location in Greece (loading = arrow down symbol). One entry per unique address/supplier. Do NOT combine multiple suppliers into one stop.
-- unloading_stops = each SEPARATE delivery destination (unloading = arrow up symbol), typically Lidl/supermarket warehouses in EU countries. One entry per unique delivery address.
-- Max 5 loading stops, max 5 unloading stops
-- For location_name use ONLY the city/company name of that specific stop (e.g. "IRINOUPOLI SUD - ASPROPIRGOS", "MEDIFRESH - SKYDRA", "LIDL WUNDSCHUH", "LIDL LAAKIRCHEN")
-- For pallets: sum all pallets loaded/unloaded at that specific address
-- DO NOT concatenate multiple stops into one string
-
-Match client_name from this list: ${clientList}
-Match location names from: ${locList}
-Return ONLY valid JSON.`;
+}`;
 
   try{
     const resp=await fetch('https://api.anthropic.com/v1/messages',{
@@ -492,7 +502,7 @@ function fuzzyMatch(query,list){
     else q.split(/\s+/).forEach(w=>{if(w.length>3&&name.includes(w))score+=20;});
     if(score>bestScore){bestScore=score;best=item;}
   }
-  return bestScore>=20?best:null;
+  return bestScore>=40?best:null;
 }
 
 function searchClient(val){
