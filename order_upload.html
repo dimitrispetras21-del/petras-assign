@@ -88,6 +88,11 @@ textarea{resize:vertical;min-height:60px}
 .s-key{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:4px}
 .s-val{font-size:13px;font-weight:600;color:var(--dark)}
 .s-val.empty{color:var(--muted);font-weight:400;font-style:italic}
+.loc-unmatched input{border-color:var(--warn)!important;background:#FFFBEB!important}
+.loc-matched input{border-color:var(--green)!important;background:#F0FDF8!important}
+.match-badge{font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;margin-top:3px;display:inline-block}
+.match-badge.ok{background:rgba(32,201,151,.1);color:var(--green)}
+.match-badge.warn{background:rgba(245,158,11,.1);color:var(--warn)}
 /* Success */
 .success-big{text-align:center;padding:40px 20px}
 .success-big .icon{font-size:52px;margin-bottom:16px}
@@ -404,10 +409,12 @@ Extract and return ONLY this JSON:
 }
 
 STOPS rules:
-- loading_stops = pickup addresses in Greece (arrows pointing DOWN / loading symbol)
-- unloading_stops = delivery addresses abroad (arrows pointing UP / unloading symbol, typically Lidl, supermarkets, warehouses in EU)
+- loading_stops = each SEPARATE pickup location in Greece (loading = arrow down symbol). One entry per unique address/supplier. Do NOT combine multiple suppliers into one stop.
+- unloading_stops = each SEPARATE delivery destination (unloading = arrow up symbol), typically Lidl/supermarket warehouses in EU countries. One entry per unique delivery address.
 - Max 5 loading stops, max 5 unloading stops
-- For each stop, sum up all pallets going to that address
+- For location_name use ONLY the city/company name of that specific stop (e.g. "IRINOUPOLI SUD - ASPROPIRGOS", "MEDIFRESH - SKYDRA", "LIDL WUNDSCHUH", "LIDL LAAKIRCHEN")
+- For pallets: sum all pallets loaded/unloaded at that specific address
+- DO NOT concatenate multiple stops into one string
 
 Match client_name from this list: ${clientList}
 Match location names from: ${locList}
@@ -463,12 +470,12 @@ function fillForm(d){
 
   if(d.loading_stops)d.loading_stops.forEach((s,i)=>{
     if(i>=5)return;const n=i+1;
-    if(s.location_name){const m=fuzzyMatch(s.location_name,locations);sv('lLocSearch_'+n,m?m.name:s.location_name);sv('lLocId_'+n,m?m.id:'');}
+    if(s.location_name){const m=fuzzyMatch(s.location_name,locations);sv('lLocSearch_'+n,m?m.name:s.location_name);sv('lLocId_'+n,m?m.id:'');setLocMatch('l',n,!!m,s.location_name);}
     if(s.pallets)sv('lPal_'+n,s.pallets);
   });
   if(d.unloading_stops)d.unloading_stops.forEach((s,i)=>{
     if(i>=5)return;const n=i+1;
-    if(s.location_name){const m=fuzzyMatch(s.location_name,locations);sv('uLocSearch_'+n,m?m.name:s.location_name);sv('uLocId_'+n,m?m.id:'');}
+    if(s.location_name){const m=fuzzyMatch(s.location_name,locations);sv('uLocSearch_'+n,m?m.name:s.location_name);sv('uLocId_'+n,m?m.id:'');setLocMatch('u',n,!!m,s.location_name);}
     if(s.pallets)sv('uPal_'+n,s.pallets);
   });
 }
@@ -506,7 +513,7 @@ function searchLoc(val,prefix,n){
   dd.innerHTML=matches.map(l=>'<div class="search-opt" onmousedown="pickLoc(\''+prefix+'\','+n+',\''+l.id+'\',\''+esc(l.name)+'\')">'+l.name+'</div>').join('');
   dd.classList.add('show');
 }
-function pickLoc(prefix,n,id,name){sv(prefix+'LocSearch_'+n,name);sv(prefix+'LocId_'+n,id);document.getElementById(prefix+'DD_'+n).classList.remove('show');}
+function pickLoc(prefix,n,id,name){sv(prefix+'LocSearch_'+n,name);sv(prefix+'LocId_'+n,id);document.getElementById(prefix+'DD_'+n).classList.remove('show');setLocMatch(prefix,n,true,name);}
 function hideDD(id){setTimeout(()=>document.getElementById(id)?.classList.remove('show'),180);}
 function hideLDD(prefix,n){setTimeout(()=>document.getElementById(prefix+'DD_'+n)?.classList.remove('show'),180);}
 function esc(s){return s.replace(/'/g,"\\'");}
@@ -514,11 +521,29 @@ function esc(s){return s.replace(/'/g,"\\'");}
 function buildStopsGrids(){
   let lHtml='',uHtml='';
   for(let i=1;i<=5;i++){
-    lHtml+='<div class="stop-row"><div class="stop-num">'+i+'</div><div class="search-wrap"><input type="text" id="lLocSearch_'+i+'" placeholder="Αναζήτηση τοποθεσίας..." autocomplete="off" oninput="searchLoc(this.value,\'l\','+i+')" onblur="hideLDD(\'l\','+i+')"><input type="hidden" id="lLocId_'+i+'"><div class="search-dropdown" id="lDD_'+i+'"></div></div><input type="number" id="lPal_'+i+'" placeholder="Pallets"></div>';
-    uHtml+='<div class="stop-row"><div class="stop-num">'+i+'</div><div class="search-wrap"><input type="text" id="uLocSearch_'+i+'" placeholder="Αναζήτηση τοποθεσίας..." autocomplete="off" oninput="searchLoc(this.value,\'u\','+i+')" onblur="hideLDD(\'u\','+i+')"><input type="hidden" id="uLocId_'+i+'"><div class="search-dropdown" id="uDD_'+i+'"></div></div><input type="number" id="uPal_'+i+'" placeholder="Pallets"></div>';
+    lHtml+='<div class="stop-row" id="lRow_'+i+'"><div class="stop-num">'+i+'</div><div class="search-wrap"><input type="text" id="lLocSearch_'+i+'" placeholder="Αναζήτηση τοποθεσίας..." autocomplete="off" oninput="searchLoc(this.value,\'l\','+i+')" onblur="hideLDD(\'l\','+i+')"><input type="hidden" id="lLocId_'+i+'"><div class="search-dropdown" id="lDD_'+i+'"></div><div class="match-badge" id="lBadge_'+i+'" style="display:none"></div></div><input type="number" id="lPal_'+i+'" placeholder="Pallets"></div>';
+    uHtml+='<div class="stop-row" id="uRow_'+i+'"><div class="stop-num">'+i+'</div><div class="search-wrap"><input type="text" id="uLocSearch_'+i+'" placeholder="Αναζήτηση τοποθεσίας..." autocomplete="off" oninput="searchLoc(this.value,\'u\','+i+')" onblur="hideLDD(\'u\','+i+')"><input type="hidden" id="uLocId_'+i+'"><div class="search-dropdown" id="uDD_'+i+'"></div><div class="match-badge" id="uBadge_'+i+'" style="display:none"></div></div><input type="number" id="uPal_'+i+'" placeholder="Pallets"></div>';
   }
   document.getElementById('loadingStopsGrid').innerHTML=lHtml;
   document.getElementById('unloadingStopsGrid').innerHTML=uHtml;
+}
+
+function setLocMatch(prefix,n,matched,name){
+  const row=document.getElementById(prefix+'Row_'+n);
+  const badge=document.getElementById(prefix+'Badge_'+n);
+  if(!row||!badge)return;
+  row.classList.remove('loc-matched','loc-unmatched');
+  if(!name){badge.style.display='none';return;}
+  if(matched){
+    row.classList.add('loc-matched');
+    badge.className='match-badge ok';
+    badge.textContent='✓ matched';
+  } else {
+    row.classList.add('loc-unmatched');
+    badge.className='match-badge warn';
+    badge.textContent='⚠ no match — search to link';
+  }
+  badge.style.display='inline-block';
 }
 
 function goConfirm(){
@@ -645,8 +670,8 @@ function resetApp(){
   document.getElementById('palletExchange').checked=false;
   document.getElementById('veroiaSwitch').checked=false;
   for(let i=1;i<=5;i++){
-    sv('lLocSearch_'+i,'');sv('lLocId_'+i,'');sv('lPal_'+i,'');
-    sv('uLocSearch_'+i,'');sv('uLocId_'+i,'');sv('uPal_'+i,'');
+    sv('lLocSearch_'+i,'');sv('lLocId_'+i,'');sv('lPal_'+i,'');setLocMatch('l',i,false,'');
+    sv('uLocSearch_'+i,'');sv('uLocId_'+i,'');sv('uPal_'+i,'');setLocMatch('u',i,false,'');
   }
   goStep(1);
 }
