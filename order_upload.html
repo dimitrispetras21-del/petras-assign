@@ -469,7 +469,7 @@ function fillForm(d){
   if(d.goods)sv('goods',d.goods);
   if(d.temperature!=null)sv('temperature',d.temperature);
   if(d.weight_kg!=null&&d.weight_kg>0)sv('weight',d.weight_kg);
-  if(d.pallets_no!=null&&d.pallets_no>0)sv('palletsNo',d.pallets_no);
+  // pallets_no calculated from loading stops after aggregation
   if(d.price_eur)sv('price',d.price_eur);
   if(d.loading_datetime)sv('loadingDate',d.loading_datetime);
   if(d.delivery_datetime)sv('deliveryDate',d.delivery_datetime);
@@ -504,6 +504,9 @@ function fillForm(d){
       sv('uLocSearch_'+ui,m?m.name:addr);sv('uLocId_'+ui,m?m.id:'');setLocMatch('u',ui,!!m,addr);
       sv('uPal_'+ui,pal);ui++;
     }
+    // Total pallets = sum of LOADING stops only
+    const totalLoadPal=[...loadMap.values()].reduce((a,b)=>a+b,0);
+    if(totalLoadPal>0)sv('palletsNo',totalLoadPal);
   }
 }
 
