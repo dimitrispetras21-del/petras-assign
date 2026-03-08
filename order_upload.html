@@ -17,7 +17,7 @@ header{background:var(--card);border-bottom:2px solid var(--primary);padding:14p
 .step-pill.active{background:#EBF2FE;color:var(--primary)}
 .step-pill.done{color:var(--green)}
 .step-sep{color:var(--border);font-size:14px}
-.container{max-width:720px;margin:0 auto;padding:28px 20px}
+.container{max-width:740px;margin:0 auto;padding:28px 20px}
 .card{background:var(--card);border:1px solid var(--border);border-top:3px solid var(--primary);border-radius:10px;padding:26px;margin-bottom:18px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
 .card.success-card{border-top-color:var(--green)}
 .card-title{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:2px;margin-bottom:16px;display:flex;align-items:center;gap:10px}
@@ -26,13 +26,20 @@ header{background:var(--card);border-bottom:2px solid var(--primary);padding:14p
 .field{margin-bottom:14px}
 .field-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .field-row.three{grid-template-columns:1fr 1fr 1fr}
+.field-row.four{grid-template-columns:1fr 1fr 1fr 1fr}
 label{display:block;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:2px;margin-bottom:5px;font-weight:600}
 label .req{color:var(--red);margin-left:2px}
-input,select,textarea{width:100%;background:#fff;border:1px solid var(--border);border-radius:5px;color:var(--dark);padding:10px 12px;font-size:13px;font-family:'Barlow',sans-serif;outline:none;transition:border-color .15s}
+input[type=text],input[type=number],input[type=datetime-local],select,textarea{width:100%;background:#fff;border:1px solid var(--border);border-radius:5px;color:var(--dark);padding:10px 12px;font-size:13px;font-family:'Barlow',sans-serif;outline:none;transition:border-color .15s}
 input:focus,select:focus,textarea:focus{border-color:var(--primary)}
 input.ai-filled,select.ai-filled{border-color:rgba(45,127,249,.4);background:#F7FBFF}
 select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%237A8BA5' d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
 textarea{resize:vertical;min-height:60px}
+/* Checkbox toggle */
+.toggle-row{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:10px 0}
+.toggle-item{display:flex;align-items:center;gap:8px;cursor:pointer}
+.toggle-item input[type=checkbox]{width:18px;height:18px;cursor:pointer;accent-color:var(--primary)}
+.toggle-label{font-size:12px;font-weight:600;color:var(--dark)}
+/* Upload */
 .upload-zone{border:2px dashed var(--border);border-radius:8px;padding:36px 20px;text-align:center;cursor:pointer;transition:all .2s;position:relative;background:var(--bg)}
 .upload-zone:hover,.upload-zone.drag-over{border-color:var(--primary);background:#EBF2FE}
 .upload-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
@@ -45,7 +52,7 @@ textarea{resize:vertical;min-height:60px}
 .btn-ai{background:#EBF2FE;color:var(--primary);border:1px solid rgba(45,127,249,.3);width:100%;padding:13px;font-size:13px;font-family:'Barlow',sans-serif;font-weight:700;border-radius:6px;cursor:pointer;transition:all .12s;letter-spacing:.5px}
 .btn-ai:hover:not(:disabled){background:#D6E8FE}
 .btn-ai:disabled{opacity:.4;cursor:not-allowed}
-.btn-save{background:var(--primary);color:#fff;width:100%;padding:13px;font-size:14px;font-family:'Barlow',sans-serif;font-weight:700;border-radius:6px;cursor:pointer;border:none;transition:all .12s;letter-spacing:.5px}
+.btn-save{background:var(--primary);color:#fff;padding:13px 28px;font-size:14px;font-family:'Barlow',sans-serif;font-weight:700;border-radius:6px;cursor:pointer;border:none;transition:all .12s;letter-spacing:.5px}
 .btn-save:hover:not(:disabled){background:var(--primary-dark)}
 .btn-save:disabled{opacity:.4;cursor:not-allowed}
 .btn-back{background:var(--bg);color:var(--muted);border:1px solid var(--border);padding:11px 20px;font-family:'Barlow',sans-serif;font-weight:700;font-size:12px;border-radius:6px;cursor:pointer;transition:all .12s;letter-spacing:.5px}
@@ -60,20 +67,28 @@ textarea{resize:vertical;min-height:60px}
 .panel{display:none}
 .panel.active{display:block;animation:fadeUp .25s ease}
 @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+/* Search dropdown */
 .search-wrap{position:relative}
 .search-dropdown{position:absolute;top:100%;left:0;right:0;background:var(--card);border:1px solid var(--border);border-top:none;border-radius:0 0 6px 6px;max-height:200px;overflow-y:auto;z-index:50;display:none;box-shadow:0 4px 12px rgba(0,0,0,.08)}
 .search-dropdown.show{display:block}
 .search-opt{padding:9px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .1s}
 .search-opt:last-child{border-bottom:none}
 .search-opt:hover{background:#EBF2FE;color:var(--primary)}
-.stop-row{display:grid;grid-template-columns:28px 1fr 110px;gap:8px;align-items:start;margin-bottom:8px}
+/* Stops */
+.stops-section{margin-bottom:20px}
+.stops-header{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.stops-header::after{content:'';flex:1;height:1px;background:var(--border)}
+.stop-row{display:grid;grid-template-columns:24px 1fr 100px;gap:8px;align-items:start;margin-bottom:8px}
 .stop-num{font-size:11px;font-weight:700;color:var(--muted);text-align:center;padding-top:10px}
+/* Summary */
 .summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .summary-item{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px 14px}
 .summary-item.hi{background:#EBF2FE;border-color:rgba(45,127,249,.25)}
+.summary-item.full{grid-column:1/-1}
 .s-key{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:4px}
 .s-val{font-size:13px;font-weight:600;color:var(--dark)}
 .s-val.empty{color:var(--muted);font-weight:400;font-style:italic}
+/* Success */
 .success-big{text-align:center;padding:40px 20px}
 .success-big .icon{font-size:52px;margin-bottom:16px}
 .success-big .title{font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:900;color:var(--green);letter-spacing:1px;margin-bottom:6px}
@@ -115,7 +130,7 @@ textarea{resize:vertical;min-height:60px}
           <div class="preview-name" id="previewName"></div>
           <div class="preview-size" id="previewSize"></div>
         </div>
-        <button style="padding:5px 9px;font-size:11px;background:var(--bg);border:1px solid var(--border);border-radius:5px;cursor:pointer" onclick="clearFile()">✕</button>
+        <button style="padding:5px 9px;font-size:11px;background:var(--bg);border:1px solid var(--border);border-radius:5px;cursor:pointer;font-family:'Barlow',sans-serif" onclick="clearFile()">✕</button>
       </div>
       <div style="margin-top:16px">
         <button class="btn-ai" id="btnAnalyze" disabled onclick="startAnalysis()">✦ AI ΑΝΑΛΥΣΗ &amp; ΣΥΜΠΛΗΡΩΣΗ</button>
@@ -126,6 +141,8 @@ textarea{resize:vertical;min-height:60px}
 
   <!-- STEP 2: FORM -->
   <div class="panel" id="panel2">
+
+    <!-- Core -->
     <div class="card">
       <div class="card-title">Βασικά Στοιχεία <span class="ai-tag">AI FILLED</span></div>
       <div class="field-row">
@@ -152,7 +169,7 @@ textarea{resize:vertical;min-height:60px}
           <input type="text" id="goods" class="ai-filled" placeholder="π.χ. Φράουλες">
         </div>
         <div class="field">
-          <label>Temperature</label>
+          <label>Temperature (°C)</label>
           <input type="text" id="temperature" class="ai-filled" placeholder="π.χ. +2/+6">
         </div>
         <div class="field">
@@ -172,6 +189,7 @@ textarea{resize:vertical;min-height:60px}
       </div>
     </div>
 
+    <!-- Dates -->
     <div class="card">
       <div class="card-title">Ημερομηνίες <span class="ai-tag">AI FILLED</span></div>
       <div class="field-row">
@@ -186,11 +204,48 @@ textarea{resize:vertical;min-height:60px}
       </div>
     </div>
 
+    <!-- Options -->
     <div class="card">
-      <div class="card-title">Stops <span class="ai-tag">AI FILLED</span></div>
-      <div id="stopsGrid"></div>
+      <div class="card-title">Επιλογές <span class="ai-tag">AI FILLED</span></div>
+      <div class="field-row">
+        <div class="field">
+          <label>Refrigerator Mode</label>
+          <select id="reeferMode" class="ai-filled">
+            <option value="">— Επιλογή —</option>
+            <option value="Continuous">Continuous</option>
+            <option value="Cycling">Cycling</option>
+            <option value="Fresh">Fresh (ventilation)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>&nbsp;</label>
+          <div class="toggle-row">
+            <label class="toggle-item">
+              <input type="checkbox" id="palletExchange">
+              <span class="toggle-label">🔄 Pallet Exchange</span>
+            </label>
+            <label class="toggle-item">
+              <input type="checkbox" id="veroiaSwitch">
+              <span class="toggle-label">🔀 Veroia Switch</span>
+            </label>
+          </div>
+        </div>
+      </div>
     </div>
 
+    <!-- Loading Stops -->
+    <div class="card">
+      <div class="card-title">Loading Stops (Φόρτωση — GR) <span class="ai-tag">AI FILLED</span></div>
+      <div id="loadingStopsGrid"></div>
+    </div>
+
+    <!-- Unloading Stops -->
+    <div class="card">
+      <div class="card-title">Unloading Stops (Παράδοση — EU) <span class="ai-tag">AI FILLED</span></div>
+      <div id="unloadingStopsGrid"></div>
+    </div>
+
+    <!-- Notes -->
     <div class="card">
       <div class="card-title">Σημειώσεις</div>
       <div class="field">
@@ -201,7 +256,7 @@ textarea{resize:vertical;min-height:60px}
     <div class="status" id="formStatus"></div>
     <div class="btn-row">
       <button class="btn-back" onclick="goStep(1)">← ΠΙΣΩ</button>
-      <button class="btn-save" style="width:auto;padding:11px 28px" onclick="goConfirm()">ΕΠΙΒΕΒΑΙΩΣΗ →</button>
+      <button class="btn-save" onclick="goConfirm()">ΕΠΙΒΕΒΑΙΩΣΗ →</button>
     </div>
   </div>
 
@@ -214,7 +269,7 @@ textarea{resize:vertical;min-height:60px}
     <div class="status" id="confirmStatus"></div>
     <div class="btn-row">
       <button class="btn-back" onclick="goStep(2)">← ΕΠΕΞΕΡΓΑΣΙΑ</button>
-      <button class="btn-save" style="width:auto;padding:11px 28px" id="btnCreate" onclick="createOrder()">ΔΗΜΙΟΥΡΓΙΑ ΕΝΤΟΛΗΣ</button>
+      <button class="btn-save" id="btnCreate" onclick="createOrder()">ΔΗΜΙΟΥΡΓΙΑ ΕΝΤΟΛΗΣ</button>
     </div>
   </div>
 
@@ -231,7 +286,6 @@ textarea{resize:vertical;min-height:60px}
   </div>
 
 </div>
-
 <div class="toast" id="toast"></div>
 
 <script>
@@ -241,10 +295,13 @@ const ORDERS_TBL = 'tblgHlNmLBH3JTdIM';
 const ANTH_KEY   = ['sk-ant-api03-HG90hAxac0K9lx2mdS6fFKID6XMAICWl4FSbXeVM9zG3klf7diFSU',
                     'iNY056CRFBAeUZ1H_dZwDfhVbf7IRD3HQ-_nYO3gAA'].join('');
 
+// OUR own company names - AI must NOT pick these as client
+const OUR_NAMES = ['vermion', 'petras group', 'petras', 'vermion fresh'];
+
 let clients=[], locations=[], fileB64=null, fileType=null;
 
 window.addEventListener('DOMContentLoaded',()=>{
-  buildStopsGrid();
+  buildStopsGrids();
   loadData();
   document.getElementById('fileInput').addEventListener('change',e=>handleFile(e.target.files[0]));
   const zone=document.getElementById('uploadZone');
@@ -258,7 +315,6 @@ function atFetch(path,opts={}){
     ...opts,headers:{'Authorization':'Bearer '+AT_TOKEN,'Content-Type':'application/json',...(opts.headers||{})}
   });
 }
-
 async function getAllRecords(table,fields){
   let records=[],offset=null;
   do{
@@ -317,22 +373,63 @@ async function startAnalysis(){
 
   const clientList=clients.slice(0,80).map(c=>c.name).join(', ');
   const locList=locations.slice(0,120).map(l=>l.name).join(', ');
+
   const cb=(fileType==='application/pdf')
     ?{type:'document',source:{type:'base64',media_type:'application/pdf',data:fileB64}}
     :{type:'image',source:{type:'base64',media_type:fileType||'image/jpeg',data:fileB64}};
 
-  const prompt='You are a logistics data extraction assistant for Petras Group (temperature-controlled transport Greece to EU).\n\nExtract order information and return ONLY a JSON object:\n\n{"client_name":"company name","direction":"Export or Import","goods":"product","temperature":"e.g. +2/+6","weight_kg":null,"pallets_no":null,"price_eur":null,"loading_datetime":"YYYY-MM-DDTHH:MM or null","delivery_datetime":"YYYY-MM-DDTHH:MM or null","stops":[{"location_name":"name","pallets":null}],"notes":"or null"}\n\nMatch client_name from: '+clientList+'\nMatch stop location_name from: '+locList+'\nReturn ONLY JSON.';
+  const prompt=`You are extracting data from a freight/carrier order for Petras Group, a Greek transport company.
+
+CRITICAL RULE: Petras Group / Vermion Fresh S.A. is THE CARRIER (us). They are NEVER the client.
+The CLIENT is the company that hired us to transport goods - typically a trading/food company (e.g. OGL Food Trade, Lidl, etc.).
+Look for the company that ISSUED the order (top of document, letterhead, "from" company).
+
+Extract and return ONLY this JSON:
+{
+  "client_name": "the company that issued this order (NOT Vermion/Petras)",
+  "direction": "Export or Import",
+  "goods": "comma-separated list of products",
+  "temperature": "temp range e.g. 7 or +2/+6",
+  "weight_kg": number or null,
+  "pallets_no": total pallet count or null,
+  "price_eur": freight cost number or null,
+  "loading_datetime": "YYYY-MM-DDTHH:MM" or null,
+  "delivery_datetime": "YYYY-MM-DDTHH:MM" or null,
+  "pallet_exchange": true or false,
+  "veroia_switch": true or false,
+  "reefer_mode": "Continuous or Cycling or Fresh or null",
+  "loading_stops": [{"location_name":"address/city where goods are PICKED UP","pallets": number or null}],
+  "unloading_stops": [{"location_name":"address/city where goods are DELIVERED","pallets": number or null}],
+  "notes": "special instructions or null"
+}
+
+STOPS rules:
+- loading_stops = pickup addresses in Greece (arrows pointing DOWN / loading symbol)
+- unloading_stops = delivery addresses abroad (arrows pointing UP / unloading symbol, typically Lidl, supermarkets, warehouses in EU)
+- Max 5 loading stops, max 5 unloading stops
+- For each stop, sum up all pallets going to that address
+
+Match client_name from this list: ${clientList}
+Match location names from: ${locList}
+Return ONLY valid JSON.`;
 
   try{
     const resp=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
       headers:{'Content-Type':'application/json','x-api-key':ANTH_KEY,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:[cb,{type:'text',text:prompt}]}]})
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1500,messages:[{role:'user',content:[cb,{type:'text',text:prompt}]}]})
     });
     if(!resp.ok){const e=await resp.json();throw new Error(e.error?.message||'API error');}
     const data=await resp.json();
     const raw=data.content.find(c=>c.type==='text')?.text||'{}';
     const extracted=JSON.parse(raw.replace(/```json|```/g,'').trim());
+
+    // Safety: if client matches our names, clear it
+    if(extracted.client_name){
+      const low=extracted.client_name.toLowerCase();
+      if(OUR_NAMES.some(n=>low.includes(n))) extracted.client_name='';
+    }
+
     fillForm(extracted);
     st.style.display='none';
     document.getElementById('btnAnalyze').disabled=false;
@@ -346,7 +443,11 @@ async function startAnalysis(){
 }
 
 function fillForm(d){
-  if(d.client_name){const m=fuzzyMatch(d.client_name,clients);document.getElementById('clientSearch').value=m?m.name:d.client_name;document.getElementById('clientId').value=m?m.id:'';}
+  if(d.client_name){
+    const m=fuzzyMatch(d.client_name,clients);
+    sv('clientSearch',m?m.name:d.client_name);
+    sv('clientId',m?m.id:'');
+  }
   if(d.direction)sv('direction',d.direction);
   if(d.goods)sv('goods',d.goods);
   if(d.temperature)sv('temperature',d.temperature);
@@ -355,11 +456,20 @@ function fillForm(d){
   if(d.price_eur)sv('price',d.price_eur);
   if(d.loading_datetime)sv('loadingDate',d.loading_datetime);
   if(d.delivery_datetime)sv('deliveryDate',d.delivery_datetime);
+  if(d.reefer_mode)sv('reeferMode',d.reefer_mode);
+  if(d.pallet_exchange)document.getElementById('palletExchange').checked=true;
+  if(d.veroia_switch)document.getElementById('veroiaSwitch').checked=true;
   if(d.notes)sv('notes',d.notes);
-  if(d.stops)d.stops.forEach((s,i)=>{
+
+  if(d.loading_stops)d.loading_stops.forEach((s,i)=>{
     if(i>=5)return;const n=i+1;
-    if(s.location_name){const m=fuzzyMatch(s.location_name,locations);document.getElementById('locSearch_'+n).value=m?m.name:s.location_name;document.getElementById('locId_'+n).value=m?m.id:'';}
-    if(s.pallets)sv('stopPal_'+n,s.pallets);
+    if(s.location_name){const m=fuzzyMatch(s.location_name,locations);sv('lLocSearch_'+n,m?m.name:s.location_name);sv('lLocId_'+n,m?m.id:'');}
+    if(s.pallets)sv('lPal_'+n,s.pallets);
+  });
+  if(d.unloading_stops)d.unloading_stops.forEach((s,i)=>{
+    if(i>=5)return;const n=i+1;
+    if(s.location_name){const m=fuzzyMatch(s.location_name,locations);sv('uLocSearch_'+n,m?m.name:s.location_name);sv('uLocId_'+n,m?m.id:'');}
+    if(s.pallets)sv('uPal_'+n,s.pallets);
   });
 }
 
@@ -388,49 +498,69 @@ function searchClient(val){
 }
 function pickClient(id,name){sv('clientSearch',name);sv('clientId',id);document.getElementById('clientDD').classList.remove('show');}
 
-function searchLoc(val,n){
-  const dd=document.getElementById('locDD_'+n);
+function searchLoc(val,prefix,n){
+  const dd=document.getElementById(prefix+'DD_'+n);
   if(!val||val.length<2){dd.classList.remove('show');return;}
   const matches=locations.filter(l=>l.name.toLowerCase().includes(val.toLowerCase())).slice(0,8);
   if(!matches.length){dd.classList.remove('show');return;}
-  dd.innerHTML=matches.map(l=>'<div class="search-opt" onmousedown="pickLoc('+n+',\''+l.id+'\',\''+esc(l.name)+'\')">'+l.name+'</div>').join('');
+  dd.innerHTML=matches.map(l=>'<div class="search-opt" onmousedown="pickLoc(\''+prefix+'\','+n+',\''+l.id+'\',\''+esc(l.name)+'\')">'+l.name+'</div>').join('');
   dd.classList.add('show');
 }
-function pickLoc(n,id,name){sv('locSearch_'+n,name);sv('locId_'+n,id);document.getElementById('locDD_'+n).classList.remove('show');}
+function pickLoc(prefix,n,id,name){sv(prefix+'LocSearch_'+n,name);sv(prefix+'LocId_'+n,id);document.getElementById(prefix+'DD_'+n).classList.remove('show');}
 function hideDD(id){setTimeout(()=>document.getElementById(id)?.classList.remove('show'),180);}
-function hideLDD(n){setTimeout(()=>document.getElementById('locDD_'+n)?.classList.remove('show'),180);}
+function hideLDD(prefix,n){setTimeout(()=>document.getElementById(prefix+'DD_'+n)?.classList.remove('show'),180);}
 function esc(s){return s.replace(/'/g,"\\'");}
 
-function buildStopsGrid(){
-  let html='';
+function buildStopsGrids(){
+  let lHtml='',uHtml='';
   for(let i=1;i<=5;i++){
-    html+='<div class="stop-row"><div class="stop-num">'+i+'</div><div class="search-wrap"><input type="text" id="locSearch_'+i+'" placeholder="Αναζήτηση τοποθεσίας..." autocomplete="off" oninput="searchLoc(this.value,'+i+')" onblur="hideLDD('+i+')"><input type="hidden" id="locId_'+i+'"><div class="search-dropdown" id="locDD_'+i+'"></div></div><input type="number" id="stopPal_'+i+'" placeholder="Pallets"></div>';
+    lHtml+='<div class="stop-row"><div class="stop-num">'+i+'</div><div class="search-wrap"><input type="text" id="lLocSearch_'+i+'" placeholder="Αναζήτηση τοποθεσίας..." autocomplete="off" oninput="searchLoc(this.value,\'l\','+i+')" onblur="hideLDD(\'l\','+i+')"><input type="hidden" id="lLocId_'+i+'"><div class="search-dropdown" id="lDD_'+i+'"></div></div><input type="number" id="lPal_'+i+'" placeholder="Pallets"></div>';
+    uHtml+='<div class="stop-row"><div class="stop-num">'+i+'</div><div class="search-wrap"><input type="text" id="uLocSearch_'+i+'" placeholder="Αναζήτηση τοποθεσίας..." autocomplete="off" oninput="searchLoc(this.value,\'u\','+i+')" onblur="hideLDD(\'u\','+i+')"><input type="hidden" id="uLocId_'+i+'"><div class="search-dropdown" id="uDD_'+i+'"></div></div><input type="number" id="uPal_'+i+'" placeholder="Pallets"></div>';
   }
-  document.getElementById('stopsGrid').innerHTML=html;
+  document.getElementById('loadingStopsGrid').innerHTML=lHtml;
+  document.getElementById('unloadingStopsGrid').innerHTML=uHtml;
 }
 
 function goConfirm(){
   const client=document.getElementById('clientSearch').value;
   if(!client){showFormError('Client είναι υποχρεωτικό');return;}
+
+  const pe=document.getElementById('palletExchange').checked;
+  const vs=document.getElementById('veroiaSwitch').checked;
+
   const rows=[
     {label:'Client',val:client,hi:true},
     {label:'Direction',val:document.getElementById('direction').value,hi:true},
     {label:'Goods',val:document.getElementById('goods').value},
     {label:'Temperature',val:document.getElementById('temperature').value},
-    {label:'Weight',val:document.getElementById('weight').value?(document.getElementById('weight').value+' kg'):''},
+    {label:'Weight',val:document.getElementById('weight').value?document.getElementById('weight').value+' kg':''},
     {label:'Pallets No',val:document.getElementById('palletsNo').value},
-    {label:'Price',val:document.getElementById('price').value?('EUR '+document.getElementById('price').value):''},
+    {label:'Price',val:document.getElementById('price').value?'EUR '+document.getElementById('price').value:''},
+    {label:'Reefer Mode',val:document.getElementById('reeferMode').value},
     {label:'Loading Date',val:document.getElementById('loadingDate').value.replace('T',' ')},
     {label:'Delivery Date',val:document.getElementById('deliveryDate').value.replace('T',' ')},
-    {label:'Notes',val:document.getElementById('notes').value},
+    {label:'Pallet Exchange',val:pe?'✓ YES':'✗ NO'},
+    {label:'Veroia Switch',val:vs?'✓ YES':'—'},
   ];
+
+  let loadStops='',unloadStops='';
   for(let i=1;i<=5;i++){
-    const loc=document.getElementById('locSearch_'+i).value;
-    const pal=document.getElementById('stopPal_'+i).value;
-    if(loc)rows.push({label:'Stop '+i,val:loc+(pal?' — '+pal+' pal':'')});
+    const loc=document.getElementById('lLocSearch_'+i).value;
+    const pal=document.getElementById('lPal_'+i).value;
+    if(loc)loadStops+=(loadStops?'\n':'')+i+'. '+loc+(pal?' ('+pal+' pal)':'');
   }
+  for(let i=1;i<=5;i++){
+    const loc=document.getElementById('uLocSearch_'+i).value;
+    const pal=document.getElementById('uPal_'+i).value;
+    if(loc)unloadStops+=(unloadStops?'\n':'')+i+'. '+loc+(pal?' ('+pal+' pal)':'');
+  }
+  if(loadStops)rows.push({label:'Loading Stops',val:loadStops,full:true});
+  if(unloadStops)rows.push({label:'Unloading Stops',val:unloadStops,full:true});
+  const notes=document.getElementById('notes').value;
+  if(notes)rows.push({label:'Notes',val:notes,full:true});
+
   document.getElementById('summaryGrid').innerHTML=rows
-    .map(r=>'<div class="summary-item'+(r.hi?' hi':'')+'"><div class="s-key">'+r.label+'</div><div class="s-val'+(r.val?'':' empty')+'">'+(r.val||'—')+'</div></div>')
+    .map(r=>'<div class="summary-item'+(r.hi?' hi':'')+(r.full?' full':'')+'"><div class="s-key">'+r.label+'</div><div class="s-val'+(r.val?'':' empty')+'" style="white-space:pre-line">'+(r.val||'—')+'</div></div>')
     .join('');
   goStep(3);
 }
@@ -454,12 +584,25 @@ async function createOrder(){
     const notes=document.getElementById('notes').value;if(notes)fields['Notes']=notes;
     const ldDt=document.getElementById('loadingDate').value;if(ldDt)fields['Loading DateTime']=ldDt;
     const dlDt=document.getElementById('deliveryDate').value;if(dlDt)fields['Delivery DateTime']=dlDt;
+    const rm=document.getElementById('reeferMode').value;if(rm)fields['Refrigerator Mode']={name:rm};
+    fields['Pallet Exchange']=document.getElementById('palletExchange').checked;
+    fields['Veroia Switch']=document.getElementById('veroiaSwitch').checked;
+
+    // Loading stops → Location 1-5, Pallets 1-5
     for(let i=1;i<=5;i++){
-      const locId=document.getElementById('locId_'+i).value;
-      const pals=document.getElementById('stopPal_'+i).value;
+      const locId=document.getElementById('lLocId_'+i).value;
+      const pals=document.getElementById('lPal_'+i).value;
       if(locId)fields['Loading Location '+i]=[{id:locId}];
       if(pals)fields['Pallets '+i]=parseInt(pals);
     }
+    // Unloading stops → Delivery Location 1-5, Delivery Pallets 1-5
+    for(let i=1;i<=5;i++){
+      const locId=document.getElementById('uLocId_'+i).value;
+      const pals=document.getElementById('uPal_'+i).value;
+      if(locId)fields['Delivery Location '+i]=[{id:locId}];
+      if(pals)fields['Delivery Pallets '+i]=parseInt(pals);
+    }
+
     const r=await atFetch('/'+ORDERS_TBL,{method:'POST',body:JSON.stringify({fields})});
     const data=await r.json();
     if(data.error)throw new Error(data.error.message||'Airtable error');
@@ -484,23 +627,26 @@ function goStep(n){
   });
   window.scrollTo(0,0);
 }
-
 function showFormError(msg){
   const st=document.getElementById('formStatus');
   st.className='status error';st.innerHTML=msg;
   setTimeout(()=>{st.style.display='none';},4000);
 }
-
 function showToast(msg,type){
   const el=document.getElementById('toast');
   el.textContent=msg;el.className='toast show '+type;
   setTimeout(()=>el.classList.remove('show'),4000);
 }
-
 function resetApp(){
   fileB64=null;fileType=null;clearFile();
-  ['clientSearch','clientId','direction','goods','temperature','weight','palletsNo','price','loadingDate','deliveryDate','notes'].forEach(id=>sv(id,''));
-  for(let i=1;i<=5;i++){sv('locSearch_'+i,'');sv('locId_'+i,'');sv('stopPal_'+i,'');}
+  ['clientSearch','clientId','direction','goods','temperature','weight','palletsNo','price',
+   'loadingDate','deliveryDate','reeferMode','notes'].forEach(id=>sv(id,''));
+  document.getElementById('palletExchange').checked=false;
+  document.getElementById('veroiaSwitch').checked=false;
+  for(let i=1;i<=5;i++){
+    sv('lLocSearch_'+i,'');sv('lLocId_'+i,'');sv('lPal_'+i,'');
+    sv('uLocSearch_'+i,'');sv('uLocId_'+i,'');sv('uPal_'+i,'');
+  }
   goStep(1);
 }
 </script>
