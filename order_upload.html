@@ -552,6 +552,11 @@ function fuzzyMatch(query,list){
       }
     }
 
+    // Specificity bonus: shorter name = more precise match, penalize very long names
+    if(score>0){
+      const lenPenalty=item.name.length>60?10:item.name.length>40?5:0;
+      score=Math.max(0,score-lenPenalty);
+    }
     if(score>bestScore){bestScore=score;best=item;}
   }
   return bestScore>=52?best:null;
