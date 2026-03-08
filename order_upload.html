@@ -376,61 +376,49 @@ async function startAnalysis(){
   st.className='status loading';
   st.innerHTML='<div class="spinner"></div><span>Το AI διαβάζει την εντολή...</span>';
 
-  const clientList=clients.slice(0,80).map(c=>c.name).join(', ');
   const cb=(fileType==='application/pdf')
     ?{type:'document',source:{type:'base64',media_type:'application/pdf',data:fileB64}}
     :{type:'image',source:{type:'base64',media_type:fileType||'image/jpeg',data:fileB64}};
 
-  const locList=locations.slice(0,300).map(l=>l.name).join('\n');
+  const clientList=clients.slice(0,80).map(c=>c.name).join(', ');
 
-  const prompt=`You are a precise data extraction assistant for Petras Group, a Greek transport company.
-Extract data from this freight/carrier order document.
+  const prompt=`You are a precise logistics document reader for Petras Group (Greek transport carrier).
 
-CRITICAL - WHO IS THE CLIENT:
-- Petras Group / Vermion Fresh S.A. = WE ARE THE CARRIER, never the client
-- The CLIENT = the company whose LETTERHEAD/LOGO is on the document (e.g. OGL Food Trade)
-- Look at the top of the document for the issuing company
+CONTEXT: Petras Group / Vermion Fresh S.A. = WE ARE THE CARRIER. Never set us as the client.
+The CLIENT = the company whose name/logo appears at the TOP of the document as the issuing party.
 
-CRITICAL - STOPS EXTRACTION:
-Loading stops = places in GREECE where we PICK UP goods (marked with loading arrow ↓)
-- Extract EACH unique pickup address as a SEPARATE stop
-- Use the address line (e.g. "IRINOUPOLI SUD - ASPROPIRGOS", "MEDIFRESH - SKYDRA", "LEVENTOGIANNIS - ARGOS", "NATURA GREEN - ARTA")
-- DO NOT combine multiple addresses into one string with slashes or "/"
-- Pallets = total pallets picked up at that specific address
-
-Unloading stops = places in EU where we DELIVER goods (marked with unloading arrow ↑)
-- Extract EACH unique delivery address as a SEPARATE stop  
-- Use specific location name (e.g. "Lidl Wundschuh", "Lidl Laakirchen")
-- DO NOT just say "Lidl" - include the city/location name
-- Pallets = total pallets delivered to that specific address
-
-AVAILABLE LOCATIONS (match location_name exactly to one of these):
-\${locList}
-
-Return ONLY this JSON, no markdown:
+Extract and return ONLY this JSON (no markdown):
 {
-  "client_name": "issuing company name",
+  "client_name": "name of company that issued this order (from letterhead/logo)",
   "direction": "Export or Import",
-  "goods": "main product(s)",
-  "temperature": temperature as integer number only (e.g. 7 not +7),
-  "weight_kg": number or null,
-  "pallets_no": total pallets number or null,
-  "price_eur": freight cost number or null,
+  "goods": "product names",
+  "temperature": temperature as integer (e.g. 7),
+  "weight_kg": total gross weight as number or null,
+  "pallets_no": total pallet count as number or null,
+  "price_eur": freight price as number or null,
   "loading_datetime": "YYYY-MM-DDTHH:MM" or null,
   "delivery_datetime": "YYYY-MM-DDTHH:MM" or null,
   "pallet_exchange": true or false,
   "veroia_switch": false,
   "reefer_mode": "Continuous or Cycling or Fresh or null",
   "loading_stops": [
-    {"location_name": "exact name from locations list above", "pallets": number}
+    {"location_name": "EXACT address text from document for this pickup point", "pallets": number}
   ],
   "unloading_stops": [
-    {"location_name": "exact name from locations list above", "pallets": number}
+    {"location_name": "EXACT address text from document for this delivery point", "pallets": number}  
   ],
-  "notes": "special instructions or null"
-}`;
+  "notes": null
+}
 
-  try{
+STOPS RULES:
+- loading_stops: every SEPARATE pickup location (loading = arrow ↓). One entry per address. Copy address EXACTLY as written in document.
+- unloading_stops: every SEPARATE delivery destination (unloading = arrow ↑). One entry per address. Include city name (e.g. "LIDL OSTERREICH GMBH - WUNDSCHUH", "LIDL OSTERREICH GMBH - LAAKIRCHEN").
+- Sum pallets for each unique address.
+- NEVER combine multiple addresses into one string.
+
+Match client_name from: ${clientList}`;
+
+    try{
     const resp=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
       headers:{'Content-Type':'application/json','x-api-key':ANTH_KEY,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
@@ -494,15 +482,24 @@ function sv(id,val){const el=document.getElementById(id);if(el)el.value=val;}
 
 function fuzzyMatch(query,list){
   if(!query||!list.length)return null;
-  const q=query.toLowerCase();let best=null,bestScore=0;
+  const q=query.toLowerCase().trim();
+  let best=null,bestScore=0;
+  const qWords=q.split(/[\s\-\/,]+/).filter(w=>w.length>2);
   for(const item of list){
-    const name=item.name.toLowerCase();let score=0;
-    if(name===q)score=100;
-    else if(name.includes(q)||q.includes(name))score=75;
-    else q.split(/\s+/).forEach(w=>{if(w.length>3&&name.includes(w))score+=20;});
+    const name=item.name.toLowerCase();
+    let score=0;
+    if(name===q){score=100;}
+    else if(name.includes(q)||q.includes(name)){score=80;}
+    else{
+      let matched=0;
+      for(const w of qWords){
+        if(name.includes(w)) matched++;
+      }
+      if(qWords.length>0) score=Math.round((matched/qWords.length)*70);
+    }
     if(score>bestScore){bestScore=score;best=item;}
   }
-  return bestScore>=40?best:null;
+  return bestScore>=50?best:null;
 }
 
 function searchClient(val){
