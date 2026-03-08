@@ -251,6 +251,10 @@ textarea{resize:vertical;min-height:60px}
         <option value="Client">Client</option>
       </select>
     </div>
+    <div class="field" id="mSupplierField" style="display:none">
+      <label>Loading Supplier</label>
+      <select id="mSupplier"><option value="">— Επιλογή —</option></select>
+    </div>
     <div class="field">
       <label>Εκδότης (από document)</label>
       <input type="text" id="mIssuer" readonly style="background:var(--bg);color:var(--muted)" />
@@ -462,8 +466,16 @@ function openConfirmModal(data){
   confEl.textContent=conf;
   confEl.style.color=conf==="HIGH"?"var(--green)":conf==="MEDIUM"?"var(--warn)":"var(--red)";
 
-  document.getElementById("mOut").value=out;
-  document.getElementById("mIn").value=inn;
+  // At Loading Stop: truck TOOK pallets from supplier = we owe them = IN
+  // At Unloading/Crossdock: truck GAVE pallets to client = they owe us = OUT
+  const stopType = MODE==="free" ? "free" : (selectedSheet===1 ? "Loading" : "Crossdock");
+  if(stopType==="Loading"){
+    document.getElementById("mOut").value=inn; // empty pallets left at supplier
+    document.getElementById("mIn").value=out;  // full pallets taken from supplier
+  } else {
+    document.getElementById("mOut").value=out;
+    document.getElementById("mIn").value=inn;
+  }
   if(data.date) document.getElementById("mDate").value=data.date;
   if(data.transport_number) document.getElementById("mTransport").value=data.transport_number;
   if(data.issuer_company) document.getElementById("mIssuer").value=data.issuer_company;
@@ -473,6 +485,18 @@ function openConfirmModal(data){
   }
 
   document.getElementById("mCounterpartyField").style.display=MODE==="free"?"none":"block";
+  // Show Loading Supplier only for Sheet 1 (Loading Stop)
+  const isLoadingSheet = MODE==="order" && selectedSheet===1;
+  const supplierField = document.getElementById("mSupplierField");
+  supplierField.style.display = isLoadingSheet ? "block" : "none";
+  if(isLoadingSheet && !locationsCache.length){
+    getAllRecords("LOCATIONS",["Name"]).then(locs=>{
+      locationsCache=locs;
+      document.getElementById("mSupplier").innerHTML='<option value="">— Επιλογή —</option>'+locs.slice(0,200).map(r=>`<option value="${r.id}">${r.fields["Name"]||r.id}</option>`).join("");
+    });
+  } else if(isLoadingSheet && locationsCache.length){
+    document.getElementById("mSupplier").innerHTML='<option value="">— Επιλογή —</option>'+locationsCache.slice(0,200).map(r=>`<option value="${r.id}">${r.fields["Name"]||r.id}</option>`).join("");
+  }
   document.getElementById("saveStatus").style.display="none";
   const btn=document.getElementById("btnSave");
   btn.disabled=false;btn.textContent="💾 ΚΑΤΑΧΩΡΗΣΗ";
@@ -528,6 +552,11 @@ async function saveToAirtable(){
     const noteParts=[transport?`Transport: ${transport}`:"",issuer?`Issuer: ${issuer}`:"",notes].filter(Boolean);
     if(noteParts.length) f["Notes"]=noteParts.join(" | ");
     if(currentOrder) f["Order"]=[currentOrder.id];
+    // Loading Supplier for sheet 1 in order mode
+    if(MODE==="order" && selectedSheet===1){
+      const sid=document.getElementById("mSupplier").value;
+      if(sid) f["Loading Supplier"]=[sid];
+    }
     if(MODE==="free"){
       if(counterparty==="Partner"){const pid=document.getElementById("freePartner").value;if(pid)f["Partner Account"]=[pid];}
       else if(counterparty==="Client"){
