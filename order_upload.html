@@ -408,11 +408,12 @@ Extract and return ONLY this JSON (no markdown):
   "pallet_exchange": true or false,
   "veroia_switch": false,  // ALWAYS false unless document explicitly mentions cross-docking or transshipment
   "reefer_mode": "Continuous or Cycling or Fresh or null",
-  "loading_stops": [
-    {"location_name": "EXACT address text from document for this pickup point", "pallets": number}
-  ],
-  "unloading_stops": [
-    {"location_name": "EXACT address text from document for this delivery point", "pallets": number}  
+  "stop_rows": [
+    {
+      "type": "loading or unloading",
+      "block_address": "EXACT address line at the TOP of this numbered block (e.g. IRINOUPOLI SUD - ASPROPIRGOS, LIDL OSTERREICH GMBH - WUNDSCHUH)",
+      "pal": number (the PAL value from THIS specific row only - small integer 1-15)
+    }
   ],
   "notes": null
 }
@@ -477,18 +478,33 @@ function fillForm(d){
   if(d.veroia_switch)document.getElementById('veroiaSwitch').checked=true;
   if(d.notes)sv('notes',d.notes);
 
-  if(d.loading_stops)d.loading_stops.forEach((s,i)=>{
-    if(i>=5)return;const n=i+1;
-    const locName=(s.location_name||'').trim();
-    if(locName.length>=4){const m=fuzzyMatch(locName,locations);sv('lLocSearch_'+n,m?m.name:locName);sv('lLocId_'+n,m?m.id:'');setLocMatch('l',n,!!m,locName);}
-    if(s.pallets)sv('lPal_'+n,s.pallets);
-  });
-  if(d.unloading_stops)d.unloading_stops.forEach((s,i)=>{
-    if(i>=5)return;const n=i+1;
-    const locName=(s.location_name||'').trim();
-    if(locName.length>=4){const m=fuzzyMatch(locName,locations);sv('uLocSearch_'+n,m?m.name:locName);sv('uLocId_'+n,m?m.id:'');setLocMatch('u',n,!!m,locName);}
-    if(s.pallets)sv('uPal_'+n,s.pallets);
-  });
+  // Aggregate stop_rows by block_address — JS does the math, not AI
+  if(d.stop_rows&&d.stop_rows.length){
+    const loadMap=new Map(), unloadMap=new Map();
+    d.stop_rows.forEach(row=>{
+      const addr=(row.block_address||'').trim();
+      const pal=parseInt(row.pal)||0;
+      if(!addr||addr.length<4)return;
+      if(row.type==='loading'){
+        loadMap.set(addr,(loadMap.get(addr)||0)+pal);
+      } else {
+        unloadMap.set(addr,(unloadMap.get(addr)||0)+pal);
+      }
+    });
+    let li=1,ui=1;
+    for(const [addr,pal] of loadMap){
+      if(li>5)break;
+      const m=fuzzyMatch(addr,locations);
+      sv('lLocSearch_'+li,m?m.name:addr);sv('lLocId_'+li,m?m.id:'');setLocMatch('l',li,!!m,addr);
+      sv('lPal_'+li,pal);li++;
+    }
+    for(const [addr,pal] of unloadMap){
+      if(ui>5)break;
+      const m=fuzzyMatch(addr,locations);
+      sv('uLocSearch_'+ui,m?m.name:addr);sv('uLocId_'+ui,m?m.id:'');setLocMatch('u',ui,!!m,addr);
+      sv('uPal_'+ui,pal);ui++;
+    }
+  }
 }
 
 function sv(id,val){const el=document.getElementById(id);if(el)el.value=val;}
