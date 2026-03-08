@@ -170,8 +170,8 @@ textarea{resize:vertical;min-height:60px}
           <label>Direction <span class="req">*</span></label>
           <select id="direction" class="ai-filled">
             <option value="">— Επιλογή —</option>
-            <option value="Export">Export (GR to EU)</option>
-            <option value="Import">Import (EU to GR)</option>
+            <option value="Export">Export (GR → EU)</option>
+            <option value="Import">Import (EU → GR)</option>
           </select>
         </div>
       </div>
@@ -406,7 +406,7 @@ Extract and return ONLY this JSON (no markdown):
   "loading_datetime": "YYYY-MM-DDTHH:MM" or null,
   "delivery_datetime": "YYYY-MM-DDTHH:MM" or null,
   "pallet_exchange": true or false,
-  "veroia_switch": false,  // ALWAYS false unless document explicitly mentions cross-docking or transshipment
+  "veroia_switch": false
   "reefer_mode": "Continuous or Cycling or Fresh or null",
   "stop_rows": [
     {
@@ -683,11 +683,7 @@ async function createOrder(){
     const fields={};
     const clientId=document.getElementById('clientId').value;
     if(clientId)fields['Client']=[{id:clientId}];
-    const dirRaw=document.getElementById('direction').value;
-    if(dirRaw){
-      const dirMap={'Export':'Export (GR to EU)','Import':'Import (EU to GR)'};
-      fields['Direction']={name:dirMap[dirRaw]||dirRaw};
-    }
+    const dirRaw=document.getElementById('direction').value;if(dirRaw)fields['Direction']={name:dirRaw};
     const goods=document.getElementById('goods').value;if(goods)fields['Goods']=goods;
     const temp=document.getElementById('temperature').value;if(temp)fields['Temperature °C']=parseFloat(temp);
     const wt=document.getElementById('weight').value;if(wt)fields['Gross Weight kg']=parseFloat(wt);
