@@ -459,6 +459,7 @@ function openConfirmModal(data){
     bal>0?`Χρωστούν ${bal} παλέτες σε εμάς`:
     bal<0?`Εμείς χρωστάμε ${Math.abs(bal)} παλέτες`:"Ισόφαρο — δεν υπάρχει χρέος";
 
+  // Summary cells show AI raw extraction
   document.getElementById("sumOut").textContent=out;
   document.getElementById("sumIn").textContent=inn;
   const conf=data.confidence||"—";
@@ -483,19 +484,27 @@ function openConfirmModal(data){
     const fd=document.getElementById("freeDate").value;
     if(fd) document.getElementById("mDate").value=fd;
   }
+  // Update balance display based on CORRECTED mOut/mIn values
+  setTimeout(()=>updateModalBalance(), 50);
 
   document.getElementById("mCounterpartyField").style.display=MODE==="free"?"none":"block";
   // Show Loading Supplier only for Sheet 1 (Loading Stop)
   const isLoadingSheet = MODE==="order" && selectedSheet===1;
   const supplierField = document.getElementById("mSupplierField");
   supplierField.style.display = isLoadingSheet ? "block" : "none";
-  if(isLoadingSheet && !locationsCache.length){
-    getAllRecords("LOCATIONS",["Name"]).then(locs=>{
-      locationsCache=locs;
-      document.getElementById("mSupplier").innerHTML='<option value="">— Επιλογή —</option>'+locs.slice(0,200).map(r=>`<option value="${r.id}">${r.fields["Name"]||r.id}</option>`).join("");
-    });
-  } else if(isLoadingSheet && locationsCache.length){
-    document.getElementById("mSupplier").innerHTML='<option value="">— Επιλογή —</option>'+locationsCache.slice(0,200).map(r=>`<option value="${r.id}">${r.fields["Name"]||r.id}</option>`).join("");
+  if(isLoadingSheet){
+    // Try to pre-select from order's Loading Location 1
+    const orderLocationId = currentOrder && currentOrder.fields["Loading Location 1"] ? currentOrder.fields["Loading Location 1"][0] : null;
+    if(!locationsCache.length){
+      getAllRecords("LOCATIONS",["Name"]).then(locs=>{
+        locationsCache=locs;
+        const opts='<option value="">— Επιλογή —</option>'+locs.slice(0,200).map(r=>`<option value="${r.id}" ${r.id===orderLocationId?'selected':''}>${r.fields["Name"]||r.id}</option>`).join("");
+        document.getElementById("mSupplier").innerHTML=opts;
+      });
+    } else {
+      const opts='<option value="">— Επιλογή —</option>'+locationsCache.slice(0,200).map(r=>`<option value="${r.id}" ${r.id===orderLocationId?'selected':''}>${r.fields["Name"]||r.id}</option>`).join("");
+      document.getElementById("mSupplier").innerHTML=opts;
+    }
   }
   document.getElementById("saveStatus").style.display="none";
   const btn=document.getElementById("btnSave");
