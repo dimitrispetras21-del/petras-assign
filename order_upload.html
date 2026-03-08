@@ -493,52 +493,68 @@ function fillForm(d){
 
 function sv(id,val){const el=document.getElementById(id);if(el)el.value=val;}
 
-function normalize(s){
-  // Remove diacritics/umlauts: ü→u, ö→o, ä→a, ß→ss, etc.
-  return s.normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-    .replace(/ü/g,'u').replace(/ö/g,'o').replace(/ä/g,'a')
-    .replace(/ß/g,'ss').toLowerCase().trim();
+function cleanStr(s){
+  // Manual char-by-char normalization - reliable cross-browser
+  const map={'ü':'u','Ü':'u','ö':'o','Ö':'o','ä':'a','Ä':'a','ß':'ss',
+    'é':'e','è':'e','ê':'e','ë':'e','á':'a','à':'a','â':'a','ã':'a',
+    'í':'i','ì':'i','î':'i','ï':'i','ó':'o','ò':'o','ô':'o','õ':'o',
+    'ú':'u','ù':'u','û':'u','ñ':'n','ç':'c','ý':'y',
+    '–':'-','—':'-','–':'-','—':'-'};
+  return s.split('').map(c=>map[c]||c).join('').toLowerCase().trim();
+}
+
+function extractKeywords(q){
+  const skipWords=new Set(['gmbh','s.a.','s.a','ltd','llc','osterreich','p.c.',
+    'p.c','thesi','gewerbepark','gewerbegebiet','polydroso','plataniti',
+    'aspropirgos','attiki','petria','nafplio','kirillo']);
+  return q.split(/[\s\-\/,\.]+/).filter(w=>w.length>3&&!skipWords.has(w));
 }
 
 function fuzzyMatch(query,list){
   if(!query||!list.length)return null;
-  const q=normalize(query);
+  const q=cleanStr(query);
   if(q.length<4)return null;
 
-  // Extract segments from address (split on separators)
-  const segments=q.split(/\s*[\-,\/]\s*/).map(s=>s.trim()).filter(s=>s.length>3);
-
-  // Extract meaningful keywords (skip noise words + short ones)
-  const skipWords=new Set(['gmbh','s.a','ltd','llc','osterreich','thesi','gewerbepark','gewerbegebiet',
-    'polydroso','plataniti','aspropirgos','attiki','petria','p.c','artas','nafplio','argos']);
-  const keywords=q.split(/[\s\-\/,\.]+/).filter(w=>w.length>4&&!skipWords.has(w));
+  // Split on separator chars to get address segments
+  const segments=q.split(/\s*[-,\/]\s*/).map(s=>s.trim()).filter(s=>s.length>3);
+  const keywords=extractKeywords(q);
 
   let best=null,bestScore=0;
 
   for(const item of list){
-    const name=normalize(item.name);
+    const name=cleanStr(item.name);
     let score=0;
 
     if(name===q){score=100;}
-    else if(name.includes(q)&&q.length>8){score=90;}
-    else if(q.includes(name)&&name.length>8){score=85;}
+    // Full containment
+    else if(q.length>8&&name.includes(q)){score=90;}
+    else if(name.length>8&&q.includes(name)){score=85;}
     else{
-      // Check each segment
+      // Segment match: if any segment of the query appears in the location name
       for(const seg of segments){
         if(seg.length<4)continue;
-        if(name.includes(seg)&&seg.length>7){score=Math.max(score,80);}
-        else if(name.includes(seg)&&seg.length>5){score=Math.max(score,65);}
-        else if(name.includes(seg)&&seg.length>3){score=Math.max(score,50);}
+        if(name.includes(seg)){
+          const s=seg.length>8?82:seg.length>6?70:seg.length>4?55:40;
+          score=Math.max(score,s);
+        }
       }
-      // Check keywords
+      // Keyword match: how many keywords from query appear in name
       if(keywords.length>0){
-        let hits=keywords.filter(kw=>name.includes(kw)).length;
-        score=Math.max(score,Math.round((hits/keywords.length)*70));
+        const hits=keywords.filter(kw=>name.includes(kw)||kw.includes(name.split(/[\s\/]/)[0]));
+        const kwScore=Math.round((hits.length/keywords.length)*72);
+        score=Math.max(score,kwScore);
+      }
+      // Reverse: location name segments in query
+      const nameSegs=name.split(/[\s\-\/,\.]+/).filter(w=>w.length>4);
+      const revHits=nameSegs.filter(ns=>q.includes(ns)).length;
+      if(nameSegs.length>0){
+        score=Math.max(score,Math.round((revHits/nameSegs.length)*78));
       }
     }
+
     if(score>bestScore){bestScore=score;best=item;}
   }
-  return bestScore>=50?best:null;
+  return bestScore>=52?best:null;
 }
 
 function searchClient(val){
