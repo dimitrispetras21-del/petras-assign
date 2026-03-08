@@ -683,7 +683,7 @@ async function createOrder(){
     const fields={};
     const clientId=document.getElementById('clientId').value;
     if(clientId)fields['Client']=[{id:clientId}];
-    const dirRaw=document.getElementById('direction').value;if(dirRaw)fields['Direction']={name:dirRaw};
+    const dirRaw=document.getElementById('direction').value;if(dirRaw)fields['Direction']=dirRaw;
     const goods=document.getElementById('goods').value;if(goods)fields['Goods']=goods;
     const temp=document.getElementById('temperature').value;if(temp)fields['Temperature °C']=parseFloat(temp);
     const wt=document.getElementById('weight').value;if(wt)fields['Gross Weight kg']=parseFloat(wt);
@@ -692,7 +692,7 @@ async function createOrder(){
     const notes=document.getElementById('notes').value;if(notes)fields['Notes']=notes;
     const ldDt=document.getElementById('loadingDate').value;if(ldDt)fields['Loading DateTime']=ldDt;
     const dlDt=document.getElementById('deliveryDate').value;if(dlDt)fields['Delivery DateTime']=dlDt;
-    const rm=document.getElementById('reeferMode').value;if(rm)fields['Refrigerator Mode']={name:rm};
+    const rm=document.getElementById('reeferMode').value;if(rm)fields['Refrigerator Mode']=rm;
     fields['Pallet Exchange']=document.getElementById('palletExchange').checked;
     fields['Veroia Switch ']=document.getElementById('veroiaSwitch').checked;
 
