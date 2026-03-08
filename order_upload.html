@@ -428,6 +428,7 @@ Match client_name from: ${clientList}`;
     const data=await resp.json();
     const raw=data.content.find(c=>c.type==='text')?.text||'{}';
     const extracted=JSON.parse(raw.replace(/```json|```/g,'').trim());
+    console.log('[AI EXTRACTED]', JSON.stringify(extracted, null, 2));
 
     // Safety: if client matches our names, clear it
     if(extracted.client_name){
@@ -455,9 +456,9 @@ function fillForm(d){
   }
   if(d.direction)sv('direction',d.direction);
   if(d.goods)sv('goods',d.goods);
-  if(d.temperature)sv('temperature',d.temperature);
-  if(d.weight_kg)sv('weight',d.weight_kg);
-  if(d.pallets_no)sv('palletsNo',d.pallets_no);
+  if(d.temperature!=null)sv('temperature',d.temperature);
+  if(d.weight_kg!=null&&d.weight_kg>0)sv('weight',d.weight_kg);
+  if(d.pallets_no!=null&&d.pallets_no>0)sv('palletsNo',d.pallets_no);
   if(d.price_eur)sv('price',d.price_eur);
   if(d.loading_datetime)sv('loadingDate',d.loading_datetime);
   if(d.delivery_datetime)sv('deliveryDate',d.delivery_datetime);
@@ -468,12 +469,14 @@ function fillForm(d){
 
   if(d.loading_stops)d.loading_stops.forEach((s,i)=>{
     if(i>=5)return;const n=i+1;
-    if(s.location_name){const m=fuzzyMatch(s.location_name,locations);sv('lLocSearch_'+n,m?m.name:s.location_name);sv('lLocId_'+n,m?m.id:'');setLocMatch('l',n,!!m,s.location_name);}
+    const locName=(s.location_name||'').trim();
+    if(locName.length>=4){const m=fuzzyMatch(locName,locations);sv('lLocSearch_'+n,m?m.name:locName);sv('lLocId_'+n,m?m.id:'');setLocMatch('l',n,!!m,locName);}
     if(s.pallets)sv('lPal_'+n,s.pallets);
   });
   if(d.unloading_stops)d.unloading_stops.forEach((s,i)=>{
     if(i>=5)return;const n=i+1;
-    if(s.location_name){const m=fuzzyMatch(s.location_name,locations);sv('uLocSearch_'+n,m?m.name:s.location_name);sv('uLocId_'+n,m?m.id:'');setLocMatch('u',n,!!m,s.location_name);}
+    const locName=(s.location_name||'').trim();
+    if(locName.length>=4){const m=fuzzyMatch(locName,locations);sv('uLocSearch_'+n,m?m.name:locName);sv('uLocId_'+n,m?m.id:'');setLocMatch('u',n,!!m,locName);}
     if(s.pallets)sv('uPal_'+n,s.pallets);
   });
 }
@@ -483,19 +486,28 @@ function sv(id,val){const el=document.getElementById(id);if(el)el.value=val;}
 function fuzzyMatch(query,list){
   if(!query||!list.length)return null;
   const q=query.toLowerCase().trim();
+  // Reject very short or country-code-only queries
+  if(q.length<4)return null;
   let best=null,bestScore=0;
-  const qWords=q.split(/[\s\-\/,]+/).filter(w=>w.length>2);
+  // Extract meaningful words (skip 2-letter country codes, numbers, common words)
+  const stopWords=new Set(['the','and','gmbh','s.a.','sa','ltd','llc','str','ges']);
+  const qWords=q.split(/[\s\-\/,\.]+/)
+    .filter(w=>w.length>3 && !stopWords.has(w));
+  if(qWords.length===0)return null;
   for(const item of list){
     const name=item.name.toLowerCase();
     let score=0;
     if(name===q){score=100;}
-    else if(name.includes(q)||q.includes(name)){score=80;}
+    else if(name.includes(q)&&q.length>6){score=85;}
+    else if(q.includes(name)&&name.length>6){score=75;}
     else{
-      let matched=0;
+      let matched=0,totalWeight=0;
       for(const w of qWords){
-        if(name.includes(w)) matched++;
+        const weight=w.length>6?2:1; // longer words = more important
+        totalWeight+=weight;
+        if(name.includes(w)) matched+=weight;
       }
-      if(qWords.length>0) score=Math.round((matched/qWords.length)*70);
+      score=totalWeight>0?Math.round((matched/totalWeight)*70):0;
     }
     if(score>bestScore){bestScore=score;best=item;}
   }
