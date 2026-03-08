@@ -493,31 +493,48 @@ function fillForm(d){
 
 function sv(id,val){const el=document.getElementById(id);if(el)el.value=val;}
 
+function normalize(s){
+  // Remove diacritics/umlauts: ü→u, ö→o, ä→a, ß→ss, etc.
+  return s.normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/ü/g,'u').replace(/ö/g,'o').replace(/ä/g,'a')
+    .replace(/ß/g,'ss').toLowerCase().trim();
+}
+
 function fuzzyMatch(query,list){
   if(!query||!list.length)return null;
-  const q=query.toLowerCase().trim();
-  // Reject very short or country-code-only queries
+  const q=normalize(query);
   if(q.length<4)return null;
+
+  // Extract segments from address (split on separators)
+  const segments=q.split(/\s*[\-,\/]\s*/).map(s=>s.trim()).filter(s=>s.length>3);
+
+  // Extract meaningful keywords (skip noise words + short ones)
+  const skipWords=new Set(['gmbh','s.a','ltd','llc','osterreich','thesi','gewerbepark','gewerbegebiet',
+    'polydroso','plataniti','aspropirgos','attiki','petria','p.c','artas','nafplio','argos']);
+  const keywords=q.split(/[\s\-\/,\.]+/).filter(w=>w.length>4&&!skipWords.has(w));
+
   let best=null,bestScore=0;
-  // Extract meaningful words (skip 2-letter country codes, numbers, common words)
-  const stopWords=new Set(['the','and','gmbh','s.a.','sa','ltd','llc','str','ges']);
-  const qWords=q.split(/[\s\-\/,\.]+/)
-    .filter(w=>w.length>3 && !stopWords.has(w));
-  if(qWords.length===0)return null;
+
   for(const item of list){
-    const name=item.name.toLowerCase();
+    const name=normalize(item.name);
     let score=0;
+
     if(name===q){score=100;}
-    else if(name.includes(q)&&q.length>6){score=85;}
-    else if(q.includes(name)&&name.length>6){score=75;}
+    else if(name.includes(q)&&q.length>8){score=90;}
+    else if(q.includes(name)&&name.length>8){score=85;}
     else{
-      let matched=0,totalWeight=0;
-      for(const w of qWords){
-        const weight=w.length>6?2:1; // longer words = more important
-        totalWeight+=weight;
-        if(name.includes(w)) matched+=weight;
+      // Check each segment
+      for(const seg of segments){
+        if(seg.length<4)continue;
+        if(name.includes(seg)&&seg.length>7){score=Math.max(score,80);}
+        else if(name.includes(seg)&&seg.length>5){score=Math.max(score,65);}
+        else if(name.includes(seg)&&seg.length>3){score=Math.max(score,50);}
       }
-      score=totalWeight>0?Math.round((matched/totalWeight)*70):0;
+      // Check keywords
+      if(keywords.length>0){
+        let hits=keywords.filter(kw=>name.includes(kw)).length;
+        score=Math.max(score,Math.round((hits/keywords.length)*70));
+      }
     }
     if(score>bestScore){bestScore=score;best=item;}
   }
