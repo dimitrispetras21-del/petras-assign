@@ -170,7 +170,7 @@ textarea{resize:vertical;min-height:60px}
         </div>
         <div class="field">
           <label>Temperature (°C)</label>
-          <input type="text" id="temperature" class="ai-filled" placeholder="π.χ. +2/+6">
+          <input type="number" id="temperature" class="ai-filled" placeholder="π.χ. 7" step="1">
         </div>
         <div class="field">
           <label>Gross Weight (kg)</label>
@@ -389,7 +389,7 @@ Extract and return ONLY this JSON:
   "client_name": "the company that issued this order (NOT Vermion/Petras)",
   "direction": "Export or Import",
   "goods": "comma-separated list of products",
-  "temperature": "temp range e.g. 7 or +2/+6",
+  "temperature": single number (e.g. 7 or 2 or -18) — use the MAX temperature value,
   "weight_kg": number or null,
   "pallets_no": total pallet count or null,
   "price_eur": freight cost number or null,
@@ -577,7 +577,7 @@ async function createOrder(){
     if(clientId)fields['Client']=[{id:clientId}];
     const dir=document.getElementById('direction').value;if(dir)fields['Direction']={name:dir};
     const goods=document.getElementById('goods').value;if(goods)fields['Goods']=goods;
-    const temp=document.getElementById('temperature').value;if(temp)fields['Temperature °C']=temp;
+    const temp=document.getElementById('temperature').value;if(temp)fields['Temperature °C']=parseFloat(temp);
     const wt=document.getElementById('weight').value;if(wt)fields['Gross Weight kg']=parseFloat(wt);
     const pno=document.getElementById('palletsNo').value;// Pallets No not in schema
     const price=document.getElementById('price').value;if(price)fields['Price']=parseFloat(price);
