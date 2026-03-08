@@ -463,7 +463,7 @@ function fillForm(d){
   if(d.client_name){
     const m=fuzzyMatch(d.client_name,clients);
     sv('clientSearch',m?m.name:d.client_name);
-    sv('clientId',m?m.id:'');
+    sv('clientId',m?String(m.id):'');
   }
   if(d.direction)sv('direction',d.direction);
   if(d.goods)sv('goods',d.goods);
@@ -495,13 +495,13 @@ function fillForm(d){
     for(const [addr,pal] of loadMap){
       if(li>5)break;
       const m=fuzzyMatch(addr,locations);
-      sv('lLocSearch_'+li,m?m.name:addr);sv('lLocId_'+li,m?m.id:'');setLocMatch('l',li,!!m,addr);
+      sv('lLocSearch_'+li,m?m.name:addr);sv('lLocId_'+li,m?String(m.id):'');setLocMatch('l',li,!!m,addr);
       sv('lPal_'+li,pal);li++;
     }
     for(const [addr,pal] of unloadMap){
       if(ui>5)break;
       const m=fuzzyMatch(addr,locations);
-      sv('uLocSearch_'+ui,m?m.name:addr);sv('uLocId_'+ui,m?m.id:'');setLocMatch('u',ui,!!m,addr);
+      sv('uLocSearch_'+ui,m?m.name:addr);sv('uLocId_'+ui,m?String(m.id):'');setLocMatch('u',ui,!!m,addr);
       sv('uPal_'+ui,pal);ui++;
     }
     // Total pallets = sum of LOADING stops only
@@ -715,6 +715,20 @@ async function createOrder(){
       if(pals)fields['Unloading Pallets '+i]=parseInt(pals);
     }
 
+    // Sanitize: ensure all record IDs are plain strings
+    Object.keys(fields).forEach(k=>{
+      const v=fields[k];
+      if(Array.isArray(v)){
+        fields[k]=v.map(item=>{
+          if(item&&typeof item==='object'&&item.id){
+            return {id:String(item.id)};
+          }
+          return item;
+        }).filter(item=>item&&item.id&&item.id!=='[object Object]'&&item.id!=='');
+        if(fields[k].length===0)delete fields[k];
+      }
+    });
+    console.log('SENDING FIELDS:', JSON.stringify(fields,null,2));
     const r=await atFetch('/'+ORDERS_TBL,{method:'POST',body:JSON.stringify({fields})});
     const data=await r.json();
     if(data.error)throw new Error(data.error.message||'Airtable error');
