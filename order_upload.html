@@ -577,30 +577,31 @@ async function createOrder(){
     if(clientId)fields['Client']=[{id:clientId}];
     const dir=document.getElementById('direction').value;if(dir)fields['Direction']={name:dir};
     const goods=document.getElementById('goods').value;if(goods)fields['Goods']=goods;
-    const temp=document.getElementById('temperature').value;if(temp)fields['Temperature']=temp;
-    const wt=document.getElementById('weight').value;if(wt)fields['Gross Weight']=parseFloat(wt);
-    const pno=document.getElementById('palletsNo').value;if(pno)fields['Pallets No']=parseInt(pno);
+    const temp=document.getElementById('temperature').value;if(temp)fields['Temperature °C']=temp;
+    const wt=document.getElementById('weight').value;if(wt)fields['Gross Weight kg']=parseFloat(wt);
+    const pno=document.getElementById('palletsNo').value;// Pallets No not in schema
     const price=document.getElementById('price').value;if(price)fields['Price']=parseFloat(price);
     const notes=document.getElementById('notes').value;if(notes)fields['Notes']=notes;
     const ldDt=document.getElementById('loadingDate').value;if(ldDt)fields['Loading DateTime']=ldDt;
     const dlDt=document.getElementById('deliveryDate').value;if(dlDt)fields['Delivery DateTime']=dlDt;
     const rm=document.getElementById('reeferMode').value;if(rm)fields['Refrigerator Mode']={name:rm};
     fields['Pallet Exchange']=document.getElementById('palletExchange').checked;
-    fields['Veroia Switch']=document.getElementById('veroiaSwitch').checked;
+    fields['Veroia Switch ']=document.getElementById('veroiaSwitch').checked;
 
     // Loading stops → Location 1-5, Pallets 1-5
     for(let i=1;i<=5;i++){
       const locId=document.getElementById('lLocId_'+i).value;
       const pals=document.getElementById('lPal_'+i).value;
       if(locId)fields['Loading Location '+i]=[{id:locId}];
+      if(pals)fields['Loading Pallets '+i]=parseInt(pals);
       if(pals)fields['Pallets '+i]=parseInt(pals);
     }
     // Unloading stops → Delivery Location 1-5, Delivery Pallets 1-5
     for(let i=1;i<=5;i++){
       const locId=document.getElementById('uLocId_'+i).value;
       const pals=document.getElementById('uPal_'+i).value;
-      if(locId)fields['Delivery Location '+i]=[{id:locId}];
-      if(pals)fields['Delivery Pallets '+i]=parseInt(pals);
+      if(locId)fields['Unloading Location '+i]=[{id:locId}];
+      if(pals)fields['Unloading Pallets '+i]=parseInt(pals);
     }
 
     const r=await atFetch('/'+ORDERS_TBL,{method:'POST',body:JSON.stringify({fields})});
