@@ -406,7 +406,7 @@ Extract and return ONLY this JSON (no markdown):
   "loading_datetime": "YYYY-MM-DDTHH:MM" or null,
   "delivery_datetime": "YYYY-MM-DDTHH:MM" or null,
   "pallet_exchange": true or false,
-  "veroia_switch": false,
+  "veroia_switch": false,  // ALWAYS false unless document explicitly mentions cross-docking or transshipment
   "reefer_mode": "Continuous or Cycling or Fresh or null",
   "loading_stops": [
     {"location_name": "EXACT address text from document for this pickup point", "pallets": number}
@@ -667,7 +667,11 @@ async function createOrder(){
     const fields={};
     const clientId=document.getElementById('clientId').value;
     if(clientId)fields['Client']=[{id:clientId}];
-    const dir=document.getElementById('direction').value;if(dir)fields['Direction']={name:dir};
+    const dirRaw=document.getElementById('direction').value;
+    if(dirRaw){
+      const dirMap={'Export':'Export (GR to EU)','Import':'Import (EU to GR)'};
+      fields['Direction']={name:dirMap[dirRaw]||dirRaw};
+    }
     const goods=document.getElementById('goods').value;if(goods)fields['Goods']=goods;
     const temp=document.getElementById('temperature').value;if(temp)fields['Temperature °C']=parseFloat(temp);
     const wt=document.getElementById('weight').value;if(wt)fields['Gross Weight kg']=parseFloat(wt);
