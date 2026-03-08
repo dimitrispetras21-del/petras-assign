@@ -102,6 +102,10 @@ textarea{resize:vertical;min-height:60px}
 .toast.show{display:block;animation:fadeUp .3s ease}
 .toast.success{background:var(--card);border:1px solid var(--green);color:var(--green)}
 .toast.error{background:var(--card);border:1px solid var(--red);color:var(--red)}
+.debug-panel{background:#1B2A4A;color:#20C997;font-family:monospace;font-size:11px;padding:16px;border-radius:8px;margin-bottom:18px;white-space:pre-wrap;word-break:break-all;max-height:400px;overflow-y:auto;display:none}
+.debug-panel.show{display:block}
+.debug-toggle{background:var(--bg);border:1px solid var(--border);color:var(--muted);font-size:11px;font-weight:700;padding:6px 12px;border-radius:4px;cursor:pointer;font-family:'Barlow',sans-serif;margin-bottom:18px}
+.debug-toggle:hover{border-color:var(--primary);color:var(--primary)}
 </style>
 </head>
 <body>
@@ -146,6 +150,9 @@ textarea{resize:vertical;min-height:60px}
 
   <!-- STEP 2: FORM -->
   <div class="panel" id="panel2">
+
+    <button class="debug-toggle" onclick="toggleDebug()">🔍 DEBUG — AI RAW OUTPUT</button>
+    <div class="debug-panel" id="debugPanel"></div>
 
     <!-- Core -->
     <div class="card">
@@ -428,7 +435,10 @@ Match client_name from: ${clientList}`;
     const data=await resp.json();
     const raw=data.content.find(c=>c.type==='text')?.text||'{}';
     const extracted=JSON.parse(raw.replace(/```json|```/g,'').trim());
-    console.log('[AI EXTRACTED]', JSON.stringify(extracted, null, 2));
+    // Show debug in UI
+    const dp=document.getElementById('debugPanel');
+    dp.textContent='=== AI RAW JSON ===\n'+raw+'\n\n=== PARSED ===\n'+JSON.stringify(extracted,null,2);
+    dp.classList.add('show');
 
     // Safety: if client matches our names, clear it
     if(extracted.client_name){
@@ -659,6 +669,11 @@ async function createOrder(){
     st.className='status error';st.innerHTML='Σφάλμα: '+e.message;
     btn.disabled=false;btn.textContent='ΔΗΜΙΟΥΡΓΙΑ ΕΝΤΟΛΗΣ';
   }
+}
+
+function toggleDebug(){
+  const dp=document.getElementById('debugPanel');
+  dp.classList.toggle('show');
 }
 
 function goStep(n){
