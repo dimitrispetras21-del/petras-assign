@@ -846,8 +846,10 @@ async function createOrder(){
     const pno=document.getElementById('palletsNo').value;// Pallets No not in schema
     const price=document.getElementById('price').value;if(price)fields['Price']=parseFloat(price);
     const notes=document.getElementById('notes').value;if(notes)fields['Notes']=notes;
-    const ldDt=document.getElementById('loadingDate').value;if(ldDt)fields['Loading DateTime']=ldDt;
-    const dlDt=document.getElementById('deliveryDate').value;if(dlDt)fields['Delivery DateTime']=dlDt;
+    const ldDtRaw=document.getElementById('loadingDate').value;
+    if(ldDtRaw)fields['Loading DateTime']=ldDtRaw.split('T')[0].substring(0,10);
+    const dlDtRaw=document.getElementById('deliveryDate').value;
+    if(dlDtRaw)fields['Delivery DateTime']=dlDtRaw.split('T')[0].substring(0,10);
     const rm=document.getElementById('reeferMode').value;if(rm)fields['Refrigerator Mode']=rm;
     fields['Pallet Exchange']=document.getElementById('palletExchange').checked;
     // Veroia Switch is a checkbox field
