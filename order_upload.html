@@ -406,46 +406,81 @@ async function startAnalysis(){
 
   const clientList=clients.slice(0,80).map(c=>c.name).join(', ');
 
-  const prompt=`You are a precise logistics order extraction system for Petras Group (Greek temperature-controlled transport carrier).
+  const prompt=`You are a transport order data extraction system for Petras Group, a Greek temperature-controlled road carrier operating between Greece and Central/Eastern Europe.
 
-CRITICAL RULES:
-1. CLIENT = the company SENDING the order to us (their name/logo at top of document, or "From:" in email). NEVER Petras Group, Vermio Fresh, VERMIO, or any variant of ours.
-2. DIRECTION: Export = Greece→Europe (northbound), Import = Europe→Greece (southbound). If unclear from loading/delivery locations, default to Export.
-3. DATES: Return as YYYY-MM-DD. If year missing, assume 2026.
-4. TEMPERATURE: Return as negative number if refrigerated (e.g. -18 for frozen, 4 for chilled). Return null if ambient/dry.
-5. STOPS: Extract ALL loading and unloading addresses separately. Each stop = one entry in stop_rows[].
-6. MATCH client_name EXACTLY to one of the provided client list if possible (fuzzy match allowed).
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+WHO WE ARE (NEVER extract as client or stop):
+- Petras Group / Petras Transport
+- VERMIO FRESH AE / Vermio Fresh / Vermion Fresh
+- Any address in Kopanos, Naoussa, Veroia (GR-59035, GR-590XX)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Extract and return ONLY this JSON (no markdown):
+FIELD EXTRACTION RULES:
+
+CLIENT:
+- The company that ISSUED this transport order (their name/logo at top-left of PDF, or sender in email)
+- This is our CUSTOMER — the one paying us
+- Match to the provided client list using fuzzy matching (e.g. "IFCO Systems GmbH" → "IFCO SYSTEMS GMBH")
+- NEVER set as client: Petras Group, Vermio Fresh, or any of our company names above
+
+DIRECTION (derive from addresses — never from explicit label):
+- Export = loading in GREECE (GR), delivery in EUROPE → return "Export"
+- Import = loading in EUROPE, delivery in GREECE (GR) → return "Import"
+- Greek addresses contain: GR-, Ελλάδα, Greek city names (Αθήνα, Θεσσαλονίκη, Βέροια, Νάουσα, etc.)
+
+PRICE:
+- Look for: "Freight", "Transport cost", "Fracht", "ZZFRACHT", "Φορτωτικά", "Ναύλος"
+- Extract the EUR amount as a number (e.g. "2.350,00 EUR" → 2350)
+- This field is ALWAYS present in the document
+
+TEMPERATURE:
+- Look for: °C values, "Temp", "Θερμοκρασία", storage conditions
+- Chilled products (fruits, vegetables, dairy): typically +2 to +8
+- Frozen: -18 or below
+- If not mentioned → return null (do NOT guess)
+
+DATES:
+- Loading date = pickup / collection / LDDAT / Φόρτωση
+- Delivery date = delivery / ADGE_DLF / Παράδοση
+- Format: YYYY-MM-DD (assume year 2026 if missing)
+
+STOPS — THIS IS CRITICAL:
+- Orders typically have MULTIPLE loading stops AND MULTIPLE unloading stops
+- loading stop = where cargo is PICKED UP (supplier warehouse, factory, depot)
+- unloading stop = where cargo is DELIVERED (customer DC, store, warehouse)
+- Extract EACH stop separately — never merge addresses
+- Address format: "COMPANY NAME - CITY" or "COMPANY NAME, CITY, COUNTRY"
+- NEVER include our own company addresses as a stop
+- For pallets per stop: use the value shown. If pallets are in an item table (e.g. "EP 33 TMX"), assign to the corresponding stop. If multiple stops with no breakdown, split total equally.
+
+PALLET EXCHANGE:
+- "Paletts exchange Ja" / "Pallettenausch" / "Ανταλλαγή παλετών" → true
+- Default → false
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Return ONLY this JSON (no markdown, no explanation):
 {
-  "client_name": "name of company that issued this order (from letterhead/logo)",
+  "client_name": "company name from document header/logo",
   "direction": "Export or Import",
-  "goods": "product names",
-  "temperature": temperature as integer (e.g. 7),
+  "goods": "product description (e.g. IFCO Black Lift Lock 6418, fresh fruit)",
+  "temperature": integer or null,
   "weight_kg": total gross weight as number or null,
-  "pallets_no": total pallet count as number or null,
-  "price_eur": freight price as number or null,
-  "loading_datetime": "YYYY-MM-DDTHH:MM" or null,
-  "delivery_datetime": "YYYY-MM-DDTHH:MM" or null,
+  "pallets_no": total pallet count as integer or null,
+  "price_eur": freight amount as number or null,
+  "loading_datetime": "YYYY-MM-DD" or null,
+  "delivery_datetime": "YYYY-MM-DD" or null,
   "pallet_exchange": true or false,
-  "veroia_switch": false
-  "reefer_mode": "Continuous or Cycling or Fresh or null",
+  "veroia_switch": false,
+  "reefer_mode": "Continuous" or "Cyclic" or "Chilled" or "Ambient" or null,
   "stop_rows": [
     {
       "type": "loading or unloading",
-      "block_address": "EXACT address line at the TOP of this numbered block (e.g. IRINOUPOLI SUD - ASPROPIRGOS, LIDL OSTERREICH GMBH - WUNDSCHUH)",
-      "pal": number of pallets for this stop (integer). If pallets per stop not shown, distribute total pallets_no equally across loading stops. If only 1 stop, use full pallets_no.
+      "block_address": "COMPANY - CITY, COUNTRY (e.g. WELL Pack s.r.o - Sadska, CZ)",
+      "pal": integer (pallets for this specific stop)
     }
   ],
   "notes": null
 }
-
-STOPS RULES:
-- loading_stops: every SEPARATE pickup location. One entry per address. Copy address EXACTLY as written.
-- unloading_stops: every SEPARATE delivery destination. One entry per address.
-- For pallets: if the document shows pallets per stop, use those values. If not shown per stop but total is known (e.g. "EP 33 TMX" in item table), assign the total to the single stop. If multiple stops with no breakdown, split equally.
-- NEVER combine multiple addresses into one string.
-- NEVER include our own company (VERMIO FRESH, PETRAS GROUP) as a stop address.
 
 Match client_name from: ${clientList}`;
 
