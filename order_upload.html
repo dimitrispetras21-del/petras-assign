@@ -128,7 +128,7 @@ textarea{resize:vertical;min-height:60px}
     <div class="card">
       <div class="card-title">Upload Client Order</div>
       <div class="upload-zone" id="uploadZone">
-        <input type="file" id="fileInput" accept="image/*,.pdf">
+        <input type="file" id="fileInput" accept="image/*,.pdf,.xlsx,.xls,.csv,.txt,.eml">
         <div style="font-size:32px;margin-bottom:8px">📄</div>
         <div style="font-size:13px;font-weight:600;color:var(--dark);margin-bottom:3px">Σύρε εδώ ή κλικ για upload</div>
         <div style="font-size:11px;color:var(--muted)">PDF · JPG · PNG — max 10MB</div>
@@ -355,7 +355,12 @@ async function loadData(){
 function handleFile(file){
   if(!file)return;
   if(file.size>10*1024*1024){showToast('Αρχείο > 10MB','error');return;}
-  fileType=file.type;
+  // Smart file type detection
+  const fname = file.name.toLowerCase();
+  if(fname.endsWith('.xlsx')||fname.endsWith('.xls')) fileType='excel';
+  else if(fname.endsWith('.csv')) fileType='csv';
+  else if(fname.endsWith('.pdf')) fileType='application/pdf';
+  else fileType=file.type;
   document.getElementById('previewName').textContent=file.name;
   document.getElementById('previewSize').textContent=(file.size/1024).toFixed(0)+' KB';
   document.getElementById('previewThumb').innerHTML=file.type.startsWith('image/')
@@ -383,16 +388,33 @@ async function startAnalysis(){
   st.className='status loading';
   st.innerHTML='<div class="spinner"></div><span>Το AI διαβάζει την εντολή...</span>';
 
-  const cb=(fileType==='application/pdf')
-    ?{type:'document',source:{type:'base64',media_type:'application/pdf',data:fileB64}}
-    :{type:'image',source:{type:'base64',media_type:fileType||'image/jpeg',data:fileB64}};
+  // Build content block based on file type
+  let cb;
+  if(fileType==='application/pdf'){
+    cb={type:'document',source:{type:'base64',media_type:'application/pdf',data:fileB64}};
+  } else if(fileType==='excel'||fileType==='csv'){
+    // Decode base64 to text for Excel/CSV
+    try{
+      const decoded=atob(fileB64);
+      cb={type:'text',text:'FILE CONTENTS (Excel/CSV):\n'+decoded};
+    }catch(e){
+      cb={type:'text',text:'[Excel file - parse error]'};
+    }
+  } else {
+    cb={type:'image',source:{type:'base64',media_type:fileType||'image/jpeg',data:fileB64}};
+  }
 
   const clientList=clients.slice(0,80).map(c=>c.name).join(', ');
 
-  const prompt=`You are a precise logistics document reader for Petras Group (Greek transport carrier).
+  const prompt=`You are a precise logistics order extraction system for Petras Group (Greek temperature-controlled transport carrier).
 
-CONTEXT: Petras Group / Vermion Fresh S.A. = WE ARE THE CARRIER. Never set us as the client.
-The CLIENT = the company whose name/logo appears at the TOP of the document as the issuing party.
+CRITICAL RULES:
+1. CLIENT = the company SENDING the order to us (their name/logo at top of document, or "From:" in email). NEVER Petras Group, Vermio Fresh, VERMIO, or any variant of ours.
+2. DIRECTION: Export = Greece→Europe (northbound), Import = Europe→Greece (southbound). If unclear from loading/delivery locations, default to Export.
+3. DATES: Return as YYYY-MM-DD. If year missing, assume 2026.
+4. TEMPERATURE: Return as negative number if refrigerated (e.g. -18 for frozen, 4 for chilled). Return null if ambient/dry.
+5. STOPS: Extract ALL loading and unloading addresses separately. Each stop = one entry in stop_rows[].
+6. MATCH client_name EXACTLY to one of the provided client list if possible (fuzzy match allowed).
 
 Extract and return ONLY this JSON (no markdown):
 {
@@ -461,9 +483,10 @@ Match client_name from: ${clientList}`;
 
 function fillForm(d){
   if(d.client_name){
-    const m=fuzzyMatch(d.client_name,clients);
+    const m=matchClient(d.client_name,clients);
     sv('clientSearch',m?m.name:d.client_name);
     sv('clientId',m?String(m.id):'');
+    if(!m) document.getElementById('clientSearch').style.borderColor='#F59E0B';
   }
   if(d.direction)sv('direction',d.direction);
   if(d.goods)sv('goods',d.goods);
@@ -527,6 +550,34 @@ function extractKeywords(q){
     'p.c','thesi','gewerbepark','gewerbegebiet','polydroso','plataniti',
     'aspropirgos','attiki','petria','nafplio','kirillo']);
   return q.split(/[\s\-\/,\.]+/).filter(w=>w.length>3&&!skipWords.has(w));
+}
+
+// Dedicated client name matcher - simpler than location fuzzyMatch
+function matchClient(query, clientList){
+  if(!query||!clientList.length) return null;
+  const q = query.toLowerCase().trim();
+  if(q.length < 2) return null;
+  
+  // 1. Exact match
+  let m = clientList.find(c => c.name.toLowerCase() === q);
+  if(m) return m;
+  
+  // 2. Full containment
+  m = clientList.find(c => c.name.toLowerCase().includes(q) || q.includes(c.name.toLowerCase()));
+  if(m) return m;
+  
+  // 3. Word-by-word: score by how many words match
+  const qWords = q.split(/\s+/).filter(w => w.length > 2);
+  let best = null, bestScore = 0;
+  for(const c of clientList){
+    const cName = c.name.toLowerCase();
+    let score = 0;
+    for(const w of qWords){
+      if(cName.includes(w)) score += w.length; // longer word match = higher score
+    }
+    if(score > bestScore && score >= 4){ bestScore = score; best = c; }
+  }
+  return best;
 }
 
 function fuzzyMatch(query,list){
@@ -705,7 +756,6 @@ async function createOrder(){
       const pals=document.getElementById('lPal_'+i).value;
       if(locId)fields['Loading Location '+i]=[{id:locId}];
       if(pals)fields['Loading Pallets '+i]=parseInt(pals);
-      if(pals)fields['Pallets '+i]=parseInt(pals);
     }
     // Unloading stops → Delivery Location 1-5, Delivery Pallets 1-5
     for(let i=1;i<=5;i++){
