@@ -201,6 +201,9 @@ function showDirectForm(recId){
     <button class="btn btn-save" onclick="saveDirectForm('${recId}')">💾 Αποθήκευση</button>
     <div id="dfStatus" class="status"></div>
   </div></div>`;
+  setTimeout(function(){
+    injectSDD('df_',f['Truck']?f['Truck'][0]:'',f['Trailer']?f['Trailer'][0]:'',f['Driver']?f['Driver'][0]:'',f['Partner']?f['Partner'][0]:'');
+  },30);
 }
 
 async function saveDirectForm(recId){
