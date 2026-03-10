@@ -29,7 +29,7 @@ header{background:var(--card);border-bottom:2px solid var(--primary);padding:14p
 .field-row.four{grid-template-columns:1fr 1fr 1fr 1fr}
 label{display:block;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:2px;margin-bottom:5px;font-weight:600}
 label .req{color:var(--red);margin-left:2px}
-input[type=text],input[type=number],input[type=datetime-local],select,textarea{width:100%;background:#fff;border:1px solid var(--border);border-radius:5px;color:var(--dark);padding:10px 12px;font-size:13px;font-family:'Barlow',sans-serif;outline:none;transition:border-color .15s}
+input[type=text],input[type=number],input[type=date],select,textarea{width:100%;background:#fff;border:1px solid var(--border);border-radius:5px;color:var(--dark);padding:10px 12px;font-size:13px;font-family:'Barlow',sans-serif;outline:none;transition:border-color .15s}
 input:focus,select:focus,textarea:focus{border-color:var(--primary)}
 input.ai-filled,select.ai-filled{border-color:rgba(45,127,249,.4);background:#F7FBFF}
 select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%237A8BA5' d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
@@ -207,11 +207,11 @@ textarea{resize:vertical;min-height:60px}
       <div class="field-row">
         <div class="field">
           <label>Loading Date/Time</label>
-          <input type="datetime-local" id="loadingDate" class="ai-filled">
+          <input type="date" id="loadingDate" class="ai-filled">
         </div>
         <div class="field">
           <label>Delivery Date/Time</label>
-          <input type="datetime-local" id="deliveryDate" class="ai-filled">
+          <input type="date" id="deliveryDate" class="ai-filled">
         </div>
       </div>
     </div>
@@ -224,21 +224,24 @@ textarea{resize:vertical;min-height:60px}
           <label>Refrigerator Mode</label>
           <select id="reeferMode" class="ai-filled">
             <option value="">— Επιλογή —</option>
-            <option value="Continuous">Continuous</option>
-            <option value="Cyclic">Cyclic</option>
-            <option value="Fresh">Fresh (ventilation)</option>
+            <option value="Continuous">Continuous (frozen)</option>
+            <option value="Start-Stop">Start-Stop (fresh)</option>
+            <option value="No temp">No temp (ambient)</option>
           </select>
         </div>
         <div class="field">
+          <label>Pallet Type</label>
+          <select id="palletType" class="ai-filled">
+            <option value="">— Επιλογή —</option>
+            <option value="EUR">EUR (Ευρωπαλέτες)</option>
+            <option value="CHEP">CHEP</option>
+            <option value="Industrial">Industrial</option>
+          </select>
+        </div>
+        <div class="field" style="grid-column:1/-1">
           <label>&nbsp;</label>
-          <div class="toggle-row">
+          <div class="toggle-row" style="gap:24px">
             <label class="toggle-item">
-              <select id="palletType" style="font-size:11px;padding:3px 6px;border-radius:4px;border:1px solid var(--border);background:#fff;margin-right:8px">
-                <option value="">Pallet Type</option>
-                <option value="EUR">EUR</option>
-                <option value="CHEP">CHEP</option>
-                <option value="Industrial">Industrial</option>
-              </select>
               <input type="checkbox" id="palletExchange">
               <span class="toggle-label">🔄 Pallet Exchange</span>
             </label>
@@ -801,8 +804,8 @@ function goConfirm(){
     {label:'Pallets No',val:document.getElementById('palletsNo').value},
     {label:'Price',val:document.getElementById('price').value?'EUR '+document.getElementById('price').value:''},
     {label:'Reefer Mode',val:document.getElementById('reeferMode').value},
-    {label:'Loading Date',val:document.getElementById('loadingDate').value.replace('T',' ')},
-    {label:'Delivery Date',val:document.getElementById('deliveryDate').value.replace('T',' ')},
+    {label:'Loading Date',val:document.getElementById('loadingDate').value},
+    {label:'Delivery Date',val:document.getElementById('deliveryDate').value},
     {label:'Pallet Exchange',val:pe?'✓ YES':'✗ NO'},
     {label:'Veroia Switch',val:vs?'✓ YES':'—'},
   ];
