@@ -838,7 +838,7 @@ async function createOrder(){
   try{
     const fields={};
     const clientId=document.getElementById('clientId').value;
-    if(clientId)fields['Client']=[{id:clientId}];
+    if(clientId&&clientId.startsWith('rec'))fields['Client']=[{id:clientId}];
     const dirRaw=document.getElementById('direction').value;if(dirRaw)fields['Direction']=dirRaw;
     const goods=document.getElementById('goods').value;if(goods)fields['Goods']=goods;
     const temp=document.getElementById('temperature').value;if(temp)fields['Temperature °C']=parseFloat(temp);
@@ -854,17 +854,17 @@ async function createOrder(){
 
     // Loading stops → Location 1-5, Pallets 1-5
     for(let i=1;i<=5;i++){
-      const locId=document.getElementById('lLocId_'+i).value;
+      const locId=String(document.getElementById('lLocId_'+i).value||'').trim();
       const pals=document.getElementById('lPal_'+i).value;
-      if(locId)fields['Loading Location '+i]=[{id:locId}];
-      if(pals)fields['Loading Pallets '+i]=parseInt(pals);
+      if(locId&&locId.startsWith('rec'))fields['Loading Location '+i]=[{id:locId}];
+      if(pals&&parseInt(pals)>0)fields['Loading Pallets '+i]=parseInt(pals);
     }
-    // Unloading stops → Delivery Location 1-5, Delivery Pallets 1-5
+    // Unloading stops → Location 1-5, Pallets 1-5
     for(let i=1;i<=5;i++){
-      const locId=document.getElementById('uLocId_'+i).value;
+      const locId=String(document.getElementById('uLocId_'+i).value||'').trim();
       const pals=document.getElementById('uPal_'+i).value;
-      if(locId)fields['Unloading Location '+i]=[{id:locId}];
-      if(pals)fields['Unloading Pallets '+i]=parseInt(pals);
+      if(locId&&locId.startsWith('rec'))fields['Unloading Location '+i]=[{id:locId}];
+      if(pals&&parseInt(pals)>0)fields['Unloading Pallets '+i]=parseInt(pals);
     }
 
     // Sanitize: ensure all record IDs are plain strings
