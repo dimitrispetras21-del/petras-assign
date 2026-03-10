@@ -833,6 +833,13 @@ function goConfirm(){
 }
 
 async function createOrder(){
+  // DEBUG: log raw hidden input values
+  const _cid=document.getElementById('clientId')?.value;
+  const _l1=document.getElementById('lLocId_1')?.value;
+  const _u1=document.getElementById('uLocId_1')?.value;
+  const _dp=document.getElementById('debugPanel');
+  if(_dp) _dp.textContent='RAW IDs before save:\nclientId='+JSON.stringify(_cid)+'\nlLocId_1='+JSON.stringify(_l1)+'\nuLocId_1='+JSON.stringify(_u1)+'\ntypeof clientId='+typeof _cid;
+  if(_dp) _dp.classList.add('show');
   const btn=document.getElementById('btnCreate');
   const st=document.getElementById('confirmStatus');
   btn.disabled=true; btn.textContent='Καταχώρηση...';
