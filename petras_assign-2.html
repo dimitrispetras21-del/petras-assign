@@ -1,4 +1,12 @@
-<!DOCTYPE html>
+<!
+  setTimeout(()=>{
+    const mf=trip.fields;
+    const mst=mf['Truck']?mf['Truck'][0]:'',mstr=mf['Trailer']?mf['Trailer'][0]:'',msd=mf['Driver']?mf['Driver'][0]:'',msp=mf['Partner']?mf['Partner'][0]:'';
+    const wmt=document.getElementById('wrap_mTruck');if(wmt)wmt.appendChild(buildSDD('mTruck',allTrucks.map(r=>({id:r.id,label:r.fields['License Plate']||r.id})),mst,'Πινακίδα...'));
+    const wmtr=document.getElementById('wrap_mTrailer');if(wmtr)wmtr.appendChild(buildSDD('mTrailer',allTrailers.map(r=>({id:r.id,label:r.fields['License Plate']||r.id})),mstr,'Πινακίδα...'));
+    const wmd=document.getElementById('wrap_mDriver');if(wmd)wmd.appendChild(buildSDD('mDriver',allDrivers.map(r=>({id:r.id,label:r.fields['Full Name']||r.id})),msd,'Όνομα οδηγού...'));
+    const wmp=document.getElementById('wrap_mPartner');if(wmp)wmp.appendChild(buildSDD('mPartner',allPartners.filter(r=>r.fields['Active']).map(r=>({id:r.id,label:r.fields['Company Name']||r.id})),msp,'Όνομα partner...'));
+  },50);DOCTYPE html>
 <html lang="el">
 <head>
 <meta charset="UTF-8">
@@ -43,6 +51,14 @@ select option{background:#fff}
 .search-wrap input:focus{border-color:var(--primary)}
 .search-wrap .ico{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:15px;pointer-events:none}
 .week-pills{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px}
+.sdd-wrap{position:relative;width:100%}
+.sdd-input{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;color:var(--dark);background:#fff;box-sizing:border-box;cursor:pointer;outline:none}
+.sdd-input:focus{border-color:var(--primary)}
+.sdd-list{position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid var(--border);border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,.12);max-height:200px;overflow-y:auto;z-index:9999;display:none}
+.sdd-list.open{display:block}
+.sdd-opt{padding:8px 12px;font-size:13px;cursor:pointer;color:var(--dark)}
+.sdd-opt:hover,.sdd-opt.active{background:var(--primary);color:#fff}
+.sdd-empty{padding:8px 12px;font-size:13px;color:var(--muted);font-style:italic}
 .week-pill{padding:6px 14px;border-radius:20px;border:1px solid var(--border);cursor:pointer;font-size:12px;font-weight:600;color:var(--muted);background:var(--card);transition:all .15s}
 .week-pill:hover{border-color:var(--primary);color:var(--dark)}
 .week-pill.active{background:var(--primary);color:#fff;border-color:var(--primary)}
@@ -178,11 +194,11 @@ function showDirectForm(recId){
       <div class="type-btn ${isP?'active':''}" onclick="currentType='partner';showDirectForm('${recId}')">🤝 PARTNER</div>
     </div>
     ${!isP?`
-      <div class="field"><label>Truck</label><select id="df_truck"><option value="">— Επιλογή —</option>${allTrucks.map(r=>`<option value="${r.id}" ${f['Truck']&&f['Truck'][0]===r.id?'selected':''}>${r.fields['License Plate']||r.id}</option>`).join('')}</select></div>
-      <div class="field"><label>Trailer</label><select id="df_trailer"><option value="">— Επιλογή —</option>${allTrailers.map(r=>`<option value="${r.id}" ${f['Trailer']&&f['Trailer'][0]===r.id?'selected':''}>${r.fields['License Plate']||r.id}</option>`).join('')}</select></div>
-      <div class="field"><label>Driver</label><select id="df_driver"><option value="">— Επιλογή —</option>${allDrivers.map(r=>`<option value="${r.id}" ${f['Driver']&&f['Driver'][0]===r.id?'selected':''}>${r.fields['Full Name']||r.id}</option>`).join('')}</select></div>
+      <div class="field" id="wrap_df_truck"><label>Truck</label></div>
+      <div class="field" id="wrap_df_trailer"><label>Trailer</label></div>
+      <div class="field" id="wrap_df_driver"><label>Driver</label></div>
     `:`
-      <div class="field"><label>Partner</label><select id="df_partner"><option value="">— Επιλογή —</option>${allPartners.filter(r=>r.fields['Active']).map(r=>`<option value="${r.id}" ${f['Partner']&&f['Partner'][0]===r.id?'selected':''}>${r.fields['Company Name']||r.id}</option>`).join('')}</select></div>
+      <div class="field" id="wrap_df_partner"><label>Partner</label></div>
       <div class="field"><label>Πινακίδες</label><input type="text" id="df_plates" value="${f['Partner Truck Plates']||''}" placeholder="π.χ. MK-123AB"></div>
       <div class="field"><label>Τιμή Export (EUR)</label><input type="text" id="df_rate_export" value="${f['Partner Rate Export']||''}" placeholder="π.χ. 2500"></div>
       <div class="field"><label>Τιμή Import (EUR)</label><input type="text" id="df_rate_import" value="${f['Partner Rate Import']||''}" placeholder="π.χ. 1800"></div>
@@ -199,11 +215,11 @@ async function saveDirectForm(recId){
   try{
     let fields={};
     if(currentType==='own'){
-      const t=document.getElementById('df_truck').value,tr=document.getElementById('df_trailer').value,d=document.getElementById('df_driver').value;
+      const t=sddValue('df_truck'),tr=sddValue('df_trailer'),d=sddValue('df_driver');
       if(!t||!tr||!d){s.textContent='Συμπλήρωσε όλα τα πεδία';s.className='status error';return;}
       fields={'Truck':[t],'Trailer':[tr],'Driver':[d],'Is Partner Trip':false,'Partner':null,'Partner Truck Plates':''};
     }else{
-      const p=document.getElementById('df_partner').value;
+      const p=sddValue('df_partner');
       const pl=document.getElementById('df_plates').value;
       if(!p||!pl){s.textContent='Συμπλήρωσε Partner και πινακίδες';s.className='status error';return;}
       fields={'Is Partner Trip':true,'Partner':[p],'Partner Truck Plates':pl,'Truck':null,'Trailer':null,'Driver':null};
@@ -377,12 +393,12 @@ function openModal(tripId){
   const mf=document.getElementById('modalFields');
   if(currentType==='own'){
     mf.innerHTML=`
-      <div class="field"><label>Truck</label><select id="mTruck"><option value="">— Επιλογή —</option>${allTrucks.map(r=>`<option value="${r.id}" ${f['Truck']&&f['Truck'][0]===r.id?'selected':''}>${r.fields['License Plate']||r.id}</option>`).join('')}</select></div>
-      <div class="field"><label>Trailer</label><select id="mTrailer"><option value="">— Επιλογή —</option>${allTrailers.map(r=>`<option value="${r.id}" ${f['Trailer']&&f['Trailer'][0]===r.id?'selected':''}>${r.fields['License Plate']||r.id}</option>`).join('')}</select></div>
-      <div class="field"><label>Driver</label><select id="mDriver"><option value="">— Επιλογή —</option>${allDrivers.map(r=>`<option value="${r.id}" ${f['Driver']&&f['Driver'][0]===r.id?'selected':''}>${r.fields['Full Name']||r.id}</option>`).join('')}</select></div>`;
+      <div class="field" id="wrap_mTruck"><label>Truck</label></div>
+      <div class="field" id="wrap_mTrailer"><label>Trailer</label></div>
+      <div class="field" id="wrap_mDriver"><label>Driver</label></div>`;
   }else{
     mf.innerHTML=`
-      <div class="field"><label>Partner</label><select id="mPartner"><option value="">— Επιλογή —</option>${allPartners.filter(r=>r.fields['Active']).map(r=>`<option value="${r.id}" ${f['Partner']&&f['Partner'][0]===r.id?'selected':''}>${r.fields['Company Name']||r.id}</option>`).join('')}</select></div>
+      <div class="field" id="wrap_mPartner"><label>Partner</label></div>
       <div class="field"><label>Πινακίδες</label><input type="text" id="mPlates" value="${f['Partner Truck Plates']||''}" placeholder="π.χ. MK-123AB"></div>
       <div class="field"><label>Τιμή Export (EUR)</label><input type="text" id="mRateExport" value="${f['Partner Rate Export']||''}" placeholder="π.χ. 2500"></div>
       <div class="field"><label>Τιμή Import (EUR)</label><input type="text" id="mRateImport" value="${f['Partner Rate Import']||''}" placeholder="π.χ. 1800"></div>
@@ -731,6 +747,38 @@ function generatePDF(tripId,leg){
 }
 
 init();
+
+// ── Searchable Dropdown ──
+function buildSDD(id, items, selectedId, placeholder){
+  const wrap=document.createElement('div');wrap.className='sdd-wrap';
+  const inp=document.createElement('input');
+  inp.className='sdd-input';inp.type='text';inp.autocomplete='off';
+  inp.placeholder=placeholder||'— Αναζήτηση —';
+  inp.dataset.selectedId=selectedId||'';
+  // Set display value
+  if(selectedId){const it=items.find(i=>i.id===selectedId);if(it)inp.value=it.label;}
+  const list=document.createElement('div');list.className='sdd-list';
+  // Hidden real input
+  const hidden=document.createElement('input');hidden.type='hidden';hidden.id=id;hidden.value=selectedId||'';
+  function render(q){
+    const f=q?items.filter(i=>i.label.toLowerCase().includes(q.toLowerCase())):items;
+    list.innerHTML=f.length
+      ?f.map(i=>`<div class="sdd-opt${i.id===hidden.value?' active':''}" data-id="${i.id}" data-label="${i.label.replace(/"/g,'&quot;')}">${i.label}</div>`).join('')
+      :'<div class="sdd-empty">Δεν βρέθηκε</div>';
+  }
+  inp.addEventListener('focus',()=>{render(inp.value);list.classList.add('open');});
+  inp.addEventListener('input',()=>{render(inp.value);list.classList.add('open');hidden.value='';});
+  list.addEventListener('mousedown',e=>{
+    const opt=e.target.closest('.sdd-opt');if(!opt)return;
+    hidden.value=opt.dataset.id;inp.value=opt.dataset.label;
+    list.classList.remove('open');
+    list.querySelectorAll('.sdd-opt').forEach(o=>o.classList.toggle('active',o.dataset.id===opt.dataset.id));
+  });
+  document.addEventListener('click',e=>{if(!wrap.contains(e.target))list.classList.remove('open');},{capture:true});
+  wrap.appendChild(inp);wrap.appendChild(list);wrap.appendChild(hidden);
+  return wrap;
+}
+function sddValue(id){return (document.getElementById(id)||{}).value||'';}
 </script>
 </body>
 </html>
