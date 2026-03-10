@@ -886,7 +886,22 @@ async function createOrder(){
     });
     // Show what we're sending in the debug panel
     const dp=document.getElementById('debugPanel');
-    if(dp)dp.textContent+='\n\n=== SENDING TO AIRTABLE ===\n'+JSON.stringify(fields,null,2);
+    // Deep-inspect linked record fields
+    const linkedDebug={};
+    ['Client','Loading Location 1','Loading Location 2','Loading Location 3','Loading Location 4','Loading Location 5',
+     'Unloading Location 1','Unloading Location 2','Unloading Location 3','Unloading Location 4','Unloading Location 5'].forEach(k=>{
+      if(fields[k])linkedDebug[k]=JSON.stringify(fields[k]);
+    });
+    if(dp)dp.textContent+='\n\n=== LINKED FIELDS ===\n'+JSON.stringify(linkedDebug,null,2)+'\n\n=== SENDING TO AIRTABLE ===\n'+JSON.stringify(fields,null,2);
+    // Re-sanitize linked fields one final time
+    ['Client','Loading Location 1','Loading Location 2','Loading Location 3','Loading Location 4','Loading Location 5',
+     'Unloading Location 1','Unloading Location 2','Unloading Location 3','Unloading Location 4','Unloading Location 5'].forEach(k=>{
+      if(!fields[k])return;
+      if(!Array.isArray(fields[k])){delete fields[k];return;}
+      const ids=fields[k].map(x=>typeof x==='object'?String(x.id||''):String(x)).filter(id=>id.startsWith('rec'));
+      if(ids.length)fields[k]=ids.map(id=>({id}));
+      else delete fields[k];
+    });
     const r=await atFetch('/'+ORDERS_TBL,{method:'POST',body:JSON.stringify({fields})});
     const data=await r.json();
     if(data.error)throw new Error(data.error.message+' | Fields: '+JSON.stringify(Object.keys(fields)));
