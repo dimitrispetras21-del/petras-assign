@@ -850,7 +850,8 @@ async function createOrder(){
     const dlDt=document.getElementById('deliveryDate').value;if(dlDt)fields['Delivery DateTime']=dlDt;
     const rm=document.getElementById('reeferMode').value;if(rm)fields['Refrigerator Mode']=rm;
     fields['Pallet Exchange']=document.getElementById('palletExchange').checked;
-    fields['Veroia Switch ']=document.getElementById('veroiaSwitch').checked;
+    // Veroia Switch is a checkbox field
+    fields['Veroia Switch ']=document.getElementById('veroiaSwitch').checked===true;
 
     // Loading stops → Location 1-5, Pallets 1-5
     for(let i=1;i<=5;i++){
@@ -880,10 +881,12 @@ async function createOrder(){
         if(fields[k].length===0)delete fields[k];
       }
     });
-    console.log('SENDING FIELDS:', JSON.stringify(fields,null,2));
+    // Show what we're sending in the debug panel
+    const dp=document.getElementById('debugPanel');
+    if(dp)dp.textContent+='\n\n=== SENDING TO AIRTABLE ===\n'+JSON.stringify(fields,null,2);
     const r=await atFetch('/'+ORDERS_TBL,{method:'POST',body:JSON.stringify({fields})});
     const data=await r.json();
-    if(data.error)throw new Error(data.error.message||'Airtable error');
+    if(data.error)throw new Error(data.error.message+' | Fields: '+JSON.stringify(Object.keys(fields)));
     document.getElementById('successSub').textContent='Record: '+data.id;
     st.style.display='none';
     goStep(4);
