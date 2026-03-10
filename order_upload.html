@@ -835,93 +835,102 @@ function goConfirm(){
 async function createOrder(){
   const btn=document.getElementById('btnCreate');
   const st=document.getElementById('confirmStatus');
-  btn.disabled=true;btn.textContent='Καταχώρηση...';
+  btn.disabled=true; btn.textContent='Καταχώρηση...';
   st.className='status loading';
   st.innerHTML='<div class="spinner"></div><span>Αποθήκευση στο Airtable...</span>';
+
   try{
-    const fields={};
-    const clientId=document.getElementById('clientId').value;
-    if(clientId&&clientId.startsWith('rec'))fields['Client']=[{id:clientId}];
-    const dirRaw=document.getElementById('direction').value;if(dirRaw)fields['Direction']=dirRaw;
-    const goods=document.getElementById('goods').value;if(goods)fields['Goods']=goods;
-    const temp=document.getElementById('temperature').value;if(temp)fields['Temperature °C']=parseFloat(temp);
-    const wt=document.getElementById('weight').value;if(wt)fields['Gross Weight kg']=parseFloat(wt);
-    const pno=document.getElementById('palletsNo').value;// Pallets No not in schema
-    const price=document.getElementById('price').value;if(price)fields['Price']=parseFloat(price);
-    const notes=document.getElementById('notes').value;if(notes)fields['Notes']=notes;
-    const ldDtRaw=document.getElementById('loadingDate').value;
-    if(ldDtRaw)fields['Loading DateTime']=ldDtRaw.split('T')[0].substring(0,10);
-    const dlDtRaw=document.getElementById('deliveryDate').value;
-    if(dlDtRaw)fields['Delivery DateTime']=dlDtRaw.split('T')[0].substring(0,10);
-    const rm=document.getElementById('reeferMode').value;if(rm)fields['Refrigerator Mode']=rm;
-    fields['Pallet Exchange']=document.getElementById('palletExchange').checked;
-    // Veroia Switch is a checkbox field
-    fields['Veroia Switch ']=document.getElementById('veroiaSwitch').checked===true;
-
-    // Loading stops → Location 1-5, Pallets 1-5
-    for(let i=1;i<=5;i++){
-      const locId=String(document.getElementById('lLocId_'+i).value||'').trim();
-      const pals=document.getElementById('lPal_'+i).value;
-      if(locId&&locId.startsWith('rec'))fields['Loading Location '+i]=[{id:locId}];
-      if(pals&&parseInt(pals)>0)fields['Loading Pallets '+i]=parseInt(pals);
+    // ── Helper: safe record link ──────────────────────────────
+    function recLink(elId){
+      const val = String(document.getElementById(elId)?.value||'').trim();
+      return (val.startsWith('rec') && val.length > 5) ? [{id: val}] : null;
     }
-    // Unloading stops → Location 1-5, Pallets 1-5
+    // ── Helper: safe float ────────────────────────────────────
+    function safeFloat(elId){ const v=document.getElementById(elId)?.value; return v?parseFloat(v):null; }
+    // ── Helper: safe int ──────────────────────────────────────
+    function safeInt(elId){ const v=document.getElementById(elId)?.value; const n=parseInt(v); return isNaN(n)||n<=0?null:n; }
+    // ── Helper: safe string ───────────────────────────────────
+    function safeStr(elId){ const v=document.getElementById(elId)?.value?.trim(); return v||null; }
+    // ── Helper: safe date ─────────────────────────────────────
+    function safeDate(elId){ const v=String(document.getElementById(elId)?.value||''); const d=v.split('T')[0]; return /^\d{4}-\d{2}-\d{2}$/.test(d)?d:null; }
+
+    // ── Build fields ──────────────────────────────────────────
+    const fields = {};
+
+    const client = recLink('clientId');
+    if(client) fields['Client'] = client;
+
+    const dir = safeStr('direction');
+    if(dir) fields['Direction'] = dir;
+
+    const goods = safeStr('goods');
+    if(goods) fields['Goods'] = goods;
+
+    const temp = safeFloat('temperature');
+    if(temp!==null) fields['Temperature °C'] = temp;
+
+    const wt = safeFloat('weight');
+    if(wt!==null) fields['Gross Weight kg'] = wt;
+
+    const price = safeFloat('price');
+    if(price!==null) fields['Price'] = price;
+
+    const ldDate = safeDate('loadingDate');
+    if(ldDate) fields['Loading DateTime'] = ldDate;
+
+    const dlDate = safeDate('deliveryDate');
+    if(dlDate) fields['Delivery DateTime'] = dlDate;
+
+    const rm = safeStr('reeferMode');
+    if(rm) fields['Refrigerator Mode'] = rm;
+
+    const pt = safeStr('palletType');
+    if(pt) fields['Pallet Type'] = pt;
+
+    fields['Pallet Exchange'] = document.getElementById('palletExchange').checked === true;
+    fields['Veroia Switch '] = document.getElementById('veroiaSwitch').checked === true;
+
+    const notes = safeStr('notes');
+    if(notes) fields['Notes'] = notes;
+
+    // ── Loading stops ─────────────────────────────────────────
     for(let i=1;i<=5;i++){
-      const locId=String(document.getElementById('uLocId_'+i).value||'').trim();
-      const pals=document.getElementById('uPal_'+i).value;
-      if(locId&&locId.startsWith('rec'))fields['Unloading Location '+i]=[{id:locId}];
-      if(pals&&parseInt(pals)>0)fields['Unloading Pallets '+i]=parseInt(pals);
+      const loc = recLink('lLocId_'+i);
+      if(loc) fields['Loading Location '+i] = loc;
+      const pal = safeInt('lPal_'+i);
+      if(pal) fields['Loading Pallets '+i] = pal;
     }
 
-    // Final validation: ensure no [object Object] slips through
-    Object.keys(fields).forEach(k=>{
-      const v=fields[k];
-      if(Array.isArray(v)){
-        // For linked record fields: ensure each item is {id: "recXXXX"}
-        const clean=v.filter(item=>{
-          if(!item||typeof item!=='object')return false;
-          const id=String(item.id||'');
-          return id.startsWith('rec')&&id.length>5;
-        }).map(item=>({id:String(item.id)}));
-        if(clean.length>0)fields[k]=clean;
-        else delete fields[k];
-      } else if(typeof v==='string'&&(v===''||v==='[object Object]')){
-        delete fields[k];
-      }
-    });
-    // Show what we're sending in the debug panel
-    const dp=document.getElementById('debugPanel');
-    // Deep-inspect linked record fields
-    const linkedDebug={};
-    ['Client','Loading Location 1','Loading Location 2','Loading Location 3','Loading Location 4','Loading Location 5',
-     'Unloading Location 1','Unloading Location 2','Unloading Location 3','Unloading Location 4','Unloading Location 5'].forEach(k=>{
-      if(fields[k])linkedDebug[k]=JSON.stringify(fields[k]);
-    });
-    if(dp)dp.textContent+='\n\n=== LINKED FIELDS ===\n'+JSON.stringify(linkedDebug,null,2)+'\n\n=== SENDING TO AIRTABLE ===\n'+JSON.stringify(fields,null,2);
-    // Re-sanitize linked fields one final time
-    ['Client','Loading Location 1','Loading Location 2','Loading Location 3','Loading Location 4','Loading Location 5',
-     'Unloading Location 1','Unloading Location 2','Unloading Location 3','Unloading Location 4','Unloading Location 5'].forEach(k=>{
-      if(!fields[k])return;
-      if(!Array.isArray(fields[k])){delete fields[k];return;}
-      const ids=fields[k].map(x=>typeof x==='object'?String(x.id||''):String(x)).filter(id=>id.startsWith('rec'));
-      if(ids.length)fields[k]=ids.map(id=>({id}));
-      else delete fields[k];
-    });
-    const r=await atFetch('/'+ORDERS_TBL,{method:'POST',body:JSON.stringify({fields})});
-    const data=await r.json();
-    if(data.error)throw new Error(data.error.message+' | Fields: '+JSON.stringify(Object.keys(fields)));
-    document.getElementById('successSub').textContent='Record: '+data.id;
-    st.style.display='none';
+    // ── Unloading stops ───────────────────────────────────────
+    for(let i=1;i<=5;i++){
+      const loc = recLink('uLocId_'+i);
+      if(loc) fields['Unloading Location '+i] = loc;
+      const pal = safeInt('uPal_'+i);
+      if(pal) fields['Unloading Pallets '+i] = pal;
+    }
+
+    // ── Debug output ──────────────────────────────────────────
+    const dp = document.getElementById('debugPanel');
+    if(dp) dp.textContent += '\n\n=== SENDING TO AIRTABLE ===\n' + JSON.stringify(fields, null, 2);
+
+    // ── POST ──────────────────────────────────────────────────
+    const r = await atFetch('/'+ORDERS_TBL, {method:'POST', body: JSON.stringify({fields})});
+    const data = await r.json();
+    if(data.error) throw new Error(data.error.message || 'Airtable error');
+
+    document.getElementById('successSub').textContent = 'Record: ' + data.id;
+    st.style.display = 'none';
     goStep(4);
-    showToast('Εντολη καταχωρηθηκε','success');
+    showToast('Εντολή καταχωρήθηκε','success');
+
   }catch(e){
-    st.className='status error';st.innerHTML='Σφάλμα: '+e.message;
-    btn.disabled=false;btn.textContent='ΔΗΜΙΟΥΡΓΙΑ ΕΝΤΟΛΗΣ';
-    // Auto-show debug panel on error
-    const dpErr=document.getElementById('debugPanel');
-    if(dpErr)dpErr.classList.add('show');
+    st.className='status error'; st.innerHTML='Σφάλμα: ' + e.message;
+    btn.disabled=false; btn.textContent='ΔΗΜΙΟΥΡΓΙΑ ΕΝΤΟΛΗΣ';
+    const dp=document.getElementById('debugPanel');
+    if(dp) dp.classList.add('show');
   }
 }
+
 
 function toggleDebug(){
   const dp=document.getElementById('debugPanel');
