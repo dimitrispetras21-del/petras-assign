@@ -523,8 +523,10 @@ function fillForm(d){
     }
     for(const [addr,pal] of unloadMap){
       if(ui>5)break;
-      const m=fuzzyMatch(addr,locations);
-      sv('uLocSearch_'+ui,m?m.name:addr);sv('uLocId_'+ui,m?String(m.id):'');setLocMatch('u',ui,!!m,addr);
+      const addrLow=addr.toLowerCase();
+      const isOurs=OUR_NAMES.some(n=>addrLow.includes(n));
+      const m=isOurs?null:fuzzyMatch(addr,locations);
+      sv('uLocSearch_'+ui,m?m.name:(isOurs?'':addr));sv('uLocId_'+ui,m?String(m.id):'');setLocMatch('u',ui,!!m,addr);
       sv('uPal_'+ui,pal);ui++;
     }
     // Total pallets = sum of LOADING stops only
