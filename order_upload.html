@@ -871,7 +871,7 @@ async function createOrder(){
 
     // Client (linked record)
     const clientId=safeRecId(document.getElementById('clientId')?.value);
-    if(clientId) payload['Client']=[{id:clientId}];
+    if(clientId) payload['Client']=[clientId];
 
     // Simple fields
     const dir=safeStr('direction'); if(dir) payload['Direction']=dir;
@@ -902,14 +902,14 @@ async function createOrder(){
     for(let i=1;i<=5;i++){
       const locId=safeRecId(document.getElementById('lLocId_'+i)?.value);
       const pals=parseInt(document.getElementById('lPal_'+i)?.value||'0');
-      if(locId) payload['Loading Location '+i]=[{id:locId}];
+      if(locId) payload['Loading Location '+i]=[locId];
       if(pals>0) payload['Loading Pallets '+i]=pals;
     }
     // Unloading stops 1-5
     for(let i=1;i<=5;i++){
       const locId=safeRecId(document.getElementById('uLocId_'+i)?.value);
       const pals=parseInt(document.getElementById('uPal_'+i)?.value||'0');
-      if(locId) payload['Unloading Location '+i]=[{id:locId}];
+      if(locId) payload['Unloading Location '+i]=[locId];
       if(pals>0) payload['Unloading Pallets '+i]=pals;
     }
 
