@@ -838,99 +838,94 @@ async function createOrder(){
   btn.disabled=true; btn.textContent='Καταχώρηση...';
   st.className='status loading';
   st.innerHTML='<div class="spinner"></div><span>Αποθήκευση στο Airtable...</span>';
-
   try{
-    // ── Helper: safe record link ──────────────────────────────
-    function recLink(elId){
-      const val = String(document.getElementById(elId)?.value||'').trim();
-      return (val.startsWith('rec') && val.length > 5) ? [{id: val}] : null;
+    // Helper: safe record ID or null
+    function safeRecId(val){
+      const s=String(val||'').trim();
+      return (s.startsWith('rec')&&s.length>5)?s:null;
     }
-    // ── Helper: safe float ────────────────────────────────────
-    function safeFloat(elId){ const v=document.getElementById(elId)?.value; return v?parseFloat(v):null; }
-    // ── Helper: safe int ──────────────────────────────────────
-    function safeInt(elId){ const v=document.getElementById(elId)?.value; const n=parseInt(v); return isNaN(n)||n<=0?null:n; }
-    // ── Helper: safe string ───────────────────────────────────
-    function safeStr(elId){ const v=document.getElementById(elId)?.value?.trim(); return v||null; }
-    // ── Helper: safe date ─────────────────────────────────────
-    function safeDate(elId){ const v=String(document.getElementById(elId)?.value||''); const d=v.split('T')[0]; return /^\d{4}-\d{2}-\d{2}$/.test(d)?d:null; }
+    // Helper: safe number or null
+    function safeNum(val){
+      const n=parseFloat(val);
+      return isNaN(n)?null:n;
+    }
+    // Helper: safe string or null
+    function safeStr(id){
+      const v=String(document.getElementById(id)?.value||'').trim();
+      return v||null;
+    }
 
-    // ── Build fields ──────────────────────────────────────────
-    const fields = {};
+    // Build payload as plain object — only add field if value is valid
+    const payload={};
 
-    const client = recLink('clientId');
-    if(client) fields['Client'] = client;
+    // Client (linked record)
+    const clientId=safeRecId(document.getElementById('clientId')?.value);
+    if(clientId) payload['Client']=[{id:clientId}];
 
-    const dir = safeStr('direction');
-    if(dir) fields['Direction'] = dir;
+    // Simple fields
+    const dir=safeStr('direction'); if(dir) payload['Direction']=dir;
+    const goods=safeStr('goods'); if(goods) payload['Goods']=goods;
+    const temp=safeNum(document.getElementById('temperature')?.value);
+    if(temp!==null) payload['Temperature °C']=temp;
+    const wt=safeNum(document.getElementById('weight')?.value);
+    if(wt!==null) payload['Gross Weight kg']=wt;
+    const price=safeNum(document.getElementById('price')?.value);
+    if(price!==null) payload['Price']=price;
+    const notes=safeStr('notes'); if(notes) payload['Notes']=notes;
 
-    const goods = safeStr('goods');
-    if(goods) fields['Goods'] = goods;
+    // Dates — type="date" inputs return "YYYY-MM-DD" directly
+    const ldDt=String(document.getElementById('loadingDate')?.value||'').substring(0,10);
+    if(ldDt&&ldDt.length===10) payload['Loading DateTime']=ldDt;
+    const dlDt=String(document.getElementById('deliveryDate')?.value||'').substring(0,10);
+    if(dlDt&&dlDt.length===10) payload['Delivery DateTime']=dlDt;
 
-    const temp = safeFloat('temperature');
-    if(temp!==null) fields['Temperature °C'] = temp;
+    // Select fields
+    const rm=safeStr('reeferMode'); if(rm) payload['Refrigerator Mode']=rm;
+    const pt=safeStr('palletType'); if(pt) payload['Pallet Type']=pt;
 
-    const wt = safeFloat('weight');
-    if(wt!==null) fields['Gross Weight kg'] = wt;
+    // Checkboxes — always boolean
+    payload['Pallet Exchange']=document.getElementById('palletExchange')?.checked===true;
+    payload['Veroia Switch ']=document.getElementById('veroiaSwitch')?.checked===true;
 
-    const price = safeFloat('price');
-    if(price!==null) fields['Price'] = price;
-
-    const ldDate = safeDate('loadingDate');
-    if(ldDate) fields['Loading DateTime'] = ldDate;
-
-    const dlDate = safeDate('deliveryDate');
-    if(dlDate) fields['Delivery DateTime'] = dlDate;
-
-    const rm = safeStr('reeferMode');
-    if(rm) fields['Refrigerator Mode'] = rm;
-
-    const pt = safeStr('palletType');
-    if(pt) fields['Pallet Type'] = pt;
-
-    fields['Pallet Exchange'] = document.getElementById('palletExchange').checked === true;
-    fields['Veroia Switch '] = document.getElementById('veroiaSwitch').checked === true;
-
-    const notes = safeStr('notes');
-    if(notes) fields['Notes'] = notes;
-
-    // ── Loading stops ─────────────────────────────────────────
+    // Loading stops 1-5
     for(let i=1;i<=5;i++){
-      const loc = recLink('lLocId_'+i);
-      if(loc) fields['Loading Location '+i] = loc;
-      const pal = safeInt('lPal_'+i);
-      if(pal) fields['Loading Pallets '+i] = pal;
+      const locId=safeRecId(document.getElementById('lLocId_'+i)?.value);
+      const pals=parseInt(document.getElementById('lPal_'+i)?.value||'0');
+      if(locId) payload['Loading Location '+i]=[{id:locId}];
+      if(pals>0) payload['Loading Pallets '+i]=pals;
     }
-
-    // ── Unloading stops ───────────────────────────────────────
+    // Unloading stops 1-5
     for(let i=1;i<=5;i++){
-      const loc = recLink('uLocId_'+i);
-      if(loc) fields['Unloading Location '+i] = loc;
-      const pal = safeInt('uPal_'+i);
-      if(pal) fields['Unloading Pallets '+i] = pal;
+      const locId=safeRecId(document.getElementById('uLocId_'+i)?.value);
+      const pals=parseInt(document.getElementById('uPal_'+i)?.value||'0');
+      if(locId) payload['Unloading Location '+i]=[{id:locId}];
+      if(pals>0) payload['Unloading Pallets '+i]=pals;
     }
 
-    // ── Debug output ──────────────────────────────────────────
-    const dp = document.getElementById('debugPanel');
-    if(dp) dp.textContent += '\n\n=== SENDING TO AIRTABLE ===\n' + JSON.stringify(fields, null, 2);
-
-    // ── POST ──────────────────────────────────────────────────
-    const r = await atFetch('/'+ORDERS_TBL, {method:'POST', body: JSON.stringify({fields})});
-    const data = await r.json();
-    if(data.error) throw new Error(data.error.message || 'Airtable error');
-
-    document.getElementById('successSub').textContent = 'Record: ' + data.id;
-    st.style.display = 'none';
-    goStep(4);
-    showToast('Εντολή καταχωρήθηκε','success');
-
-  }catch(e){
-    st.className='status error'; st.innerHTML='Σφάλμα: ' + e.message;
-    btn.disabled=false; btn.textContent='ΔΗΜΙΟΥΡΓΙΑ ΕΝΤΟΛΗΣ';
+    // Show in debug panel
     const dp=document.getElementById('debugPanel');
-    if(dp) dp.classList.add('show');
+    if(dp) dp.textContent+='\n\n=== PAYLOAD ===\n'+JSON.stringify(payload,null,2);
+
+    // POST
+    const r=await atFetch('/'+ORDERS_TBL,{
+      method:'POST',
+      body:JSON.stringify({fields:payload})
+    });
+    const data=await r.json();
+    if(data.error) throw new Error(data.error.message+' | Fields: '+JSON.stringify(Object.keys(payload)));
+    document.getElementById('successSub').textContent='Record: '+data.id;
+    st.style.display='none';
+    goStep(4);
+    showToast('Εντολη καταχωρηθηκε','success');
+  }catch(e){
+    st.className='status error';
+    st.innerHTML='Σφάλμα: '+e.message;
+    btn.disabled=false;
+    btn.textContent='ΔΗΜΙΟΥΡΓΙΑ ΕΝΤΟΛΗΣ';
+    const dpErr=document.getElementById('debugPanel');
+    if(dpErr) dpErr.classList.add('show');
   }
 }
-
 
 function toggleDebug(){
   const dp=document.getElementById('debugPanel');
