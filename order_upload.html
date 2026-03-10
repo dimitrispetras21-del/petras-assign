@@ -868,17 +868,20 @@ async function createOrder(){
       if(pals&&parseInt(pals)>0)fields['Unloading Pallets '+i]=parseInt(pals);
     }
 
-    // Sanitize: ensure all record IDs are plain strings
+    // Final validation: ensure no [object Object] slips through
     Object.keys(fields).forEach(k=>{
       const v=fields[k];
       if(Array.isArray(v)){
-        fields[k]=v.map(item=>{
-          if(item&&typeof item==='object'&&item.id){
-            return {id:String(item.id)};
-          }
-          return item;
-        }).filter(item=>item&&item.id&&item.id!=='[object Object]'&&item.id!=='');
-        if(fields[k].length===0)delete fields[k];
+        // For linked record fields: ensure each item is {id: "recXXXX"}
+        const clean=v.filter(item=>{
+          if(!item||typeof item!=='object')return false;
+          const id=String(item.id||'');
+          return id.startsWith('rec')&&id.length>5;
+        }).map(item=>({id:String(item.id)}));
+        if(clean.length>0)fields[k]=clean;
+        else delete fields[k];
+      } else if(typeof v==='string'&&(v===''||v==='[object Object]')){
+        delete fields[k];
       }
     });
     // Show what we're sending in the debug panel
@@ -894,6 +897,9 @@ async function createOrder(){
   }catch(e){
     st.className='status error';st.innerHTML='Σφάλμα: '+e.message;
     btn.disabled=false;btn.textContent='ΔΗΜΙΟΥΡΓΙΑ ΕΝΤΟΛΗΣ';
+    // Auto-show debug panel on error
+    const dpErr=document.getElementById('debugPanel');
+    if(dpErr)dpErr.classList.add('show');
   }
 }
 
