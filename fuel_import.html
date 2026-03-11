@@ -175,6 +175,7 @@ const COSTS_TBL = 'tblWUus6uSpqE1LMW';
 const MKD_RATE = 61.5;
 
 let trips = []; // loaded once
+let trucks = {}; // plate (normalized) → recId
 let dadiTx = [], dkvTx = [];
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
@@ -201,6 +202,25 @@ async function loadTrips() {
   });
   log('dadi', `✅ Φορτώθηκαν ${trips.length} trips`);
   log('dkv', `✅ Φορτώθηκαν ${trips.length} trips`);
+  await loadTrucks();
+}
+
+async function loadTrucks() {
+  let offset = null;
+  do {
+    const qs = new URLSearchParams();
+    qs.append('fields[]', 'License Plate');
+    if(offset) qs.set('offset', offset);
+    const r = await fetch(`https://api.airtable.com/v0/${BASE}/tblEAPExIAjiA3asD?${qs}`, {headers:{'Authorization':'Bearer '+AT}});
+    const d = await r.json();
+    (d.records||[]).forEach(rec => {
+      const plate = normPlate(rec.fields['License Plate']||'');
+      if(plate) trucks[plate] = rec.id;
+    });
+    offset = d.offset;
+  } while(offset);
+  log('dadi', `✅ Φορτώθηκαν ${Object.keys(trucks).length} trucks`);
+  log('dkv', `✅ Φορτώθηκαν ${Object.keys(trucks).length} trucks`);
 }
 
 function normPlate(p) { return (p||'').replace(/[\s\-\.]/g,'').toUpperCase(); }
@@ -432,6 +452,50 @@ function buildTripSelect(tx, idx, type) {
   return `<select class="${selClass}" onchange="${type}Tx[${idx}].trip=trips.find(t=>t.id===this.value);${type}Tx[${idx}].status='ok';this.className='trip-sel'">${options}</select>`;
 }
 
+// ── FUEL RECEIPT BUILDER ─────────────────────────────────────────────────────
+function buildFuelReceiptFields(tx, type) {
+  const plate = normPlate(tx.plate);
+  const truckId = trucks[plate] || null;
+  const tripId = tx.trip?.id || null;
+  const fields = {
+    'Date': tx.date,
+    'Liters': parseFloat((tx.liters||0).toFixed(2)),
+    'Assignment Status': tripId ? '\u2705 Assigned' : '\u26a0\ufe0f Pending',
+  };
+  if(truckId) fields['Truck'] = [truckId];
+  if(tripId) fields['Trip'] = [tripId];
+  if(type === 'dadi') {
+    fields['Total Cost'] = parseFloat((tx.amount_eur||0).toFixed(2));
+    if(tx.km) fields['Odometer KM'] = tx.km;
+    if(tx.receipt_no) fields['Invoice Number'] = 'DADI-' + tx.receipt_no;
+    fields['Fuel Type'] = '\ud83c\udfe0 DADI Departure';
+    fields['Country'] = 'MK';
+    fields['Station'] = '\u0414\u0410\u0414\u0418-\u041a\u041e\u041c\u041f\u0410\u041d\u0418 \u0414\u041e\u041e\u0415\u041b';
+    if(tx.driver) fields['Notes'] = 'Driver: ' + tx.driver;
+  } else {
+    fields['Total Cost'] = parseFloat((tx.amount_eur||0).toFixed(2));
+    fields['Invoice Number'] = 'DKV';
+    fields['Fuel Type'] = '\u26fd External';
+    fields['Country'] = tx.country || 'AT';
+    fields['Station'] = 'DKV';
+  }
+  Object.keys(fields).forEach(k => { if(fields[k]===null||fields[k]===undefined||fields[k]==='') delete fields[k]; });
+  return fields;
+}
+
+function buildTripCostFields(txs, trip) {
+  // DKV tolls + adblue only → TRIP COSTS
+  const fields = {};
+  if(trip.start) fields['Trip Start Date'] = trip.start;
+  if(trip.end) fields['Trip End Date'] = trip.end;
+  const tollAT = txs.filter(t=>t.product==='TOLL_AT').reduce((s,t)=>s+(t.amount_eur||0),0);
+  const adblue = txs.filter(t=>t.product==='ADBLUE').reduce((s,t)=>s+(t.amount_eur||0),0);
+  const sysFee = txs.filter(t=>t.product==='SYSTEM_FEE').reduce((s,t)=>s+(t.amount_eur||0),0);
+  if(tollAT>0) fields['Tolls AT'] = parseFloat(tollAT.toFixed(2));
+  if((adblue+sysFee)>0) fields['Other Expenses'] = parseFloat((adblue+sysFee).toFixed(2));
+  return fields;
+}
+
 // ── SAVE ──────────────────────────────────────────────────────────────────────
 async function saveAll(type) {
   const txs = type==='dadi' ? dadiTx : dkvTx;
@@ -440,71 +504,83 @@ async function saveAll(type) {
   btn.disabled=true;
   st.className='save-status loading'; st.innerHTML='<div class="spinner"></div>Αποθήκευση...';
 
-  // Group by trip — aggregate fields per trip
-  const byTrip = {};
-  for(const tx of txs) {
-    if(!tx.trip?.id) continue;
-    if(!byTrip[tx.trip.id]) byTrip[tx.trip.id] = { trip: tx.trip, txs: [] };
-    byTrip[tx.trip.id].txs.push(tx);
-  }
+  let savedFR=0, savedTC=0, errors=0, skipped=0;
 
-  let saved=0, errors=0;
-  for(const [tripId, group] of Object.entries(byTrip)) {
-    try {
-      const fields = buildCostFields(type, group.txs, group.trip);
-      // Check if TRIP COSTS record exists for this trip
-      const existing = await getExistingCostRecord(tripId);
-      let r;
-      if(existing) {
-        r = await fetch(`https://api.airtable.com/v0/${BASE}/${COSTS_TBL}/${existing}`, {
-          method:'PATCH', headers:{'Authorization':'Bearer '+AT,'Content-Type':'application/json'},
-          body: JSON.stringify({fields})
-        });
-      } else {
-        fields['Trip Link'] = [tripId];
-        fields['Trip Type'] = 'OWNED FLEET';
-        r = await fetch(`https://api.airtable.com/v0/${BASE}/${COSTS_TBL}`, {
+  if(type==='dadi') {
+    // Each DADI tx → 1 FUEL RECEIPT record
+    for(const tx of txs) {
+      if(!tx.trip?.id) { skipped++; continue; }
+      try {
+        const fields = buildFuelReceiptFields(tx, 'dadi');
+        const r = await fetch(`https://api.airtable.com/v0/${BASE}/tblxRFsMeVhlLrBjF`, {
           method:'POST', headers:{'Authorization':'Bearer '+AT,'Content-Type':'application/json'},
           body: JSON.stringify({fields})
         });
-      }
-      const d = await r.json();
-      if(d.error) throw new Error(d.error.message);
-      saved++;
-    } catch(e) { errors++; log(type, '❌ Trip '+group.trip.tripId+': '+e.message); }
+        const d = await r.json();
+        if(d.error) throw new Error(d.error.message);
+        savedFR++;
+      } catch(e) { errors++; log(type, '❌ '+tx.plate+' '+tx.date+': '+e.message); }
+    }
+    st.className='save-status success';
+    st.textContent = `✅ ${savedFR} FUEL RECEIPTS δημιουργήθηκαν${errors?` · ❌ ${errors} σφάλματα`:''}${skipped?` · ⚠️ ${skipped} unmatched`:''}`;
+
+  } else {
+    // DKV: fuel txs → FUEL RECEIPTS; tolls/adblue → TRIP COSTS patch per trip
+    // 1. FUEL RECEIPTS for diesel lines
+    const fuelTxs = txs.filter(t=>t.product==='FUEL'&&t.trip?.id);
+    for(const tx of fuelTxs) {
+      try {
+        const fields = buildFuelReceiptFields(tx, 'dkv');
+        const r = await fetch(`https://api.airtable.com/v0/${BASE}/tblxRFsMeVhlLrBjF`, {
+          method:'POST', headers:{'Authorization':'Bearer '+AT,'Content-Type':'application/json'},
+          body: JSON.stringify({fields})
+        });
+        const d = await r.json();
+        if(d.error) throw new Error(d.error.message);
+        savedFR++;
+      } catch(e) { errors++; }
+    }
+
+    // 2. TRIP COSTS patch — group non-fuel txs by trip
+    const nonFuel = txs.filter(t=>t.product!=='FUEL'&&t.trip?.id);
+    const byTrip = {};
+    for(const tx of nonFuel) {
+      if(!byTrip[tx.trip.id]) byTrip[tx.trip.id] = {trip:tx.trip, txs:[]};
+      byTrip[tx.trip.id].txs.push(tx);
+    }
+    for(const [tripId, group] of Object.entries(byTrip)) {
+      try {
+        const costFields = buildTripCostFields('dkv', group.txs, group.trip);
+        if(!costFields) continue;
+        const existing = await getExistingCostRecord(tripId);
+        let r;
+        if(existing) {
+          r = await fetch(`https://api.airtable.com/v0/${BASE}/${COSTS_TBL}/${existing}`, {
+            method:'PATCH', headers:{'Authorization':'Bearer '+AT,'Content-Type':'application/json'},
+            body: JSON.stringify({fields:costFields})
+          });
+        } else {
+          costFields['Trip Link'] = [tripId];
+          costFields['Trip Type'] = 'OWNED FLEET';
+          r = await fetch(`https://api.airtable.com/v0/${BASE}/${COSTS_TBL}`, {
+            method:'POST', headers:{'Authorization':'Bearer '+AT,'Content-Type':'application/json'},
+            body: JSON.stringify({fields:costFields})
+          });
+        }
+        const d = await r.json();
+        if(d.error) throw new Error(d.error.message);
+        savedTC++;
+      } catch(e) { errors++; log(type,'❌ TC error: '+e.message); }
+    }
+
+    skipped = txs.filter(t=>!t.trip?.id).length;
+    st.className='save-status success';
+    st.textContent = `✅ ${savedFR} Fuel Receipts · ${savedTC} Trip Costs${errors?` · ❌ ${errors}`:''}${skipped?` · ⚠️ ${skipped} unmatched`:''}`;
   }
 
-  const skipped = txs.filter(t=>!t.trip?.id).length;
-  st.className='save-status success';
-  st.textContent = `✅ ${saved} trips αποθηκεύτηκαν${errors?` · ❌ ${errors} σφάλματα`:''}${skipped?` · ⚠️ ${skipped} unmatched skipped`:''}`;
   btn.disabled=false;
 }
 
-function buildCostFields(type, txs, trip) {
-  const fields = {};
-  // Set date range from trip
-  if(trip.start) fields['Trip Start Date'] = trip.start;
-  if(trip.end) fields['Trip End Date'] = trip.end;
-
-  if(type==='dadi') {
-    const totalL = txs.reduce((s,t)=>s+(t.liters||0),0);
-    const totalEur = txs.reduce((s,t)=>s+(t.amount_eur||0),0);
-    const maxKm = Math.max(...txs.filter(t=>t.km).map(t=>t.km), 0);
-    if(totalL>0) fields['Fuel Truck 1 Liters'] = parseFloat(totalL.toFixed(2));
-    if(totalEur>0) fields['Amount'] = parseFloat(totalEur.toFixed(2));
-    if(maxKm>0) fields['Total KM'] = maxKm;
-  } else {
-    // DKV: group by product
-    const tollAT = txs.filter(t=>t.product==='TOLL_AT').reduce((s,t)=>s+(t.amount_eur||0),0);
-    const adblue = txs.filter(t=>t.product==='ADBLUE').reduce((s,t)=>s+(t.amount_eur||0),0);
-    const fuel = txs.filter(t=>t.product==='FUEL').reduce((s,t)=>s+(t.amount_eur||0),0);
-    const sysFee = txs.filter(t=>t.product==='SYSTEM_FEE').reduce((s,t)=>s+(t.amount_eur||0),0);
-    if(tollAT>0) fields['Tolls AT'] = parseFloat(tollAT.toFixed(2));
-    if(adblue>0) fields['Other Expenses'] = parseFloat((adblue+sysFee).toFixed(2));
-    if(fuel>0) fields['External Fuel Liters'] = txs.filter(t=>t.product==='FUEL').reduce((s,t)=>s+(t.liters||0),0);
-  }
-  return fields;
-}
 
 async function getExistingCostRecord(tripId) {
   const r = await fetch(`https://api.airtable.com/v0/${BASE}/${COSTS_TBL}?filterByFormula=SEARCH("${tripId}",ARRAYJOIN({Trip Link}))&fields[]=Trip+Link`, {
