@@ -209,7 +209,34 @@ const ANTH = 'sk-ant-api' + '03-HG90hAxac0K9lx2mdS6fFKID6XMAICWl4FSbXeVM9zG3klf7
 const BASE = 'appElT5CQV6JQvym8';
 const TRIPS_TBL = 'tblgoyV26PBc6L9uE';
 const COSTS_TBL = 'tblWUus6uSpqE1LMW';
-const MKD_RATE = 61.5;
+const MKD_RATE = 61.5; // fallback static rate
+
+// Live-fetched rates cache (EUR base)
+let fxRates = {};
+
+async function getFxRates() {
+  try {
+    const r = await fetch('https://api.frankfurter.app/latest?base=EUR');
+    const d = await r.json();
+    fxRates = d.rates || {};
+    fxRates['EUR'] = 1;
+    // Frankfurter doesn't have MKD — use static
+    if(!fxRates['MKD']) fxRates['MKD'] = MKD_RATE;
+    console.log('[FX] Rates loaded:', Object.keys(fxRates).length, 'currencies');
+  } catch(e) {
+    console.warn('[FX] Could not fetch live rates, using fallback');
+    // Fallback static rates
+    fxRates = { EUR:1, MKD:61.5, HUF:390, CZK:25.3, PLN:4.25, RON:4.97,
+                BGN:1.956, HRK:7.53, RSD:117, GBP:0.86, CHF:0.96, USD:1.08 };
+  }
+}
+
+function toEur(amount, currency) {
+  if(!currency || currency==='EUR') return amount;
+  const rate = fxRates[currency.toUpperCase()];
+  if(!rate) { console.warn('[FX] Unknown currency:', currency); return amount; }
+  return parseFloat((amount / rate).toFixed(2));
+}
 
 let trips = []; // loaded once
 let trucks = {}; // plate (normalized) → recId
@@ -219,6 +246,7 @@ let dadiTx = [], dkvTx = [];
 // ── INIT ─────────────────────────────────────────────────────────────────────
 async function loadTrips() {
   console.log('[INIT] ANTH key length:', ANTH.length, 'starts:', ANTH.slice(0,12));
+  await getFxRates();
   console.log('[INIT] AT key length:', AT.length);
   let records = [], offset = null;
   do {
@@ -381,7 +409,9 @@ Return ONLY valid JSON array, no markdown, no explanation:
 
   dadiTx = txs.map(tx => {
     const match = findTrip(tx.plate, tx.date);
-    return { ...tx, amount_eur: parseFloat((tx.amount_mkd / MKD_RATE).toFixed(2)), ...match };
+    const currency = tx.currency || 'MKD';
+    const amount_eur = toEur(tx.amount_mkd, currency);
+    return { ...tx, currency, amount_eur, ...match };
   });
 
   renderDadiTable();
@@ -403,7 +433,8 @@ Extract EVERY transaction line. For each return:
   * "Mautsystemgebühr" or "0949" → "SYSTEM_FEE"
 - amount_eur: Bezugswert brutto (gross base value, number — the column before VAT)
 - liters: quantity if product is fuel/adblue (Menge column), null otherwise
-- country: country code from station (AT, DE, HU etc.), default "AT"
+- country: country code from station location (AT, DE, HU, SK, CZ, PL, BE, NL, IT, RO, BG, HR, SI, RS, MK etc.)
+- currency: currency of the amount (EUR, HUF, CZK, PLN etc.) — check the invoice currency header per section if visible, default EUR
 
 Return ONLY valid JSON array, no markdown:
 [{"plate":"CB0138HO","date":"2026-02-16","product":"TOLL_AT","amount_eur":177.13,"liters":null,"country":"AT"},...]`;
@@ -419,7 +450,9 @@ Return ONLY valid JSON array, no markdown:
 
   dkvTx = txs.map(tx => {
     const match = findTrip(tx.plate, tx.date);
-    return { ...tx, ...match };
+    const currency = tx.currency || 'EUR';
+    const amount_eur = currency !== 'EUR' ? toEur(tx.amount_eur, currency) : tx.amount_eur;
+    return { ...tx, currency, amount_eur, ...match };
   });
 
   renderDkvTable();
@@ -605,11 +638,16 @@ function buildTripCostFields(type, txs, trip) {
   // Always write dates
   if(trip.start) fields['Trip Start Date'] = trip.start;
   if(trip.end)   fields['Trip End Date']   = trip.end;
-  const tollAT    = txs.filter(t=>t.product==='TOLL_AT').reduce((s,t)=>s+(t.amount_eur||0),0);
-  const otherCost = txs.filter(t=>t.product!=='TOLL_AT'&&t.product!=='FUEL').reduce((s,t)=>s+(t.amount_eur||0),0);
-  if(tollAT>0)    fields['Tolls AT']       = parseFloat(tollAT.toFixed(2));
+  // Tolls per country — product format: TOLL_AT, TOLL_HU, TOLL_DE etc.
+  const tollCountries = ['MK','RS','HU','AT','SK','CZ','BE','PL','HR','SL','DE','NL','IT','RO','BG'];
+  tollCountries.forEach(cc => {
+    const sum = txs.filter(t=>t.product===`TOLL_${cc}`).reduce((s,t)=>s+(t.amount_eur||0),0);
+    if(sum>0) fields[`Tolls ${cc}`] = parseFloat(sum.toFixed(2));
+  });
+  // Anything not a toll and not fuel → Other Expenses
+  const otherCost = txs.filter(t=>!t.product?.startsWith('TOLL_')&&t.product!=='FUEL').reduce((s,t)=>s+(t.amount_eur||0),0);
   if(otherCost>0) fields['Other Expenses'] = parseFloat(otherCost.toFixed(2));
-  return fields; // always has at least dates
+  return fields;
 }
 
 // ── DUPLICATE CHECK ──────────────────────────────────────────────────────────
