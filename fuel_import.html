@@ -489,10 +489,10 @@ function buildTripCostFields(txs, trip) {
   if(trip.start) fields['Trip Start Date'] = trip.start;
   if(trip.end) fields['Trip End Date'] = trip.end;
   const tollAT = txs.filter(t=>t.product==='TOLL_AT').reduce((s,t)=>s+(t.amount_eur||0),0);
-  const adblue = txs.filter(t=>t.product==='ADBLUE').reduce((s,t)=>s+(t.amount_eur||0),0);
-  const sysFee = txs.filter(t=>t.product==='SYSTEM_FEE').reduce((s,t)=>s+(t.amount_eur||0),0);
+  // Everything that is NOT diesel fuel and NOT AT toll → Other Expenses
+  const otherCost = txs.filter(t=>t.product!=='TOLL_AT'&&t.product!=='FUEL').reduce((s,t)=>s+(t.amount_eur||0),0);
   if(tollAT>0) fields['Tolls AT'] = parseFloat(tollAT.toFixed(2));
-  if((adblue+sysFee)>0) fields['Other Expenses'] = parseFloat((adblue+sysFee).toFixed(2));
+  if(otherCost>0) fields['Other Expenses'] = parseFloat(otherCost.toFixed(2));
   return fields;
 }
 
