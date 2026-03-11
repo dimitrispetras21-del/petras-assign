@@ -322,7 +322,21 @@ async function loadTrailers() {
   log('dadi', `✅ Φορτώθηκαν ${Object.keys(trailers).length} trailers`);
 }
 
-function normPlate(p) { return (p||'').replace(/[\s\-\.]/g,'').toUpperCase(); }
+function normPlate(p) {
+  if(!p) return '';
+  // Transliterate Greek lookalike letters → Latin equivalents
+  const greek2latin = {
+    '\u0391':'A','\u0392':'B','\u0395':'E','\u0396':'Z','\u0397':'H',
+    '\u0399':'I','\u039A':'K','\u039C':'M','\u039D':'N','\u039F':'O',
+    '\u03A1':'P','\u03A4':'T','\u03A5':'Y','\u03A7':'X',
+    // lowercase just in case
+    '\u03B1':'A','\u03B2':'B','\u03B5':'E','\u03B6':'Z','\u03B7':'H',
+    '\u03B9':'I','\u03BA':'K','\u03BC':'M','\u03BD':'N','\u03BF':'O',
+    '\u03C1':'P','\u03C4':'T','\u03C5':'Y','\u03C7':'X',
+  };
+  return p.split('').map(c => greek2latin[c] || c)
+    .join('').replace(/[\s\-\.]/g,'').toUpperCase();
+}
 
 function findTrip(plate, dateStr) {
   const pn = normPlate(plate);
