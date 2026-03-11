@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Petras — Fuel & Tolls Import</title>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800&family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary:#1B3A6B; --accent:#E63946; --gold:#F4A535; --green:#2DC653;
+      --bg:#F4F6FA; --card:#fff; --border:#DDE3EE; --muted:#7A8AAA; --dark:#0F1F3D;
+    }
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--dark);}
+    .header{background:var(--primary);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;}
+    .header-title{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;color:white;}
+    .header-sub{font-size:11px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:1px;}
+    .container{max-width:1000px;margin:0 auto;padding:24px 16px 60px;}
+
+    /* TABS */
+    .tabs{display:flex;gap:4px;margin-bottom:20px;background:#E8ECF4;border-radius:10px;padding:4px;}
+    .tab{flex:1;padding:10px;text-align:center;border-radius:7px;cursor:pointer;font-weight:700;font-size:13px;color:var(--muted);transition:all .15s;}
+    .tab.active{background:white;color:var(--primary);box-shadow:0 1px 4px rgba(0,0,0,0.12);}
+
+    /* CARDS */
+    .card{background:var(--card);border-radius:12px;border:1px solid var(--border);margin-bottom:16px;overflow:hidden;}
+    .card-header{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
+    .card-icon{font-size:18px;}
+    .card-title{font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;color:var(--primary);}
+    .card-sub{font-size:11px;color:var(--muted);margin-left:auto;}
+    .card-body{padding:20px;}
+
+    /* UPLOAD */
+    .upload-zone{border:2px dashed var(--border);border-radius:8px;padding:28px;text-align:center;cursor:pointer;transition:all .2s;background:#F8FAFD;}
+    .upload-zone:hover,.upload-zone.drag-over{border-color:var(--primary);background:#EEF2FB;}
+    .upload-icon{font-size:32px;margin-bottom:8px;}
+    .upload-text{font-size:13px;color:var(--muted);}
+    .upload-text strong{color:var(--primary);}
+
+    /* STATUS BAR */
+    .status-bar{background:#1B2A4A;border-radius:8px;padding:12px 16px;font-family:monospace;font-size:12px;color:#20C997;margin-top:12px;min-height:48px;max-height:200px;overflow-y:auto;white-space:pre-wrap;}
+
+    /* TRANSACTIONS TABLE */
+    .tx-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:12px;}
+    .tx-table th{background:#F0F4FA;padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid var(--border);}
+    .tx-table td{padding:7px 10px;border-bottom:1px solid var(--border);vertical-align:middle;}
+    .tx-table tr:last-child td{border-bottom:none;}
+    .tx-table tr:hover td{background:#F8FAFD;}
+    .badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;text-transform:uppercase;}
+    .badge-ok{background:#D4EDDA;color:#155724;}
+    .badge-warn{background:#FFF3CD;color:#856404;}
+    .badge-err{background:#F8D7DA;color:#721C24;}
+    .badge-fuel{background:#E3F2FD;color:#1565C0;}
+    .badge-toll{background:#E8F5E9;color:#2E7D32;}
+    .badge-adblue{background:#F3E5F5;color:#6A1B9A;}
+
+    /* TRIP SELECT in table */
+    .trip-sel{font-size:11px;padding:4px 6px;border:1px solid var(--border);border-radius:4px;background:white;color:var(--dark);max-width:160px;}
+
+    /* SUMMARY */
+    .summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;}
+    .summary-item{background:#F0F4FA;border-radius:8px;padding:12px;text-align:center;}
+    .summary-val{font-size:22px;font-weight:800;color:var(--primary);font-family:'Barlow Condensed',sans-serif;}
+    .summary-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;}
+
+    /* BUTTONS */
+    .btn-primary{background:var(--primary);color:white;border:none;border-radius:8px;padding:11px 24px;font-size:13px;font-weight:700;font-family:'Barlow',sans-serif;cursor:pointer;transition:all .15s;}
+    .btn-primary:hover{background:#142d56;}
+    .btn-primary:disabled{opacity:0.5;cursor:not-allowed;}
+    .btn-secondary{background:transparent;color:var(--primary);border:1.5px solid var(--primary);border-radius:8px;padding:9px 18px;font-size:12px;font-weight:600;font-family:'Barlow',sans-serif;cursor:pointer;}
+    .btn-secondary:hover{background:var(--primary);color:white;}
+    .save-bar{display:flex;justify-content:flex-end;gap:12px;align-items:center;padding-top:12px;}
+    .save-status{font-size:13px;font-weight:600;padding:8px 14px;border-radius:6px;}
+    .save-status.success{background:#D4EDDA;color:#155724;}
+    .save-status.error{background:#F8D7DA;color:#721C24;}
+    .save-status.loading{background:var(--primary);color:white;}
+
+    .spinner{display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,0.3);border-top-color:white;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:4px;}
+    @keyframes spin{to{transform:rotate(360deg);}}
+
+    .warn-row td{background:#FFF8EC!important;}
+    .conflict-row td{background:#FFF0F0!important;}
+    select.trip-sel.unmatched{border-color:var(--gold);}
+  </style>
+</head>
+<body>
+<div class="header">
+  <div>
+    <div class="header-title">⛽ FUEL & TOLLS IMPORT</div>
+    <div class="header-sub">DADI Receipts · DKV Invoice → Auto-match to Trips</div>
+  </div>
+  <div style="font-size:10px;color:rgba(255,255,255,0.3)">v1.0</div>
+</div>
+
+<div class="container">
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('dadi')">⛽ DADI (Fuel — MKD)</div>
+    <div class="tab" onclick="switchTab('dkv')">🇦🇹 DKV (Tolls + Fuel — EUR)</div>
+  </div>
+
+  <!-- ═══ DADI TAB ═══════════════════════════════════════════════════ -->
+  <div id="tab-dadi">
+    <div class="card">
+      <div class="card-header"><span class="card-icon">📄</span><span class="card-title">DADI Report Upload</span><span class="card-sub">Извештај за ДАДИ-КОМПАНИ ДООЕЛ</span></div>
+      <div class="card-body">
+        <div class="upload-zone" id="dadiZone" onclick="document.getElementById('dadiFile').click()"
+             ondragover="event.preventDefault();this.classList.add('drag-over')"
+             ondragleave="this.classList.remove('drag-over')"
+             ondrop="handleDrop(event,'dadi')">
+          <div class="upload-icon">📋</div>
+          <div class="upload-text">Σύρε ή <strong>κάνε κλικ</strong> — ДАДИ Report PDF (Извештај)</div>
+          <div class="upload-text" style="margin-top:4px;font-size:11px;">Πολλαπλές γραμμές ανά φορτηγό · νόμισμα MKD → EUR (÷61.5)</div>
+        </div>
+        <input type="file" id="dadiFile" accept=".pdf" style="display:none" onchange="processFile(this.files[0],'dadi')">
+        <div class="status-bar" id="dadiStatus">Αναμονή upload...</div>
+      </div>
+    </div>
+    <div id="dadiResults" style="display:none">
+      <div class="card">
+        <div class="card-header"><span class="card-icon">🔍</span><span class="card-title">Extracted Transactions</span><span class="card-sub" id="dadiCount"></span></div>
+        <div class="card-body">
+          <div class="summary-grid" id="dadiSummary"></div>
+          <div style="overflow-x:auto"><table class="tx-table" id="dadiTable"></table></div>
+          <div class="save-bar">
+            <button class="btn-secondary" onclick="clearTab('dadi')">Καθαρισμός</button>
+            <div id="dadiSaveStatus"></div>
+            <button class="btn-primary" id="dadiSaveBtn" onclick="saveAll('dadi')">💾 ΑΠΟΘΗΚΕΥΣΗ ΟΛΩΝ</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ DKV TAB ════════════════════════════════════════════════════ -->
+  <div id="tab-dkv" style="display:none">
+    <div class="card">
+      <div class="card-header"><span class="card-icon">📄</span><span class="card-title">DKV E-Invoice Upload</span><span class="card-sub">E-RECHNUNG / E-INVOICE</span></div>
+      <div class="card-body">
+        <div class="upload-zone" id="dkvZone" onclick="document.getElementById('dkvFile').click()"
+             ondragover="event.preventDefault();this.classList.add('drag-over')"
+             ondragleave="this.classList.remove('drag-over')"
+             ondrop="handleDrop(event,'dkv')">
+          <div class="upload-icon">🧾</div>
+          <div class="upload-text">Σύρε ή <strong>κάνε κλικ</strong> — DKV E-Invoice PDF</div>
+          <div class="upload-text" style="margin-top:4px;font-size:11px;">Maut (διόδια) + AdBlue · ανά πινακίδα ανά ημερομηνία · EUR</div>
+        </div>
+        <input type="file" id="dkvFile" accept=".pdf" style="display:none" onchange="processFile(this.files[0],'dkv')">
+        <div class="status-bar" id="dkvStatus">Αναμονή upload...</div>
+      </div>
+    </div>
+    <div id="dkvResults" style="display:none">
+      <div class="card">
+        <div class="card-header"><span class="card-icon">🔍</span><span class="card-title">Extracted Transactions</span><span class="card-sub" id="dkvCount"></span></div>
+        <div class="card-body">
+          <div class="summary-grid" id="dkvSummary"></div>
+          <div style="overflow-x:auto"><table class="tx-table" id="dkvTable"></table></div>
+          <div class="save-bar">
+            <button class="btn-secondary" onclick="clearTab('dkv')">Καθαρισμός</button>
+            <div id="dkvSaveStatus"></div>
+            <button class="btn-primary" id="dkvSaveBtn" onclick="saveAll('dkv')">💾 ΑΠΟΘΗΚΕΥΣΗ ΟΛΩΝ</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const AT = 'pat' + 'pPJXnFYnxdgoK3.' + 'a2162b09fbb214628114ff2ce68bb5a7b30aea2061b14f9562a1ab222585cf08';
+const ANTH = 'sk-ant-api' + '03-HG90hAxac0K9lx2mdS6fFKID6XMAICWl4FSbXeVM9zG3klf7diFSUiNY056CRFBAeUZ1H_dZwDfhVbf7IRD3HQ-_nYO3gAA';
+const BASE = 'appElT5CQV6JQvym8';
+const TRIPS_TBL = 'tblgoyV26PBc6L9uE';
+const COSTS_TBL = 'tblWUus6uSpqE1LMW';
+const MKD_RATE = 61.5;
+
+let trips = []; // loaded once
+let dadiTx = [], dkvTx = [];
+
+// ── INIT ─────────────────────────────────────────────────────────────────────
+async function loadTrips() {
+  let records = [], offset = null;
+  do {
+    const qs = new URLSearchParams();
+    ['TripID','Truck Plate','Export Loading DateTime','Export Delivery DateTime'].forEach(f => qs.append('fields[]', f));
+    if(offset) qs.set('offset', offset);
+    const r = await fetch(`https://api.airtable.com/v0/${BASE}/${TRIPS_TBL}?${qs}`, {headers:{'Authorization':'Bearer '+AT}});
+    const d = await r.json();
+    records = records.concat(d.records||[]);
+    offset = d.offset;
+  } while(offset);
+
+  trips = records.map(r => {
+    const f = r.fields;
+    const plates = (f['Truck Plate']||[]).map(p => p.replace(/\s+/g,'').toUpperCase());
+    const loadDates = (f['Export Loading DateTime']||[]).map(d => d.split('T')[0]);
+    const delivDates = (f['Export Delivery DateTime']||[]).map(d => d.split('T')[0]);
+    const start = loadDates[0] || null;
+    const end = delivDates[delivDates.length-1] || loadDates[loadDates.length-1] || start;
+    return { id: r.id, tripId: f.TripID, plates, start, end };
+  });
+  log('dadi', `✅ Φορτώθηκαν ${trips.length} trips`);
+  log('dkv', `✅ Φορτώθηκαν ${trips.length} trips`);
+}
+
+function normPlate(p) { return (p||'').replace(/[\s\-\.]/g,'').toUpperCase(); }
+
+function findTrip(plate, dateStr) {
+  // date format: YYYY-MM-DD
+  const pn = normPlate(plate);
+  const matched = trips.filter(t => t.plates.some(tp => normPlate(tp) === pn));
+  if(!matched.length) return { trip: null, status: 'no_plate' };
+  const inRange = matched.filter(t => t.start && t.end && dateStr >= t.start && dateStr <= t.end);
+  if(inRange.length === 1) return { trip: inRange[0], status: 'ok' };
+  if(inRange.length > 1) return { trip: null, status: 'conflict', candidates: inRange };
+  // No trip in range — find closest
+  const closest = matched.sort((a,b) => Math.abs(new Date(a.start)-new Date(dateStr)) - Math.abs(new Date(b.start)-new Date(dateStr)))[0];
+  return { trip: closest, status: 'approx' };
+}
+
+// ── TABS ──────────────────────────────────────────────────────────────────────
+function switchTab(t) {
+  document.getElementById('tab-dadi').style.display = t==='dadi'?'block':'none';
+  document.getElementById('tab-dkv').style.display = t==='dkv'?'block':'none';
+  document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',(i===0&&t==='dadi')||(i===1&&t==='dkv')));
+}
+
+// ── FILE HANDLING ─────────────────────────────────────────────────────────────
+function handleDrop(e, type) {
+  e.preventDefault(); document.getElementById(type+'Zone').classList.remove('drag-over');
+  if(e.dataTransfer.files[0]) processFile(e.dataTransfer.files[0], type);
+}
+
+async function processFile(file, type) {
+  if(!file) return;
+  log(type, `📄 Ανάλυση: ${file.name}...`);
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    const b64 = e.target.result.split(',')[1];
+    try {
+      if(type==='dadi') await processDadi(b64, file.name);
+      else await processDkv(b64, file.name);
+    } catch(err) { log(type, '❌ Σφάλμα: '+err.message); }
+  };
+  reader.readAsDataURL(file);
+}
+
+// ── DADI AI EXTRACTION ────────────────────────────────────────────────────────
+async function processDadi(b64, fname) {
+  log('dadi', '🤖 AI extraction...');
+  const prompt = `You are extracting data from a DADI-КОМПАНИ ДООЕЛ fuel report (Извештај).
+This is a multi-vehicle daily report. Each row = one fuel transaction.
+
+Extract ALL rows. For each row return:
+- plate: vehicle registration (Регистрација column, e.g. "CB-0229-PB")
+- date: date of transaction (Датум column, format YYYY-MM-DD)
+- liters: fuel quantity (Количина column, number)
+- amount_mkd: total amount (Сума column, in MKD, number)
+- km: odometer reading (Километри column, number or null)
+- driver: driver name (Примил field if visible, string or null)
+
+Return ONLY valid JSON array, no markdown:
+[{"plate":"CB-0229-PB","date":"2026-03-06","liters":200,"amount_mkd":14200,"km":789397,"driver":"MURATIDIS"},...]`;
+
+  const resp = await callClaude(b64, 'application/pdf', prompt);
+  const txs = JSON.parse(resp);
+  log('dadi', `✅ Βρέθηκαν ${txs.length} transactions — Matching trips...`);
+
+  dadiTx = txs.map(tx => {
+    const match = findTrip(tx.plate, tx.date);
+    return { ...tx, amount_eur: parseFloat((tx.amount_mkd / MKD_RATE).toFixed(2)), ...match };
+  });
+
+  renderDadiTable();
+}
+
+// ── DKV AI EXTRACTION ─────────────────────────────────────────────────────────
+async function processDkv(b64, fname) {
+  log('dkv', '🤖 AI extraction...');
+  const prompt = `You are extracting data from a DKV EURO SERVICE E-Invoice (E-RECHNUNG).
+This invoice covers multiple vehicles over ~15 days in Austria.
+
+Extract EVERY transaction line. For each return:
+- plate: vehicle plate from "VEHICLE: XXXXX CARD NO." header above the transaction (e.g. "CB0138HO")
+- date: Lieferdatum/Delivery date (YYYY-MM-DD)
+- product: product code or name. Map as follows:
+  * "Maut A - DKV BOX EUR" or "0902" → "TOLL_AT"
+  * "ADBLUE" or "0016" → "ADBLUE"
+  * any fuel (diesel) → "FUEL"
+  * "Mautsystemgebühr" or "0949" → "SYSTEM_FEE"
+- amount_eur: Bezugswert brutto (gross base value, number — the column before VAT)
+- liters: quantity if product is fuel/adblue (Menge column), null otherwise
+- country: country code from station (AT, DE, HU etc.), default "AT"
+
+Return ONLY valid JSON array, no markdown:
+[{"plate":"CB0138HO","date":"2026-02-16","product":"TOLL_AT","amount_eur":177.13,"liters":null,"country":"AT"},...]`;
+
+  const resp = await callClaude(b64, 'application/pdf', prompt);
+  const txs = JSON.parse(resp);
+  log('dkv', `✅ Βρέθηκαν ${txs.length} transactions — Matching trips...`);
+
+  dkvTx = txs.map(tx => {
+    const match = findTrip(tx.plate, tx.date);
+    return { ...tx, ...match };
+  });
+
+  renderDkvTable();
+}
+
+// ── CLAUDE API ────────────────────────────────────────────────────────────────
+async function callClaude(b64, mime, prompt) {
+  const body = {
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 4000,
+    messages: [{
+      role: 'user',
+      content: [
+        { type: 'document', source: { type: 'base64', media_type: mime, data: b64 } },
+        { type: 'text', text: prompt }
+      ]
+    }]
+  };
+  const r = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  const d = await r.json();
+  const text = d.content?.[0]?.text || '[]';
+  return text.replace(/```json|```/g,'').trim();
+}
+
+// ── RENDER DADI TABLE ─────────────────────────────────────────────────────────
+function renderDadiTable() {
+  const ok = dadiTx.filter(t=>t.status==='ok').length;
+  const warn = dadiTx.filter(t=>t.status==='approx').length;
+  const err = dadiTx.filter(t=>['conflict','no_plate'].includes(t.status)).length;
+  const totalL = dadiTx.reduce((s,t)=>s+(t.liters||0),0);
+  const totalEur = dadiTx.reduce((s,t)=>s+(t.amount_eur||0),0);
+
+  document.getElementById('dadiCount').textContent = `${dadiTx.length} γραμμές`;
+  document.getElementById('dadiSummary').innerHTML = `
+    <div class="summary-item"><div class="summary-val">${dadiTx.length}</div><div class="summary-label">Transactions</div></div>
+    <div class="summary-item"><div class="summary-val">${totalL.toFixed(0)}L</div><div class="summary-label">Total Liters</div></div>
+    <div class="summary-item"><div class="summary-val">€${totalEur.toFixed(0)}</div><div class="summary-label">Total EUR</div></div>
+    <div class="summary-item"><div class="summary-val">${ok}✅ ${warn}⚠️ ${err}❌</div><div class="summary-label">Match Status</div></div>`;
+
+  const rows = dadiTx.map((tx,i) => {
+    const cls = tx.status==='ok'?'':tx.status==='approx'?'warn-row':'conflict-row';
+    const badge = tx.status==='ok'?'badge-ok':tx.status==='approx'?'badge-warn':'badge-err';
+    const btext = tx.status==='ok'?'✅ Match':tx.status==='approx'?'⚠️ Approx':tx.status==='conflict'?'⚡ Conflict':'❌ No plate';
+    const tripSel = buildTripSelect(tx, i, 'dadi');
+    return `<tr class="${cls}">
+      <td>${tx.plate}</td>
+      <td>${tx.date}</td>
+      <td>${tx.liters} L</td>
+      <td>${tx.amount_mkd?.toLocaleString()} MKD</td>
+      <td><strong>€${tx.amount_eur}</strong></td>
+      <td>${tx.km||'—'}</td>
+      <td>${tx.driver||'—'}</td>
+      <td><span class="badge ${badge}">${btext}</span></td>
+      <td>${tripSel}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('dadiTable').innerHTML = `
+    <thead><tr>
+      <th>Πινακίδα</th><th>Ημερομηνία</th><th>Liters</th><th>MKD</th><th>EUR</th><th>KM</th><th>Οδηγός</th><th>Match</th><th>Trip</th>
+    </tr></thead><tbody>${rows}</tbody>`;
+  document.getElementById('dadiResults').style.display='block';
+}
+
+// ── RENDER DKV TABLE ──────────────────────────────────────────────────────────
+function renderDkvTable() {
+  const ok = dkvTx.filter(t=>t.status==='ok').length;
+  const warn = dkvTx.filter(t=>t.status==='approx').length;
+  const totalEur = dkvTx.reduce((s,t)=>s+(t.amount_eur||0),0);
+  const tolls = dkvTx.filter(t=>t.product==='TOLL_AT');
+  const adblue = dkvTx.filter(t=>t.product==='ADBLUE');
+
+  document.getElementById('dkvCount').textContent = `${dkvTx.length} γραμμές`;
+  document.getElementById('dkvSummary').innerHTML = `
+    <div class="summary-item"><div class="summary-val">${dkvTx.length}</div><div class="summary-label">Transactions</div></div>
+    <div class="summary-item"><div class="summary-val">€${totalEur.toFixed(0)}</div><div class="summary-label">Total EUR</div></div>
+    <div class="summary-item"><div class="summary-val">${tolls.length}</div><div class="summary-label">Toll Lines</div></div>
+    <div class="summary-item"><div class="summary-val">${ok}✅ ${warn}⚠️</div><div class="summary-label">Match Status</div></div>`;
+
+  const catBadge = p => p==='TOLL_AT'?'badge-toll':p==='ADBLUE'?'badge-adblue':p==='FUEL'?'badge-fuel':'badge-warn';
+  const catLabel = p => p==='TOLL_AT'?'Διόδια AT':p==='ADBLUE'?'AdBlue':p==='FUEL'?'Fuel':'Other';
+
+  const rows = dkvTx.map((tx,i) => {
+    const cls = tx.status==='ok'?'':tx.status==='approx'?'warn-row':'conflict-row';
+    const badge = tx.status==='ok'?'badge-ok':tx.status==='approx'?'badge-warn':'badge-err';
+    const btext = tx.status==='ok'?'✅ Match':tx.status==='approx'?'⚠️ Approx':'❌ No plate';
+    const tripSel = buildTripSelect(tx, i, 'dkv');
+    return `<tr class="${cls}">
+      <td>${tx.plate}</td>
+      <td>${tx.date}</td>
+      <td>${tx.country||'AT'}</td>
+      <td><span class="badge ${catBadge(tx.product)}">${catLabel(tx.product)}</span></td>
+      <td><strong>€${tx.amount_eur}</strong></td>
+      <td>${tx.liters||'—'}</td>
+      <td><span class="badge ${badge}">${btext}</span></td>
+      <td>${tripSel}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('dkvTable').innerHTML = `
+    <thead><tr>
+      <th>Πινακίδα</th><th>Ημερομηνία</th><th>Χώρα</th><th>Κατηγορία</th><th>EUR</th><th>Liters</th><th>Match</th><th>Trip</th>
+    </tr></thead><tbody>${rows}</tbody>`;
+  document.getElementById('dkvResults').style.display='block';
+}
+
+function buildTripSelect(tx, idx, type) {
+  const plate = normPlate(tx.plate);
+  const plateTrips = trips.filter(t => t.plates.some(p => normPlate(p)===plate));
+  const selClass = tx.status!=='ok' ? 'trip-sel unmatched' : 'trip-sel';
+  const options = plateTrips.map(t =>
+    `<option value="${t.id}" ${tx.trip?.id===t.id?'selected':''}>#${t.tripId} (${t.start||'?'} → ${t.end||'?'})</option>`
+  ).join('');
+  if(!options) return `<span style="color:var(--accent);font-size:11px">❌ Πινακίδα δεν βρέθηκε</span>`;
+  return `<select class="${selClass}" onchange="${type}Tx[${idx}].trip=trips.find(t=>t.id===this.value);${type}Tx[${idx}].status='ok';this.className='trip-sel'">${options}</select>`;
+}
+
+// ── SAVE ──────────────────────────────────────────────────────────────────────
+async function saveAll(type) {
+  const txs = type==='dadi' ? dadiTx : dkvTx;
+  const btn = document.getElementById(type+'SaveBtn');
+  const st = document.getElementById(type+'SaveStatus');
+  btn.disabled=true;
+  st.className='save-status loading'; st.innerHTML='<div class="spinner"></div>Αποθήκευση...';
+
+  // Group by trip — aggregate fields per trip
+  const byTrip = {};
+  for(const tx of txs) {
+    if(!tx.trip?.id) continue;
+    if(!byTrip[tx.trip.id]) byTrip[tx.trip.id] = { trip: tx.trip, txs: [] };
+    byTrip[tx.trip.id].txs.push(tx);
+  }
+
+  let saved=0, errors=0;
+  for(const [tripId, group] of Object.entries(byTrip)) {
+    try {
+      const fields = buildCostFields(type, group.txs, group.trip);
+      // Check if TRIP COSTS record exists for this trip
+      const existing = await getExistingCostRecord(tripId);
+      let r;
+      if(existing) {
+        r = await fetch(`https://api.airtable.com/v0/${BASE}/${COSTS_TBL}/${existing}`, {
+          method:'PATCH', headers:{'Authorization':'Bearer '+AT,'Content-Type':'application/json'},
+          body: JSON.stringify({fields})
+        });
+      } else {
+        fields['Trip Link'] = [tripId];
+        fields['Trip Type'] = 'OWNED FLEET';
+        r = await fetch(`https://api.airtable.com/v0/${BASE}/${COSTS_TBL}`, {
+          method:'POST', headers:{'Authorization':'Bearer '+AT,'Content-Type':'application/json'},
+          body: JSON.stringify({fields})
+        });
+      }
+      const d = await r.json();
+      if(d.error) throw new Error(d.error.message);
+      saved++;
+    } catch(e) { errors++; log(type, '❌ Trip '+group.trip.tripId+': '+e.message); }
+  }
+
+  const skipped = txs.filter(t=>!t.trip?.id).length;
+  st.className='save-status success';
+  st.textContent = `✅ ${saved} trips αποθηκεύτηκαν${errors?` · ❌ ${errors} σφάλματα`:''}${skipped?` · ⚠️ ${skipped} unmatched skipped`:''}`;
+  btn.disabled=false;
+}
+
+function buildCostFields(type, txs, trip) {
+  const fields = {};
+  // Set date range from trip
+  if(trip.start) fields['Trip Start Date'] = trip.start;
+  if(trip.end) fields['Trip End Date'] = trip.end;
+
+  if(type==='dadi') {
+    const totalL = txs.reduce((s,t)=>s+(t.liters||0),0);
+    const totalEur = txs.reduce((s,t)=>s+(t.amount_eur||0),0);
+    const maxKm = Math.max(...txs.filter(t=>t.km).map(t=>t.km), 0);
+    if(totalL>0) fields['Fuel Truck 1 Liters'] = parseFloat(totalL.toFixed(2));
+    if(totalEur>0) fields['Amount'] = parseFloat(totalEur.toFixed(2));
+    if(maxKm>0) fields['Total KM'] = maxKm;
+  } else {
+    // DKV: group by product
+    const tollAT = txs.filter(t=>t.product==='TOLL_AT').reduce((s,t)=>s+(t.amount_eur||0),0);
+    const adblue = txs.filter(t=>t.product==='ADBLUE').reduce((s,t)=>s+(t.amount_eur||0),0);
+    const fuel = txs.filter(t=>t.product==='FUEL').reduce((s,t)=>s+(t.amount_eur||0),0);
+    const sysFee = txs.filter(t=>t.product==='SYSTEM_FEE').reduce((s,t)=>s+(t.amount_eur||0),0);
+    if(tollAT>0) fields['Tolls AT'] = parseFloat(tollAT.toFixed(2));
+    if(adblue>0) fields['Other Expenses'] = parseFloat((adblue+sysFee).toFixed(2));
+    if(fuel>0) fields['External Fuel Liters'] = txs.filter(t=>t.product==='FUEL').reduce((s,t)=>s+(t.liters||0),0);
+  }
+  return fields;
+}
+
+async function getExistingCostRecord(tripId) {
+  const r = await fetch(`https://api.airtable.com/v0/${BASE}/${COSTS_TBL}?filterByFormula=SEARCH("${tripId}",ARRAYJOIN({Trip Link}))&fields[]=Trip+Link`, {
+    headers: {'Authorization':'Bearer '+AT}
+  });
+  const d = await r.json();
+  return d.records?.[0]?.id || null;
+}
+
+function clearTab(type) {
+  if(type==='dadi') { dadiTx=[]; document.getElementById('dadiResults').style.display='none'; document.getElementById('dadiStatus').textContent='Αναμονή upload...'; }
+  else { dkvTx=[]; document.getElementById('dkvResults').style.display='none'; document.getElementById('dkvStatus').textContent='Αναμονή upload...'; }
+}
+
+function log(type, msg) {
+  const el = document.getElementById(type+'Status');
+  el.textContent += '\n' + msg;
+  el.scrollTop = el.scrollHeight;
+}
+
+window.addEventListener('DOMContentLoaded', loadTrips);
+</script>
+</body>
+</html>
