@@ -248,19 +248,27 @@ async function processFile(file, type) {
 // ── DADI AI EXTRACTION ────────────────────────────────────────────────────────
 async function processDadi(b64, fname) {
   log('dadi', '🤖 AI extraction...');
-  const prompt = `You are extracting data from a DADI-КОМПАНИ ДООЕЛ fuel report (Извештај).
-This is a multi-vehicle daily report. Each row = one fuel transaction.
+  const prompt = `You are extracting data from a ДАДИ-КОМПАНИ ДООЕЛ fuel document.
 
-Extract ALL rows. For each row return:
-- plate: vehicle registration (Регистрација column, e.g. "CB-0229-PB")
-- date: date of transaction (Датум column, format YYYY-MM-DD)
-- liters: fuel quantity (Количина column, number)
-- amount_mkd: total amount (Сума column, in MKD, number)
-- km: odometer reading (Километри column, number or null)
-- driver: driver name (Примил field if visible, string or null)
+This PDF has TWO content types:
+1. SUMMARY TABLE (Извештај) on page 1 — IGNORE, do not extract from this.
+2. Individual RECEIPTS (Испратница бр.) from page 2 onward — EXTRACT FROM THESE ONLY.
 
-Return ONLY valid JSON array, no markdown:
-[{"plate":"CB-0229-PB","date":"2026-03-06","liters":200,"amount_mkd":14200,"km":789397,"driver":"MURATIDIS"},...]`;
+Each Испратница receipt contains:
+- "Испратница бр." → receipt_no (string)
+- "Возило(рег.број)" → plate (e.g. "CB-0229-PB")
+- "Километри" → km (number, may be blank → null)
+- "Датум" → date (DD.MM.YYYY → convert to YYYY-MM-DD)
+- "Примил" → driver (name of driver who signed)
+- "Количина" → liters (number)
+- "Цена со ДДВ" → price_per_liter_mkd (number, price per liter)
+- "Вкупно со ДДВ" → amount_mkd (total MKD including VAT)
+- ДДВ % → vat_rate (usually 18)
+
+Extract ONE object per Испратница. Include ALL receipts in the document.
+
+Return ONLY valid JSON array, no markdown, no explanation:
+[{"receipt_no":"377201","plate":"CB-0229-PB","date":"2026-03-06","liters":200.00,"price_per_liter_mkd":71.00,"amount_mkd":14200.00,"vat_rate":18,"km":789397,"driver":"MURATIDIS"}]`
 
   const resp = await callClaude(b64, 'application/pdf', prompt);
   const txs = JSON.parse(resp);
@@ -347,16 +355,18 @@ function renderDadiTable() {
   const rows = dadiTx.map((tx,i) => {
     const cls = tx.status==='ok'?'':tx.status==='approx'?'warn-row':'conflict-row';
     const badge = tx.status==='ok'?'badge-ok':tx.status==='approx'?'badge-warn':'badge-err';
-    const btext = tx.status==='ok'?'✅ Match':tx.status==='approx'?'⚠️ Approx':tx.status==='conflict'?'⚡ Conflict':'❌ No plate';
+    const btext = tx.status==='ok'?'\u2705 Match':tx.status==='approx'?'\u26a0\ufe0f Approx':tx.status==='conflict'?'\u26a1 Conflict':'\u274c No plate';
     const tripSel = buildTripSelect(tx, i, 'dadi');
     return `<tr class="${cls}">
+      <td style="color:var(--muted);font-size:11px">${tx.receipt_no||'\u2014'}</td>
       <td>${tx.plate}</td>
       <td>${tx.date}</td>
       <td>${tx.liters} L</td>
+      <td style="font-size:11px;color:var(--muted)">${tx.price_per_liter_mkd||'\u2014'}</td>
       <td>${tx.amount_mkd?.toLocaleString()} MKD</td>
-      <td><strong>€${tx.amount_eur}</strong></td>
-      <td>${tx.km||'—'}</td>
-      <td>${tx.driver||'—'}</td>
+      <td><strong>\u20ac${tx.amount_eur}</strong></td>
+      <td>${tx.km||'\u2014'}</td>
+      <td>${tx.driver||'\u2014'}</td>
       <td><span class="badge ${badge}">${btext}</span></td>
       <td>${tripSel}</td>
     </tr>`;
@@ -364,7 +374,7 @@ function renderDadiTable() {
 
   document.getElementById('dadiTable').innerHTML = `
     <thead><tr>
-      <th>Πινακίδα</th><th>Ημερομηνία</th><th>Liters</th><th>MKD</th><th>EUR</th><th>KM</th><th>Οδηγός</th><th>Match</th><th>Trip</th>
+      <th>#</th><th>Πινακίδα</th><th>Ημερομηνία</th><th>Liters</th><th>€/L MKD</th><th>MKD</th><th>EUR</th><th>KM</th><th>Οδηγός</th><th>Match</th><th>Trip</th>
     </tr></thead><tbody>${rows}</tbody>`;
   document.getElementById('dadiResults').style.display='block';
 }
