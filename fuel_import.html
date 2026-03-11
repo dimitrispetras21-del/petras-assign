@@ -190,7 +190,7 @@ function _debugWrite(color, ...args) {
   _overlay().style.display = 'block';
   const line = document.createElement('div');
   line.style.cssText = `color:${color};border-bottom:1px solid rgba(255,255,255,0.05);padding:2px 0;`;
-  line.textContent = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
+  line.textContent = args.map(a => a instanceof Error ? (a.message+' '+a.stack) : typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
   _debugEl().appendChild(line);
   _overlay().scrollTop = _overlay().scrollHeight;
 }
@@ -215,6 +215,8 @@ let dadiTx = [], dkvTx = [];
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
 async function loadTrips() {
+  console.log('[INIT] ANTH key length:', ANTH.length, 'starts:', ANTH.slice(0,12));
+  console.log('[INIT] AT key length:', AT.length);
   let records = [], offset = null;
   do {
     const qs = new URLSearchParams();
@@ -411,8 +413,8 @@ async function callClaude(b64, mime, prompt) {
       body: JSON.stringify(body)
     });
   } catch(fetchErr) {
-    console.error('[Claude API] Fetch failed:', fetchErr);
-    throw new Error('Network error: ' + fetchErr.message);
+    console.error('[Claude API] Fetch failed — name:', fetchErr.name, '— message:', fetchErr.message || '(empty)', '— type:', typeof fetchErr);
+    throw new Error('Network error: ' + (fetchErr.message || fetchErr.name || 'unknown'));
   }
   console.log('[Claude API] HTTP status:', r.status);
   const d = await r.json();
