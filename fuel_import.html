@@ -81,6 +81,8 @@
 
     .warn-row td{background:#FFF8EC!important;}
     .conflict-row td{background:#FFF0F0!important;}
+    .no-match-row td{background:#FFE8E8!important;border-left:3px solid var(--accent);}
+    .trip-sel.unmatched{border-color:var(--accent)!important;background:#FFF5F5;}
     select.trip-sel.unmatched{border-color:var(--gold);}
   </style>
 </head>
@@ -453,7 +455,7 @@ function renderDadiTable() {
     <div class="summary-item"><div class="summary-val">${ok}✅ ${warn}⚠️ ${err}❌</div><div class="summary-label">Match Status</div></div>`;
 
   const rows = dadiTx.map((tx,i) => {
-    const cls = tx.status==='ok'?'':tx.status==='approx'?'warn-row':'conflict-row';
+    const cls = tx.status==='ok'?'':tx.status==='approx'?'warn-row':!tx.trip?.id?'no-match-row':'conflict-row';
     const badge = tx.status==='ok'?'badge-ok':tx.status==='approx'?'badge-warn':'badge-err';
     const btext = tx.status==='ok'?'\u2705 Match':tx.status==='approx'?'\u26a0\ufe0f Approx':tx.status==='conflict'?'\u26a1 Conflict':'\u274c No plate';
     const tripSel = buildTripSelect(tx, i, 'dadi');
@@ -498,7 +500,7 @@ function renderDkvTable() {
   const catLabel = p => p==='TOLL_AT'?'Διόδια AT':p==='ADBLUE'?'AdBlue':p==='FUEL'?'Fuel':'Other';
 
   const rows = dkvTx.map((tx,i) => {
-    const cls = tx.status==='ok'?'':tx.status==='approx'?'warn-row':'conflict-row';
+    const cls = tx.status==='ok'?'':tx.status==='approx'?'warn-row':!tx.trip?.id?'no-match-row':'conflict-row';
     const badge = tx.status==='ok'?'badge-ok':tx.status==='approx'?'badge-warn':'badge-err';
     const btext = tx.status==='ok'?'✅ Match':tx.status==='approx'?'⚠️ Approx':'❌ No plate';
     const tripSel = buildTripSelect(tx, i, 'dkv');
@@ -524,12 +526,21 @@ function renderDkvTable() {
 function buildTripSelect(tx, idx, type) {
   const plate = normPlate(tx.plate);
   const plateTrips = trips.filter(t => t.plates.some(p => normPlate(p)===plate));
-  const selClass = tx.status!=='ok' ? 'trip-sel unmatched' : 'trip-sel';
-  const options = plateTrips.map(t =>
-    `<option value="${t.id}" ${tx.trip?.id===t.id?'selected':''}>#${t.tripId} (${t.start||'?'} → ${t.end||'?'})</option>`
+  // If no plate match, show ALL trips
+  const optionList = (plateTrips.length > 0 ? plateTrips : trips).sort((a,b)=>b.tripId-a.tripId);
+  const noMatch = !tx.trip?.id;
+  const selClass = noMatch ? 'trip-sel unmatched' : 'trip-sel';
+  const placeholder = noMatch ? '<option value="">⚠️ Επίλεξε trip...</option>' : '';
+  const options = optionList.map(t =>
+    `<option value="${t.id}" ${tx.trip?.id===t.id?'selected':''}>#${t.tripId} — ${t.plates[0]||'?'} (${t.start||'?'} → ${t.end||'?'})</option>`
   ).join('');
-  if(!options) return `<span style="color:var(--accent);font-size:11px">❌ Πινακίδα δεν βρέθηκε</span>`;
-  return `<select class="${selClass}" onchange="${type}Tx[${idx}].trip=trips.find(t=>t.id===this.value);${type}Tx[${idx}].status='ok';this.className='trip-sel'">${options}</select>`;
+  return `<select class="${selClass}" onchange="
+    const t=trips.find(t=>t.id===this.value);
+    ${type}Tx[${idx}].trip=t;
+    ${type}Tx[${idx}].status=t?'ok':'approx';
+    this.className='trip-sel';
+    this.parentElement.closest('tr').style.background='';
+  ">${placeholder}${options}</select>`;
 }
 
 // ── FUEL RECEIPT BUILDER ─────────────────────────────────────────────────────
@@ -591,7 +602,6 @@ async function saveAll(type) {
     // Also upsert TRIP COSTS with dates per unique trip
     const tripsSeen = {};
     for(const tx of txs) {
-      if(!tx.trip?.id) { skipped++; continue; }
       try {
         const fields = buildFuelReceiptFields(tx, 'dadi');
         const r = await fetch(`https://api.airtable.com/v0/${BASE}/tblxRFsMeVhlLrBjF`, {
@@ -601,7 +611,8 @@ async function saveAll(type) {
         const d = await r.json();
         if(d.error) throw new Error(d.error.message);
         savedFR++;
-        tripsSeen[tx.trip.id] = tx.trip; // collect unique trips
+        if(tx.trip?.id) tripsSeen[tx.trip.id] = tx.trip; // only matched trips get TC upsert
+        else skipped++;
       } catch(e) { errors++; log(type, '❌ '+tx.plate+' '+tx.date+': '+e.message); }
     }
     // Upsert TRIP COSTS — write Start/End Date for each trip touched
