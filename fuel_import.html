@@ -257,10 +257,14 @@ async function processFile(file, type) {
   const reader = new FileReader();
   reader.onload = async (e) => {
     const b64 = e.target.result.split(',')[1];
+    console.log('[Upload] File read OK, b64 length:', b64.length, 'type:', type);
     try {
       if(type==='dadi') await processDadi(b64, file.name);
       else await processDkv(b64, file.name);
-    } catch(err) { log(type, '❌ Σφάλμα: '+err.message); }
+    } catch(err) {
+      console.error('[Upload] Error:', err);
+      log(type, '❌ Σφάλμα: '+err.message);
+    }
   };
   reader.readAsDataURL(file);
 }
@@ -291,7 +295,12 @@ Return ONLY valid JSON array, no markdown, no explanation:
 [{"receipt_no":"377201","plate":"CB-0229-PB","date":"2026-03-06","liters":200.00,"price_per_liter_mkd":71.00,"amount_mkd":14200.00,"vat_rate":18,"km":789397,"driver":"MURATIDIS"}]`
 
   const resp = await callClaude(b64, 'application/pdf', prompt);
-  const txs = JSON.parse(resp);
+  let txs;
+  try { txs = JSON.parse(resp); } catch(parseErr) {
+    console.error('[DADI] JSON parse error:', parseErr, '\nRaw:', resp);
+    throw new Error('JSON parse failed: ' + parseErr.message);
+  }
+  console.log('[DADI] Parsed', txs.length, 'transactions:', JSON.stringify(txs[0]));
   log('dadi', `✅ Βρέθηκαν ${txs.length} transactions — Matching trips...`);
 
   dadiTx = txs.map(tx => {
@@ -324,7 +333,12 @@ Return ONLY valid JSON array, no markdown:
 [{"plate":"CB0138HO","date":"2026-02-16","product":"TOLL_AT","amount_eur":177.13,"liters":null,"country":"AT"},...]`;
 
   const resp = await callClaude(b64, 'application/pdf', prompt);
-  const txs = JSON.parse(resp);
+  let txs;
+  try { txs = JSON.parse(resp); } catch(parseErr) {
+    console.error('[DKV] JSON parse error:', parseErr, '\nRaw:', resp);
+    throw new Error('JSON parse failed: ' + parseErr.message);
+  }
+  console.log('[DKV] Parsed', txs.length, 'transactions:', JSON.stringify(txs[0]));
   log('dkv', `✅ Βρέθηκαν ${txs.length} transactions — Matching trips...`);
 
   dkvTx = txs.map(tx => {
@@ -348,12 +362,23 @@ async function callClaude(b64, mime, prompt) {
       ]
     }]
   };
-  const r = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
-  });
+  console.log('[Claude API] Sending request, model:', body.model);
+  let r;
+  try {
+    r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+  } catch(fetchErr) {
+    console.error('[Claude API] Fetch failed:', fetchErr);
+    throw new Error('Network error: ' + fetchErr.message);
+  }
+  console.log('[Claude API] HTTP status:', r.status);
   const d = await r.json();
+  console.log('[Claude API] Response:', JSON.stringify(d).slice(0,300));
+  if(d.error) throw new Error('Anthropic API: ' + d.error.message);
   const text = d.content?.[0]?.text || '[]';
+  console.log('[Claude API] Raw text:', text.slice(0,500));
   return text.replace(/```json|```/g,'').trim();
 }
 
