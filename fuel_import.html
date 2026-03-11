@@ -801,11 +801,18 @@ async function saveAll(type) {
 
 
 async function getExistingCostRecord(tripId) {
-  const r = await fetch(`https://api.airtable.com/v0/${BASE}/${COSTS_TBL}?filterByFormula=SEARCH("${tripId}",ARRAYJOIN({Trip Link}))&fields[]=Trip+Link`, {
-    headers: {'Authorization':'Bearer '+AT}
-  });
-  const d = await r.json();
-  return d.records?.[0]?.id || null;
+  try {
+    const formula = encodeURIComponent(`FIND("${tripId}", ARRAYJOIN({Trip Link}, ","))`);
+    const r = await fetch(`https://api.airtable.com/v0/${BASE}/${COSTS_TBL}?filterByFormula=${formula}&fields[]=Trip+Link`, {
+      headers: {'Authorization':'Bearer '+AT}
+    });
+    const d = await r.json();
+    console.log('[TC lookup] tripId:', tripId, '→ found:', d.records?.length, 'records');
+    return d.records?.[0]?.id || null;
+  } catch(e) {
+    console.error('[TC lookup] Error:', e.message);
+    return null;
+  }
 }
 
 function clearTab(type) {
