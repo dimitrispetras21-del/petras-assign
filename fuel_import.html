@@ -563,17 +563,17 @@ function buildFuelReceiptFields(tx, type) {
   return fields;
 }
 
-function buildTripCostFields(txs, trip) {
+function buildTripCostFields(type, txs, trip) {
   // DKV tolls + adblue only → TRIP COSTS
   const fields = {};
+  // Always write dates
   if(trip.start) fields['Trip Start Date'] = trip.start;
-  if(trip.end) fields['Trip End Date'] = trip.end;
-  const tollAT = txs.filter(t=>t.product==='TOLL_AT').reduce((s,t)=>s+(t.amount_eur||0),0);
-  // Everything that is NOT diesel fuel and NOT AT toll → Other Expenses
+  if(trip.end)   fields['Trip End Date']   = trip.end;
+  const tollAT    = txs.filter(t=>t.product==='TOLL_AT').reduce((s,t)=>s+(t.amount_eur||0),0);
   const otherCost = txs.filter(t=>t.product!=='TOLL_AT'&&t.product!=='FUEL').reduce((s,t)=>s+(t.amount_eur||0),0);
-  if(tollAT>0) fields['Tolls AT'] = parseFloat(tollAT.toFixed(2));
+  if(tollAT>0)    fields['Tolls AT']       = parseFloat(tollAT.toFixed(2));
   if(otherCost>0) fields['Other Expenses'] = parseFloat(otherCost.toFixed(2));
-  return fields;
+  return fields; // always has at least dates
 }
 
 // ── SAVE ──────────────────────────────────────────────────────────────────────
@@ -588,6 +588,8 @@ async function saveAll(type) {
 
   if(type==='dadi') {
     // Each DADI tx → 1 FUEL RECEIPT record
+    // Also upsert TRIP COSTS with dates per unique trip
+    const tripsSeen = {};
     for(const tx of txs) {
       if(!tx.trip?.id) { skipped++; continue; }
       try {
@@ -599,10 +601,38 @@ async function saveAll(type) {
         const d = await r.json();
         if(d.error) throw new Error(d.error.message);
         savedFR++;
+        tripsSeen[tx.trip.id] = tx.trip; // collect unique trips
       } catch(e) { errors++; log(type, '❌ '+tx.plate+' '+tx.date+': '+e.message); }
     }
+    // Upsert TRIP COSTS — write Start/End Date for each trip touched
+    for(const [tripId, trip] of Object.entries(tripsSeen)) {
+      try {
+        const dateFields = {};
+        if(trip.start) dateFields['Trip Start Date'] = trip.start;
+        if(trip.end)   dateFields['Trip End Date']   = trip.end;
+        dateFields['Trip Link'] = [tripId];
+        dateFields['Trip Type'] = 'OWNED FLEET';
+        const existing = await getExistingCostRecord(tripId);
+        if(existing) {
+          const rp = await fetch(`https://api.airtable.com/v0/${BASE}/${COSTS_TBL}/${existing}`, {
+            method:'PATCH', headers:{'Authorization':'Bearer '+AT,'Content-Type':'application/json'},
+            body: JSON.stringify({fields: {'Trip Start Date': dateFields['Trip Start Date'], 'Trip End Date': dateFields['Trip End Date']}})
+          });
+          const dp = await rp.json();
+          if(dp.error) throw new Error(dp.error.message);
+        } else {
+          const rp = await fetch(`https://api.airtable.com/v0/${BASE}/${COSTS_TBL}`, {
+            method:'POST', headers:{'Authorization':'Bearer '+AT,'Content-Type':'application/json'},
+            body: JSON.stringify({fields: dateFields})
+          });
+          const dp = await rp.json();
+          if(dp.error) throw new Error(dp.error.message);
+        }
+        savedTC++;
+      } catch(e) { errors++; log(type, '❌ TC dates: '+e.message); }
+    }
     st.className='save-status success';
-    st.textContent = `✅ ${savedFR} FUEL RECEIPTS δημιουργήθηκαν${errors?` · ❌ ${errors} σφάλματα`:''}${skipped?` · ⚠️ ${skipped} unmatched`:''}`;
+    st.textContent = `✅ ${savedFR} Fuel Receipts · ${savedTC} Trip Costs${errors?' · ❌ '+errors:''}${skipped?' · ⚠️ '+skipped+' unmatched':''}`;
 
   } else {
     // DKV: fuel txs → FUEL RECEIPTS; tolls/adblue → TRIP COSTS patch per trip
