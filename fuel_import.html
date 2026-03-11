@@ -213,6 +213,7 @@ const MKD_RATE = 61.5;
 
 let trips = []; // loaded once
 let trucks = {}; // plate (normalized) → recId
+let trailers = {}; // trailer plate (normalized) → recId
 let dadiTx = [], dkvTx = [];
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
@@ -222,7 +223,7 @@ async function loadTrips() {
   let records = [], offset = null;
   do {
     const qs = new URLSearchParams();
-    ['TripID','Truck Plate','Export Loading DateTime','Export Delivery DateTime','Import Delivery DateTime'].forEach(f => qs.append('fields[]', f));
+    ['TripID','Truck Plate','Trailer Plate','Export Loading DateTime','Export Delivery DateTime','Import Delivery DateTime'].forEach(f => qs.append('fields[]', f));
     if(offset) qs.set('offset', offset);
     const r = await fetch(`https://api.airtable.com/v0/${BASE}/${TRIPS_TBL}?${qs}`, {headers:{'Authorization':'Bearer '+AT}});
     const d = await r.json();
@@ -249,7 +250,8 @@ async function loadTrips() {
     } else {
       end = start;
     }
-    return { id: r.id, tripId: f.TripID, plates, start, end };
+    const trailerPlates = (f['Trailer Plate']||[]).map(p => normPlate(p));
+    return { id: r.id, tripId: f.TripID, plates, trailerPlates, start, end };
   });
   log('dadi', `✅ Φορτώθηκαν ${trips.length} trips`);
   log('dkv', `✅ Φορτώθηκαν ${trips.length} trips`);
@@ -272,21 +274,44 @@ async function loadTrucks() {
   } while(offset);
   log('dadi', `✅ Φορτώθηκαν ${Object.keys(trucks).length} trucks`);
   log('dkv', `✅ Φορτώθηκαν ${Object.keys(trucks).length} trucks`);
+  await loadTrailers();
+}
+
+async function loadTrailers() {
+  let offset = null;
+  do {
+    const qs = new URLSearchParams();
+    qs.append('fields[]', 'License Plate');
+    if(offset) qs.set('offset', offset);
+    const r = await fetch(`https://api.airtable.com/v0/${BASE}/tblDcrqRJXzPrtYLm?${qs}`, {headers:{'Authorization':'Bearer '+AT}});
+    const d = await r.json();
+    (d.records||[]).forEach(rec => {
+      const plate = normPlate(rec.fields['License Plate']||'');
+      if(plate) trailers[plate] = rec.id;
+    });
+    offset = d.offset;
+  } while(offset);
+  log('dadi', `✅ Φορτώθηκαν ${Object.keys(trailers).length} trailers`);
 }
 
 function normPlate(p) { return (p||'').replace(/[\s\-\.]/g,'').toUpperCase(); }
 
 function findTrip(plate, dateStr) {
-  // date format: YYYY-MM-DD
   const pn = normPlate(plate);
-  const matched = trips.filter(t => t.plates.some(tp => normPlate(tp) === pn));
-  if(!matched.length) return { trip: null, status: 'no_plate' };
+  // Try truck plates first
+  let matched = trips.filter(t => t.plates.some(tp => normPlate(tp) === pn));
+  let isTrailer = false;
+  // If no truck match, try trailer plates
+  if(!matched.length) {
+    matched = trips.filter(t => (t.trailerPlates||[]).some(tp => normPlate(tp) === pn));
+    if(matched.length) isTrailer = true;
+  }
+  if(!matched.length) return { trip: null, status: 'no_plate', isTrailer: false };
   const inRange = matched.filter(t => t.start && t.end && dateStr >= t.start && dateStr <= t.end);
-  if(inRange.length === 1) return { trip: inRange[0], status: 'ok' };
-  if(inRange.length > 1) return { trip: null, status: 'conflict', candidates: inRange };
-  // No trip in range — find closest
+  if(inRange.length === 1) return { trip: inRange[0], status: 'ok', isTrailer };
+  if(inRange.length > 1) return { trip: null, status: 'conflict', candidates: inRange, isTrailer };
   const closest = matched.sort((a,b) => Math.abs(new Date(a.start)-new Date(dateStr)) - Math.abs(new Date(b.start)-new Date(dateStr)))[0];
-  return { trip: closest, status: 'approx' };
+  return { trip: closest, status: 'approx', isTrailer };
 }
 
 // ── TABS ──────────────────────────────────────────────────────────────────────
@@ -559,7 +584,7 @@ function buildFuelReceiptFields(tx, type) {
     fields['Total Cost'] = parseFloat((tx.amount_eur||0).toFixed(2));
     if(tx.km) fields['Odometer KM'] = tx.km;
     if(tx.receipt_no) fields['Invoice Number'] = 'DADI-' + tx.receipt_no;
-    fields['Fuel Type'] = '\ud83c\udfe0 DADI Departure';
+    fields['Fuel Type'] = tx.isTrailer ? '\u2744\ufe0f Reefer' : '\ud83c\udfe0 DADI Departure';
     fields['Country'] = 'MK';
     fields['Station'] = '\u0414\u0410\u0414\u0418-\u041a\u041e\u041c\u041f\u0410\u041d\u0418 \u0414\u041e\u041e\u0415\u041b';
     if(tx.driver) fields['Notes'] = 'Driver: ' + tx.driver;
@@ -587,6 +612,19 @@ function buildTripCostFields(type, txs, trip) {
   return fields; // always has at least dates
 }
 
+// ── DUPLICATE CHECK ──────────────────────────────────────────────────────────
+async function isDuplicate(invoiceNumber) {
+  if(!invoiceNumber) return false;
+  try {
+    const formula = encodeURIComponent(`{Invoice Number}="${invoiceNumber}"`);
+    const r = await fetch(`https://api.airtable.com/v0/${BASE}/tblxRFsMeVhlLrBjF?filterByFormula=${formula}&fields[]=Invoice+Number`, {
+      headers:{'Authorization':'Bearer '+AT}
+    });
+    const d = await r.json();
+    return (d.records||[]).length > 0;
+  } catch(e) { return false; }
+}
+
 // ── SAVE ──────────────────────────────────────────────────────────────────────
 async function saveAll(type) {
   const txs = type==='dadi' ? dadiTx : dkvTx;
@@ -601,8 +639,15 @@ async function saveAll(type) {
     // Each DADI tx → 1 FUEL RECEIPT record
     // Also upsert TRIP COSTS with dates per unique trip
     const tripsSeen = {};
+    let duplicates = 0;
     for(const tx of txs) {
       try {
+        const invNo = tx.receipt_no ? 'DADI-'+tx.receipt_no : null;
+        if(invNo && await isDuplicate(invNo)) {
+          duplicates++;
+          log(type, `⏭️ Duplicate skip: ${invNo} (${tx.plate} ${tx.date})`);
+          continue;
+        }
         const fields = buildFuelReceiptFields(tx, 'dadi');
         const r = await fetch(`https://api.airtable.com/v0/${BASE}/tblxRFsMeVhlLrBjF`, {
           method:'POST', headers:{'Authorization':'Bearer '+AT,'Content-Type':'application/json'},
@@ -611,7 +656,7 @@ async function saveAll(type) {
         const d = await r.json();
         if(d.error) throw new Error(d.error.message);
         savedFR++;
-        if(tx.trip?.id) tripsSeen[tx.trip.id] = tx.trip; // only matched trips get TC upsert
+        if(tx.trip?.id) tripsSeen[tx.trip.id] = tx.trip;
         else skipped++;
       } catch(e) { errors++; log(type, '❌ '+tx.plate+' '+tx.date+': '+e.message); }
     }
@@ -643,7 +688,7 @@ async function saveAll(type) {
       } catch(e) { errors++; log(type, '❌ TC dates: '+e.message); }
     }
     st.className='save-status success';
-    st.textContent = `✅ ${savedFR} Fuel Receipts · ${savedTC} Trip Costs${errors?' · ❌ '+errors:''}${skipped?' · ⚠️ '+skipped+' unmatched':''}`;
+    st.textContent = `✅ ${savedFR} Fuel Receipts · ${savedTC} Trip Costs${duplicates?' · ⏭️ '+duplicates+' duplicates skipped':''}${errors?' · ❌ '+errors:''}${skipped?' · ⚠️ '+skipped+' unmatched':''}`;
 
   } else {
     // DKV: fuel txs → FUEL RECEIPTS; tolls/adblue → TRIP COSTS patch per trip
