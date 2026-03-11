@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Petras Group — Trip P&L Entry</title>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800&family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #1B3A6B;
+      --accent: #E63946;
+      --gold: #F4A535;
+      --green: #2DC653;
+      --bg: #F4F6FA;
+      --card: #FFFFFF;
+      --border: #DDE3EE;
+      --muted: #7A8AAA;
+      --dark: #0F1F3D;
+      --input-bg: #F8FAFD;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Barlow', sans-serif; background: var(--bg); color: var(--dark); min-height: 100vh; }
+
+    .header {
+      background: var(--primary);
+      padding: 14px 24px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .header-logo { display: flex; align-items: center; gap: 10px; }
+    .header-logo svg { width: 28px; height: 28px; }
+    .header-title { font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 800; color: white; letter-spacing: 0.5px; }
+    .header-sub { font-size: 11px; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 1px; }
+    .version-tag { font-size: 10px; color: rgba(255,255,255,0.3); }
+
+    .container { max-width: 860px; margin: 0 auto; padding: 24px 16px 60px; }
+
+    /* TRIP SELECTOR */
+    .trip-selector-wrap {
+      background: var(--primary);
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin-bottom: 20px;
+      display: flex; gap: 16px; align-items: flex-end;
+    }
+    .trip-selector-wrap .field { flex: 1; }
+    .trip-selector-wrap label { font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.6); text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 6px; }
+    .trip-selector-wrap select {
+      width: 100%; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 6px; color: white; padding: 10px 12px; font-size: 14px; font-family: 'Barlow', sans-serif;
+      cursor: pointer; appearance: none;
+    }
+    .trip-selector-wrap select option { background: var(--primary); color: white; }
+
+    .trip-info-bar {
+      display: flex; gap: 16px; flex-wrap: wrap;
+    }
+    .trip-badge {
+      background: rgba(255,255,255,0.15);
+      border-radius: 6px; padding: 8px 14px;
+      display: flex; flex-direction: column; gap: 2px;
+    }
+    .trip-badge-label { font-size: 9px; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 1px; }
+    .trip-badge-val { font-size: 15px; font-weight: 700; color: white; }
+
+    /* CARDS */
+    .card {
+      background: var(--card); border-radius: 12px;
+      border: 1px solid var(--border);
+      margin-bottom: 16px; overflow: hidden;
+    }
+    .card-header {
+      padding: 14px 20px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 10px;
+    }
+    .card-icon { font-size: 18px; }
+    .card-title { font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 700; color: var(--primary); letter-spacing: 0.3px; }
+    .card-subtitle { font-size: 11px; color: var(--muted); margin-left: auto; }
+    .card-body { padding: 20px; }
+
+    /* FIELDS */
+    .field-grid { display: grid; gap: 12px; }
+    .field-grid.cols-2 { grid-template-columns: 1fr 1fr; }
+    .field-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+    .field-grid.cols-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+
+    label.field-label {
+      font-size: 11px; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.8px; display: block; margin-bottom: 5px;
+    }
+    input[type=number], input[type=text], select, textarea {
+      width: 100%; background: var(--input-bg); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--dark); padding: 9px 12px; font-size: 13px;
+      font-family: 'Barlow', sans-serif; outline: none; transition: border-color .15s;
+    }
+    input:focus, select:focus, textarea:focus { border-color: var(--primary); background: #fff; }
+    input.euro::before { content: '€'; }
+    .input-prefix { position: relative; }
+    .input-prefix span { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 12px; pointer-events: none; }
+    .input-prefix input { padding-left: 22px; }
+
+    /* FUEL UPLOAD */
+    .upload-zone {
+      border: 2px dashed var(--border); border-radius: 8px;
+      padding: 20px; text-align: center; cursor: pointer;
+      transition: all .2s; background: var(--input-bg);
+    }
+    .upload-zone:hover, .upload-zone.drag-over { border-color: var(--primary); background: #EEF2FB; }
+    .upload-zone-icon { font-size: 28px; margin-bottom: 6px; }
+    .upload-zone-text { font-size: 13px; color: var(--muted); }
+    .upload-zone-text strong { color: var(--primary); }
+
+    .receipt-list { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+    .receipt-item {
+      background: var(--input-bg); border: 1px solid var(--border); border-radius: 8px;
+      padding: 10px 14px; display: flex; align-items: center; gap: 10px;
+    }
+    .receipt-item.processing { border-color: var(--gold); background: #FFF8EC; }
+    .receipt-item.done { border-color: #C3E6CB; background: #F4FFF7; }
+    .receipt-item.error { border-color: #F5C6CB; background: #FFF5F5; }
+    .receipt-name { font-size: 12px; font-weight: 600; flex: 1; color: var(--dark); }
+    .receipt-status { font-size: 11px; color: var(--muted); }
+    .receipt-data { font-size: 11px; color: var(--primary); font-weight: 600; }
+    .receipt-remove { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 16px; padding: 0 4px; }
+    .receipt-remove:hover { color: var(--accent); }
+
+    .fuel-totals {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 16px;
+      padding: 14px; background: #EEF2FB; border-radius: 8px;
+    }
+    .fuel-total-item { text-align: center; }
+    .fuel-total-val { font-size: 20px; font-weight: 800; color: var(--primary); }
+    .fuel-total-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+
+    /* TOLLS GRID */
+    .tolls-grid {
+      display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px;
+    }
+    .toll-item label { font-size: 10px; font-weight: 700; color: var(--muted); letter-spacing: 0.5px; display: block; margin-bottom: 4px; }
+    .toll-item input { font-size: 13px; }
+
+    /* P&L PREVIEW */
+    .pnl-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;
+    }
+    .pnl-block { background: var(--input-bg); border-radius: 8px; padding: 14px; }
+    .pnl-block-title { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 10px; }
+    .pnl-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-bottom: 1px solid var(--border); }
+    .pnl-row:last-child { border-bottom: none; }
+    .pnl-row-label { font-size: 12px; color: var(--muted); }
+    .pnl-row-val { font-size: 13px; font-weight: 600; color: var(--dark); }
+
+    .pnl-result {
+      border-radius: 10px; padding: 18px 20px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .pnl-result.profit { background: linear-gradient(135deg, #1B6B3A 0%, #2DC653 100%); }
+    .pnl-result.loss { background: linear-gradient(135deg, #8B1A1A 0%, #E63946 100%); }
+    .pnl-result.neutral { background: linear-gradient(135deg, #3A3A5C 0%, #6B6B9C 100%); }
+    .pnl-result-label { font-size: 12px; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 1px; }
+    .pnl-result-val { font-size: 32px; font-weight: 800; color: white; font-family: 'Barlow Condensed', sans-serif; }
+    .pnl-result-margin { font-size: 13px; color: rgba(255,255,255,0.8); font-weight: 600; }
+
+    /* SPINNER */
+    .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle; margin-right: 6px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* BUTTONS */
+    .btn-primary {
+      background: var(--primary); color: white; border: none; border-radius: 8px;
+      padding: 13px 28px; font-size: 14px; font-weight: 700; font-family: 'Barlow', sans-serif;
+      cursor: pointer; transition: all .15s; letter-spacing: 0.3px;
+    }
+    .btn-primary:hover { background: #142d56; transform: translateY(-1px); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .btn-secondary {
+      background: transparent; color: var(--primary); border: 1.5px solid var(--primary);
+      border-radius: 8px; padding: 11px 20px; font-size: 13px; font-weight: 600;
+      font-family: 'Barlow', sans-serif; cursor: pointer; transition: all .15s;
+    }
+    .btn-secondary:hover { background: var(--primary); color: white; }
+
+    .save-bar {
+      display: flex; justify-content: flex-end; gap: 12px; align-items: center;
+      padding-top: 8px;
+    }
+    .status-msg { font-size: 13px; font-weight: 600; padding: 10px 16px; border-radius: 6px; }
+    .status-msg.success { background: #D4EDDA; color: #155724; }
+    .status-msg.error { background: #F8D7DA; color: #721C24; }
+    .status-msg.loading { background: var(--primary); color: white; }
+
+    /* DEBUG */
+    .debug-toggle { font-size: 10px; color: var(--muted); background: none; border: 1px solid var(--border); border-radius: 4px; padding: 3px 8px; cursor: pointer; margin-top: 8px; }
+    .debug-panel { background: #1B2A4A; color: #20C997; font-family: monospace; font-size: 10px; padding: 12px; border-radius: 8px; margin-top: 8px; white-space: pre-wrap; max-height: 300px; overflow-y: auto; display: none; }
+    .debug-panel.show { display: block; }
+
+    .section-divider { height: 1px; background: var(--border); margin: 4px 0 16px; }
+
+    @media(max-width:600px){
+      .field-grid.cols-3, .field-grid.cols-4 { grid-template-columns: 1fr 1fr; }
+      .tolls-grid { grid-template-columns: repeat(3,1fr); }
+      .pnl-grid { grid-template-columns: 1fr; }
+      .fuel-totals { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-logo">
+    <svg viewBox="0 0 28 28" fill="none"><rect width="28" height="28" rx="6" fill="rgba(255,255,255,0.15)"/><path d="M7 8h14M7 14h9M7 20h12" stroke="white" stroke-width="2" stroke-linecap="round"/></svg>
+    <div>
+      <div class="header-title">TRIP P&L ENTRY</div>
+      <div class="header-sub">Owned Fleet · Cost Recording</div>
+    </div>
+  </div>
+  <div class="version-tag">v1.0</div>
+</div>
+
+<div class="container">
+
+  <!-- TRIP SELECTOR -->
+  <div class="trip-selector-wrap" id="tripSelectorWrap">
+    <div class="field">
+      <label>Επιλογή Trip</label>
+      <select id="tripSelect" onchange="loadTrip(this.value)">
+        <option value="">— Φόρτωση trips... —</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- TRIP INFO BAR -->
+  <div id="tripInfoBar" style="display:none; margin-bottom:20px;">
+    <div class="trip-selector-wrap" style="padding:14px 20px;">
+      <div class="trip-info-bar" id="tripBadges"></div>
+    </div>
+  </div>
+
+  <!-- MAIN FORM (hidden until trip selected) -->
+  <div id="mainForm" style="display:none;">
+
+    <!-- FUEL SECTION -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-icon">⛽</span>
+        <span class="card-title">ΚΑΥΣΙΜΑ</span>
+        <span class="card-subtitle">DADI / External / Reefer</span>
+      </div>
+      <div class="card-body">
+
+        <!-- DADI Upload -->
+        <label class="field-label">DADI Receipts — Upload PDF(s)</label>
+        <div class="upload-zone" id="dadiZone" onclick="document.getElementById('dadiInput').click()"
+             ondragover="event.preventDefault();this.classList.add('drag-over')"
+             ondragleave="this.classList.remove('drag-over')"
+             ondrop="handleDrop(event)">
+          <div class="upload-zone-icon">📄</div>
+          <div class="upload-zone-text">Σύρε ή <strong>κάνε κλικ</strong> για upload — DADI Ispratnica PDFs</div>
+        </div>
+        <input type="file" id="dadiInput" accept=".pdf,.png,.jpg,.jpeg" multiple style="display:none" onchange="handleFiles(this.files)">
+        <div class="receipt-list" id="receiptList"></div>
+
+        <div class="section-divider" style="margin-top:16px;"></div>
+
+        <!-- Fuel Manual Override / Summary -->
+        <div class="field-grid cols-3" style="margin-top:4px;">
+          <div>
+            <label class="field-label">DADI Liters (Total)</label>
+            <div class="input-prefix"><span>L</span><input type="number" id="dadiLiters" step="0.01" placeholder="0.00" oninput="calcPnl()"></div>
+          </div>
+          <div>
+            <label class="field-label">DADI Cost (Total)</label>
+            <div class="input-prefix"><span>€</span><input type="number" id="dadiCost" step="0.01" placeholder="0.00" oninput="calcPnl()"></div>
+          </div>
+          <div>
+            <label class="field-label">Total KM (από DADI)</label>
+            <div class="input-prefix"><span>km</span><input type="number" id="totalKm" step="1" placeholder="0" oninput="calcPnl()"></div>
+          </div>
+        </div>
+
+        <div class="field-grid cols-3" style="margin-top:12px;">
+          <div>
+            <label class="field-label">External Fuel Liters</label>
+            <div class="input-prefix"><span>L</span><input type="number" id="extLiters" step="0.01" placeholder="0.00" oninput="calcPnl()"></div>
+          </div>
+          <div>
+            <label class="field-label">External Fuel Cost</label>
+            <div class="input-prefix"><span>€</span><input type="number" id="extCost" step="0.01" placeholder="0.00" oninput="calcPnl()"></div>
+          </div>
+          <div>
+            <label class="field-label">Reefer Liters</label>
+            <div class="input-prefix"><span>L</span><input type="number" id="reeferLiters" step="0.01" placeholder="0.00" oninput="calcPnl()"></div>
+          </div>
+        </div>
+
+        <div class="fuel-totals" id="fuelTotals">
+          <div class="fuel-total-item"><div class="fuel-total-val" id="ftTotalL">0 L</div><div class="fuel-total-label">Total Liters</div></div>
+          <div class="fuel-total-item"><div class="fuel-total-val" id="ftTotalCost">€0</div><div class="fuel-total-label">Fuel Cost</div></div>
+          <div class="fuel-total-item"><div class="fuel-total-val" id="ftKmL">—</div><div class="fuel-total-label">KM/Liter</div></div>
+          <div class="fuel-total-item"><div class="fuel-total-val" id="ftEurKm">—</div><div class="fuel-total-label">€/KM</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TOLLS SECTION -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-icon">🛣️</span>
+        <span class="card-title">ΔΙΟΔΙΑ</span>
+        <span class="card-subtitle">ανά χώρα — EUR</span>
+      </div>
+      <div class="card-body">
+        <div class="tolls-grid">
+          <div class="toll-item"><label>🇲🇰 MK</label><input type="number" id="tollMK" step="0.01" placeholder="0" oninput="calcPnl()"></div>
+          <div class="toll-item"><label>🇷🇸 RS</label><input type="number" id="tollRS" step="0.01" placeholder="0" oninput="calcPnl()"></div>
+          <div class="toll-item"><label>🇭🇷 HR</label><input type="number" id="tollHR" step="0.01" placeholder="0" oninput="calcPnl()"></div>
+          <div class="toll-item"><label>🇸🇮 SL</label><input type="number" id="tollSL" step="0.01" placeholder="0" oninput="calcPnl()"></div>
+          <div class="toll-item"><label>🇭🇺 HU</label><input type="number" id="tollHU" step="0.01" placeholder="0" oninput="calcPnl()"></div>
+          <div class="toll-item"><label>🇦🇹 AT</label><input type="number" id="tollAT" step="0.01" placeholder="0" oninput="calcPnl()"></div>
+          <div class="toll-item"><label>🇸🇰 SK</label><input type="number" id="tollSK" step="0.01" placeholder="0" oninput="calcPnl()"></div>
+          <div class="toll-item"><label>🇨🇿 CZ</label><input type="number" id="tollCZ" step="0.01" placeholder="0" oninput="calcPnl()"></div>
+          <div class="toll-item"><label>🇩🇪 DE</label><input type="number" id="tollDE" step="0.01" placeholder="0" oninput="calcPnl()"></div>
+          <div class="toll-item"><label>🇵🇱 PL</label><input type="number" id="tollPL" step="0.01" placeholder="0" oninput="calcPnl()"></div>
+          <div class="toll-item"><label>🇧🇪 BE</label><input type="number" id="tollBE" step="0.01" placeholder="0" oninput="calcPnl()"></div>
+          <div class="toll-item"><label>🇳🇱 NL</label><input type="number" id="tollNL" step="0.01" placeholder="0" oninput="calcPnl()"></div>
+          <div class="toll-item"><label>🇮🇹 IT</label><input type="number" id="tollIT" step="0.01" placeholder="0" oninput="calcPnl()"></div>
+          <div class="toll-item"><label>🇷🇴 RO</label><input type="number" id="tollRO" step="0.01" placeholder="0" oninput="calcPnl()"></div>
+          <div class="toll-item"><label>🇧🇬 BG</label><input type="number" id="tollBG" step="0.01" placeholder="0" oninput="calcPnl()"></div>
+        </div>
+        <div style="margin-top:12px;padding:10px 14px;background:#EEF2FB;border-radius:6px;display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:12px;color:var(--muted);font-weight:600;">TOTAL TOLLS</span>
+          <span id="totalTollsDisplay" style="font-size:18px;font-weight:800;color:var(--primary);">€ 0.00</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- VARIABLE COSTS -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-icon">💶</span>
+        <span class="card-title">ΜΕΤΑΒΛΗΤΑ ΕΞΟΔΑ</span>
+      </div>
+      <div class="card-body">
+        <div class="field-grid cols-2">
+          <div>
+            <label class="field-label">Driver Pay</label>
+            <div class="input-prefix"><span>€</span><input type="number" id="driverPay" step="0.01" placeholder="0.00" oninput="calcPnl()"></div>
+          </div>
+          <div>
+            <label class="field-label">Accommodation</label>
+            <div class="input-prefix"><span>€</span><input type="number" id="accommodation" step="0.01" placeholder="0.00" oninput="calcPnl()"></div>
+          </div>
+          <div>
+            <label class="field-label">Fines</label>
+            <div class="input-prefix"><span>€</span><input type="number" id="fines" step="0.01" placeholder="0.00" oninput="calcPnl()"></div>
+          </div>
+          <div>
+            <label class="field-label">Other Expenses</label>
+            <div class="input-prefix"><span>€</span><input type="number" id="otherExp" step="0.01" placeholder="0.00" oninput="calcPnl()"></div>
+          </div>
+        </div>
+        <div style="margin-top:12px;">
+          <label class="field-label">Notes</label>
+          <textarea id="notes" rows="2" placeholder="Παρατηρήσεις..." style="resize:vertical;"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- P&L PREVIEW -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-icon">📊</span>
+        <span class="card-title">P&L PREVIEW</span>
+        <span class="card-subtitle">Live calculation</span>
+      </div>
+      <div class="card-body">
+        <div class="pnl-grid">
+          <div class="pnl-block">
+            <div class="pnl-block-title">📥 Revenue</div>
+            <div class="pnl-row"><span class="pnl-row-label">Export Revenue</span><span class="pnl-row-val" id="pvExportRev">—</span></div>
+            <div class="pnl-row"><span class="pnl-row-label">Import Revenue</span><span class="pnl-row-val" id="pvImportRev">—</span></div>
+            <div class="pnl-row" style="font-weight:700;"><span class="pnl-row-label" style="color:var(--dark)">Total Revenue</span><span class="pnl-row-val" id="pvTotalRev" style="color:var(--green)">—</span></div>
+          </div>
+          <div class="pnl-block">
+            <div class="pnl-block-title">📤 Costs</div>
+            <div class="pnl-row"><span class="pnl-row-label">Fuel</span><span class="pnl-row-val" id="pvFuel">€0</span></div>
+            <div class="pnl-row"><span class="pnl-row-label">Tolls</span><span class="pnl-row-val" id="pvTolls">€0</span></div>
+            <div class="pnl-row"><span class="pnl-row-label">Driver Pay</span><span class="pnl-row-val" id="pvDriver">€0</span></div>
+            <div class="pnl-row"><span class="pnl-row-label">Other</span><span class="pnl-row-val" id="pvOther">€0</span></div>
+            <div class="pnl-row" style="font-weight:700;"><span class="pnl-row-label" style="color:var(--dark)">Total Costs</span><span class="pnl-row-val" id="pvTotalCost" style="color:var(--accent)">€0</span></div>
+          </div>
+        </div>
+        <div class="pnl-result neutral" id="pnlResult">
+          <div><div class="pnl-result-label">Net Profit</div><div class="pnl-result-margin" id="pvMargin">—% margin</div></div>
+          <div class="pnl-result-val" id="pvNetProfit">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SAVE -->
+    <div class="save-bar">
+      <button class="debug-toggle" onclick="document.getElementById('debugPanel').classList.toggle('show')">🔍 DEBUG</button>
+      <button class="btn-secondary" onclick="resetForm()">Καθαρισμός</button>
+      <button class="btn-primary" id="btnSave" onclick="saveTripCosts()">💾 ΑΠΟΘΗΚΕΥΣΗ P&L</button>
+    </div>
+    <div id="saveStatus" style="display:none; margin-top:10px;"></div>
+    <div id="debugPanel" class="debug-panel"></div>
+
+  </div><!-- /mainForm -->
+</div><!-- /container -->
+
+<script>
+const AT_TOKEN = 'pat' + 'pPJXnFYnxdgoK3.a2162b09fbb214628114ff2ce68bb5a7b30aea2061b14f9562a1ab222585cf08';
+const ANTH_KEY = 'sk-ant-api' + '03-HG90hAxac0K9lx2mdS6fFKID6XMAICWl4FSbXeVM9zG3klf7diFSUiNY056CRFBAeUZ1H_dZwDfhVbf7IRD3HQ-_nYO3gAA';
+const BASE_ID = 'appElT5CQV6JQvym8';
+const TRIPS_TBL = 'tblgoyV26PBc6L9uE';
+const TRIP_COSTS_TBL = 'tblWUus6uSpqE1LMW';
+
+let currentTrip = null;
+let receipts = []; // [{name, b64, status, liters, cost, km}]
+
+function atFetch(path, opts={}) {
+  return fetch('https://api.airtable.com/v0/' + BASE_ID + path, {
+    ...opts,
+    headers: { 'Authorization': 'Bearer ' + AT_TOKEN, 'Content-Type': 'application/json', ...(opts.headers||{}) }
+  });
+}
+
+// ── LOAD TRIPS ────────────────────────────────────────────────────────────────
+async function loadTrips() {
+  const sel = document.getElementById('tripSelect');
+  sel.innerHTML = '<option value="">Φόρτωση...</option>';
+  try {
+    let records = [], offset = null;
+    do {
+      const qs = new URLSearchParams();
+      ['TripID','Truck Plate','Driver Name','Week Number','Export Net Revenue','Trip KM Actual'].forEach(f => qs.append('fields[]', f));
+      qs.set('sort[0][field]', 'TripID');
+      qs.set('sort[0][direction]', 'desc');
+      if(offset) qs.set('offset', offset);
+      const r = await atFetch('/' + TRIPS_TBL + '?' + qs);
+      const d = await r.json();
+      records = records.concat(d.records || []);
+      offset = d.offset;
+    } while(offset && records.length < 100);
+
+    sel.innerHTML = '<option value="">— Επιλογή Trip —</option>';
+    records.forEach(r => {
+      const f = r.fields;
+      const plate = (f['Truck Plate']||['?'])[0];
+      const label = `Trip #${f.TripID || r.id.slice(-4)} — ${plate} — Wk ${f['Week Number']||'?'}`;
+      const opt = document.createElement('option');
+      opt.value = r.id;
+      opt.dataset.trip = JSON.stringify({id:r.id, fields:f});
+      opt.textContent = label;
+      sel.appendChild(opt);
+    });
+  } catch(e) {
+    sel.innerHTML = '<option value="">Σφάλμα φόρτωσης</option>';
+  }
+}
+
+// ── LOAD TRIP DATA ────────────────────────────────────────────────────────────
+async function loadTrip(tripId) {
+  if(!tripId) { document.getElementById('mainForm').style.display='none'; document.getElementById('tripInfoBar').style.display='none'; return; }
+
+  const sel = document.getElementById('tripSelect');
+  const opt = sel.querySelector(`option[value="${tripId}"]`);
+  const tripData = opt ? JSON.parse(opt.dataset.trip) : null;
+  
+  // Fetch full trip record for revenue data
+  try {
+    const r = await atFetch('/' + TRIPS_TBL + '/' + tripId);
+    const d = await r.json();
+    currentTrip = d;
+
+    const f = d.fields;
+    const plate = (f['Truck Plate']||['—'])[0];
+    const driver = (f['Driver Name']||['—'])[0];
+    const km = f['Trip KM Actual'] || 0;
+    const exportRev = f['Export Net Revenue'] || 0;
+
+    document.getElementById('tripBadges').innerHTML = `
+      <div class="trip-badge"><span class="trip-badge-label">Trip</span><span class="trip-badge-val">#${f.TripID||'—'}</span></div>
+      <div class="trip-badge"><span class="trip-badge-label">Truck</span><span class="trip-badge-val">${plate}</span></div>
+      <div class="trip-badge"><span class="trip-badge-label">Driver</span><span class="trip-badge-val">${driver}</span></div>
+      <div class="trip-badge"><span class="trip-badge-label">Week</span><span class="trip-badge-val">Wk ${f['Week Number']||'—'}</span></div>
+      <div class="trip-badge"><span class="trip-badge-label">KM</span><span class="trip-badge-val">${km||'—'}</span></div>
+    `;
+    document.getElementById('tripInfoBar').style.display = 'block';
+    document.getElementById('mainForm').style.display = 'block';
+
+    // Pre-fill KM if available
+    if(km > 0) document.getElementById('totalKm').value = km;
+
+    // Set revenue preview
+    document.getElementById('pvExportRev').textContent = exportRev ? '€' + exportRev.toLocaleString('el-GR') : '—';
+
+    calcPnl();
+  } catch(e) {
+    alert('Σφάλμα φόρτωσης trip: ' + e.message);
+  }
+}
+
+// ── FILE HANDLING ─────────────────────────────────────────────────────────────
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('dadiZone').classList.remove('drag-over');
+  handleFiles(e.dataTransfer.files);
+}
+
+function handleFiles(files) {
+  Array.from(files).forEach(file => {
+    const receipt = { name: file.name, status: 'processing', liters: null, cost: null, km: null, id: Date.now() + Math.random() };
+    receipts.push(receipt);
+    renderReceipts();
+    readAndExtract(file, receipt.id);
+  });
+}
+
+function readAndExtract(file, receiptId) {
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    const b64 = e.target.result.split(',')[1];
+    const mime = file.type || 'application/pdf';
+    try {
+      const result = await extractDadiReceipt(b64, mime, file.name);
+      const idx = receipts.findIndex(r => r.id === receiptId);
+      if(idx>=0) {
+        receipts[idx] = { ...receipts[idx], status: 'done', ...result };
+        renderReceipts();
+        aggregateFuelTotals();
+      }
+    } catch(err) {
+      const idx = receipts.findIndex(r => r.id === receiptId);
+      if(idx>=0) { receipts[idx].status = 'error'; receipts[idx].error = err.message; renderReceipts(); }
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+async function extractDadiReceipt(b64, mime, filename) {
+  const prompt = `You are extracting data from a DADI-КОМПАНИ fuel receipt (Испратница PDF from a Macedonian fuel company).
+
+Extract ONLY these fields:
+- liters: total fuel quantity (Количина field, number)
+- cost: total amount with tax (Вкупно со ДДВ, number in MKD — convert to EUR at rate 61.5 MKD/EUR and round to 2 decimals)
+- km: odometer reading (Километри field, number) — if TWO km values present (start/end), return the HIGHER one (end odometer)
+- plate: vehicle plate number (Возило/рег.број)
+
+Return ONLY valid JSON, no markdown:
+{"liters": number_or_null, "cost_eur": number_or_null, "km": number_or_null, "plate": "string_or_null"}`;
+
+  const body = {
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 300,
+    messages: [{
+      role: 'user',
+      content: [
+        { type: 'document', source: { type: 'base64', media_type: mime, data: b64 } },
+        { type: 'text', text: prompt }
+      ]
+    }]
+  };
+
+  const r = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  const d = await r.json();
+  const text = d.content?.[0]?.text || '{}';
+  const clean = text.replace(/```json|```/g,'').trim();
+  const parsed = JSON.parse(clean);
+  return { liters: parsed.liters, cost: parsed.cost_eur, km: parsed.km, plate: parsed.plate };
+}
+
+function renderReceipts() {
+  const list = document.getElementById('receiptList');
+  list.innerHTML = receipts.map(rc => `
+    <div class="receipt-item ${rc.status}">
+      <span style="font-size:16px">${rc.status==='processing'?'⏳':rc.status==='done'?'✅':'❌'}</span>
+      <span class="receipt-name">${rc.name}</span>
+      ${rc.status==='processing' ? '<span class="receipt-status"><div class="spinner" style="border-color:rgba(0,0,0,0.15);border-top-color:var(--gold)"></div>AI extraction...</span>' : ''}
+      ${rc.status==='done' ? `<span class="receipt-data">${rc.liters||'?'}L · €${rc.cost||'?'} · ${rc.km||'?'}km${rc.plate?' · '+rc.plate:''}</span>` : ''}
+      ${rc.status==='error' ? `<span class="receipt-status" style="color:var(--accent)">${rc.error||'Error'}</span>` : ''}
+      <button class="receipt-remove" onclick="removeReceipt(${rc.id})">×</button>
+    </div>
+  `).join('');
+}
+
+function removeReceipt(id) {
+  receipts = receipts.filter(r => r.id !== id);
+  renderReceipts();
+  aggregateFuelTotals();
+}
+
+function aggregateFuelTotals() {
+  const totalL = receipts.filter(r=>r.status==='done').reduce((s,r)=>(s + (r.liters||0)), 0);
+  const totalCost = receipts.filter(r=>r.status==='done').reduce((s,r)=>(s + (r.cost||0)), 0);
+  const maxKm = Math.max(0, ...receipts.filter(r=>r.status==='done'&&r.km).map(r=>r.km));
+
+  if(totalL > 0) document.getElementById('dadiLiters').value = totalL.toFixed(2);
+  if(totalCost > 0) document.getElementById('dadiCost').value = totalCost.toFixed(2);
+  if(maxKm > 0) document.getElementById('totalKm').value = maxKm;
+  calcPnl();
+}
+
+// ── P&L CALCULATION ───────────────────────────────────────────────────────────
+function calcPnl() {
+  const n = id => parseFloat(document.getElementById(id)?.value||0)||0;
+
+  const dadiL = n('dadiLiters'), dadiC = n('dadiCost');
+  const extL = n('extLiters'), extC = n('extCost');
+  const reeferL = n('reeferLiters');
+  const km = n('totalKm');
+
+  const totalL = dadiL + extL + reeferL;
+  const totalFuelCost = dadiC + extC;
+
+  // Fuel summary
+  document.getElementById('ftTotalL').textContent = totalL.toFixed(1) + ' L';
+  document.getElementById('ftTotalCost').textContent = '€' + totalFuelCost.toFixed(0);
+  document.getElementById('ftKmL').textContent = (totalL>0&&km>0) ? (km/totalL).toFixed(2) : '—';
+  document.getElementById('ftEurKm').textContent = (totalFuelCost>0&&km>0) ? '€' + (totalFuelCost/km).toFixed(3) : '—';
+
+  // Tolls
+  const tollIds = ['MK','RS','HR','SL','HU','AT','SK','CZ','DE','PL','BE','NL','IT','RO','BG'];
+  const totalTolls = tollIds.reduce((s,c) => s + n('toll'+c), 0);
+  document.getElementById('totalTollsDisplay').textContent = '€ ' + totalTolls.toFixed(2);
+
+  // Variable
+  const driverPay = n('driverPay');
+  const accommodation = n('accommodation');
+  const fines = n('fines');
+  const otherExp = n('otherExp');
+  const totalOther = accommodation + fines + otherExp;
+
+  const totalCosts = totalFuelCost + totalTolls + driverPay + totalOther;
+
+  // Revenue from trip
+  const exportRev = currentTrip ? (currentTrip.fields['Export Net Revenue']||0) : 0;
+  const importRev = 0; // TODO when available
+
+  const totalRev = exportRev + importRev;
+  const netProfit = totalRev - totalCosts;
+  const margin = totalRev > 0 ? (netProfit/totalRev*100) : 0;
+
+  // Update P&L preview
+  document.getElementById('pvFuel').textContent = '€' + totalFuelCost.toFixed(0);
+  document.getElementById('pvTolls').textContent = '€' + totalTolls.toFixed(0);
+  document.getElementById('pvDriver').textContent = '€' + driverPay.toFixed(0);
+  document.getElementById('pvOther').textContent = '€' + (totalOther).toFixed(0);
+  document.getElementById('pvTotalCost').textContent = '€' + totalCosts.toFixed(0);
+
+  if(totalRev > 0) {
+    document.getElementById('pvImportRev').textContent = importRev > 0 ? '€' + importRev.toLocaleString('el-GR') : '—';
+    document.getElementById('pvTotalRev').textContent = '€' + totalRev.toLocaleString('el-GR');
+  }
+
+  const pnlEl = document.getElementById('pnlResult');
+  pnlEl.className = 'pnl-result ' + (netProfit > 0 ? 'profit' : netProfit < 0 ? 'loss' : 'neutral');
+  document.getElementById('pvNetProfit').textContent = (netProfit>=0?'+':'') + '€' + netProfit.toFixed(0);
+  document.getElementById('pvMargin').textContent = (totalRev>0 ? margin.toFixed(1)+'% margin' : '— awaiting revenue');
+}
+
+// ── SAVE ──────────────────────────────────────────────────────────────────────
+async function saveTripCosts() {
+  if(!currentTrip) { alert('Επίλεξε trip πρώτα'); return; }
+
+  const btn = document.getElementById('btnSave');
+  const st = document.getElementById('saveStatus');
+  btn.disabled = true; btn.textContent = 'Αποθήκευση...';
+  st.style.display = 'block';
+  st.className = 'status-msg loading';
+  st.innerHTML = '<div class="spinner"></div> Αποθήκευση στο Airtable...';
+
+  function n(id) { const v = parseFloat(document.getElementById(id)?.value||0); return isNaN(v)||v===0 ? null : v; }
+  function s(id) { const v = (document.getElementById(id)?.value||'').trim(); return v || null; }
+
+  const tollIds = ['MK','RS','HR','SL','HU','AT','SK','CZ','DE','PL','BE','NL','IT','RO','BG'];
+
+  const fields = {
+    'Trip Link': [currentTrip.id],
+    'Trip Type': 'OWNED FLEET',
+  };
+
+  if(n('dadiLiters')) fields['Fuel Truck 1 Liters'] = n('dadiLiters');
+  if(n('extLiters')) fields['External Fuel Liters'] = n('extLiters');
+  if(n('totalKm')) fields['Total KM'] = n('totalKm');
+  if(n('dadiCost')) fields['Amount'] = n('dadiCost'); // primary cost field
+  if(n('extCost')) { /* included in total via formula */ }
+  if(n('driverPay')) fields['Driver Pay'] = n('driverPay');
+  if(n('accommodation')) fields['Accommodation'] = n('accommodation');
+  if(n('fines')) fields['Fines'] = n('fines');
+  if(n('otherExp')) fields['Other Expenses'] = n('otherExp');
+  if(s('notes')) fields['Notes'] = s('notes');
+
+  tollIds.forEach(c => {
+    const v = n('toll'+c);
+    if(v) fields['Tolls '+c] = v;
+  });
+
+  const dp = document.getElementById('debugPanel');
+  dp.textContent = '=== PAYLOAD ===\n' + JSON.stringify(fields, null, 2);
+
+  try {
+    const r = await atFetch('/' + TRIP_COSTS_TBL, {
+      method: 'POST',
+      body: JSON.stringify({fields})
+    });
+    const d = await r.json();
+    if(d.error) throw new Error(d.error.message);
+
+    st.className = 'status-msg success';
+    st.textContent = '✅ Αποθηκεύτηκε — Record: ' + d.id;
+    btn.disabled = false; btn.textContent = '💾 ΑΠΟΘΗΚΕΥΣΗ P&L';
+    showToast();
+  } catch(e) {
+    st.className = 'status-msg error';
+    st.textContent = 'Σφάλμα: ' + e.message;
+    btn.disabled = false; btn.textContent = '💾 ΑΠΟΘΗΚΕΥΣΗ P&L';
+    dp.classList.add('show');
+  }
+}
+
+function showToast() {
+  const t = document.createElement('div');
+  t.textContent = '✅ Trip P&L αποθηκεύτηκε!';
+  Object.assign(t.style, {
+    position:'fixed', bottom:'24px', right:'24px', background:'var(--green)', color:'white',
+    padding:'12px 20px', borderRadius:'8px', fontWeight:'700', fontSize:'14px',
+    boxShadow:'0 4px 20px rgba(0,0,0,0.2)', zIndex:'9999', transition:'opacity .3s'
+  });
+  document.body.appendChild(t);
+  setTimeout(()=>{ t.style.opacity='0'; setTimeout(()=>t.remove(),300); }, 3000);
+}
+
+function resetForm() {
+  const ids = ['dadiLiters','dadiCost','totalKm','extLiters','extCost','reeferLiters',
+    'driverPay','accommodation','fines','otherExp','notes'];
+  ids.forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  ['MK','RS','HR','SL','HU','AT','SK','CZ','DE','PL','BE','NL','IT','RO','BG'].forEach(c=>{
+    const el=document.getElementById('toll'+c); if(el) el.value='';
+  });
+  receipts = [];
+  renderReceipts();
+  calcPnl();
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', loadTrips);
+</script>
+</body>
+</html>
