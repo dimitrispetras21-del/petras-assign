@@ -173,6 +173,10 @@
     <button onclick="document.getElementById('debugOverlay').style.display='none'" style="background:#E63946;color:white;border:none;border-radius:4px;padding:2px 8px;cursor:pointer;font-size:10px">✕ ΚΛΕΙΣΙΜΟ</button>
   </div>
   <div id="debugLog"></div>
+  <div style="margin-top:8px;display:flex;gap:8px;">
+    <button onclick="testAPI()" style="background:#20C997;color:#0F1F3D;border:none;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:10px;font-weight:700">▶ TEST API</button>
+    <button onclick="document.getElementById('debugLog').innerHTML=''" style="background:#444;color:white;border:none;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:10px">CLEAR</button>
+  </div>
 </div>
 
 <script>
@@ -393,11 +397,17 @@ async function callClaude(b64, mime, prompt) {
       ]
     }]
   };
-  console.log('[Claude API] Sending request, model:', body.model);
+  console.log('[Claude API] Sending request, b64 size:', b64.length, 'mime:', mime);
   let r;
   try {
     r = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': ANTH, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': ANTH,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
       body: JSON.stringify(body)
     });
   } catch(fetchErr) {
@@ -655,6 +665,31 @@ function log(type, msg) {
   const el = document.getElementById(type+'Status');
   el.textContent += '\n' + msg;
   el.scrollTop = el.scrollHeight;
+}
+
+async function testAPI() {
+  console.log('[TEST] Pinging Anthropic API...');
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': ANTH,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 20,
+        messages: [{ role: 'user', content: 'Reply with just: OK' }]
+      })
+    });
+    console.log('[TEST] HTTP:', r.status);
+    const d = await r.json();
+    console.log('[TEST] Response:', d.content?.[0]?.text || JSON.stringify(d.error));
+  } catch(e) {
+    console.error('[TEST] Failed:', e.message, e);
+  }
 }
 
 window.addEventListener('DOMContentLoaded', loadTrips);
