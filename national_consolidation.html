@@ -239,6 +239,7 @@ const BASE='appElT5CQV6JQvym8';
 const T_NO='tblGHCCsTMqAy4KR2';
 const T_CL='tblFWKAQVUzAM8mCE';
 const T_LO='tblxu8DRfTQOFRCzS';
+const T_ORDERS='tblgHlNmLBH3JTdIM';
 
 // lines = one per NATIONAL ORDER record (each is already 1 loading line)
 let lines=[], filtered=[], trucks=[], tc=1;
@@ -288,20 +289,44 @@ async function resolveIds(tableId,ids){
 async function loadLines(){
   setStatus('load','Φόρτωση εντολών groupage...');
   try{
-    // Server-side filter: only National Groupage = TRUE
-    const recs=await atFetchFields(T_NO,
-      ['Name','Client','Pickup Location','Delivery Location',
-       'Loading DateTime','Delivery DateTime','Pallets',
-       'Temperature °C','Goods','Status','Direction'],
+    const noRecs=await atFetchFields(T_NO,
+      ['Name','Client','Pickup Location','Delivery Location','Loading DateTime',
+       'Delivery DateTime','Temperature °C','Goods','Status','Direction','Linked Order'],
       {'filterByFormula':'{National Groupage}=1'}
     );
 
-    // Collect IDs for resolution
-    const cIds=new Set(), lIds=new Set();
-    recs.forEach(r=>{
+    if(!noRecs.length){
+      lines=[];
+      setStatus('ok','0 εντολές groupage — τσεκάρε το National Groupage στις εντολές');
+      applyFilter(); return;
+    }
+
+    // Collect linked ORDER ids
+    const orderIds=new Set();
+    noRecs.forEach(r=>(r.fields['Linked Order']||[]).forEach(id=>orderIds.add(id)));
+
+    // Fetch linked ORDERS → Loading Location 1-3 + Pallets 1-3
+    let orderMap={};
+    if(orderIds.size){
+      const idsArr=[...orderIds];
+      const formula=`OR(${idsArr.map(id=>`RECORD_ID()="${id}"`).join(',')})`;
+      const orderRecs=await atFetchFields(T_ORDERS,
+        ['Loading Location 1','Loading Location 2','Loading Location 3',
+         'Loading Pallets 1','Loading Pallets 2','Loading Pallets 3'],
+        {'filterByFormula':formula}
+      );
+      orderRecs.forEach(r=>{ orderMap[r.id]=r.fields; });
+    }
+
+    // Collect all location IDs
+    const lIds=new Set(), cIds=new Set();
+    noRecs.forEach(r=>{
       (r.fields.Client||[]).forEach(id=>cIds.add(id));
-      (r.fields['Pickup Location']||[]).forEach(id=>lIds.add(id));
       (r.fields['Delivery Location']||[]).forEach(id=>lIds.add(id));
+      (r.fields['Pickup Location']||[]).forEach(id=>lIds.add(id));
+    });
+    Object.values(orderMap).forEach(f=>{
+      [1,2,3].forEach(i=>{ (f[`Loading Location ${i}`]||[]).forEach(id=>lIds.add(id)); });
     });
 
     const [cN,lN]=await Promise.all([
@@ -309,26 +334,39 @@ async function loadLines(){
       resolveIds(T_LO,[...lIds])
     ]);
 
-    lines=recs.map(r=>{
-      const f=r.fields;
-      const loc=arr=>(arr||[]).map(id=>lN[id]||id).join(', ')||'—';
-      const cli=arr=>(arr||[]).map(id=>cN[id]||id).join(', ')||'—';
-      return{
-        id: r.id,
-        supplier: loc(f['Pickup Location']),   // the loading point
-        delivery: loc(f['Delivery Location']),  // where it goes
-        client:   cli(f.Client),
-        loadDate: f['Loading DateTime']||'',
-        delDate:  f['Delivery DateTime']||'',
-        pal:      f.Pallets||0,
-        temp:     f['Temperature °C']!=null?f['Temperature °C']:null,
-        goods:    f.Goods||'',
-        dir:      f.Direction||'',
-        status:   f.Status||''
-      };
+    // Explode each NATIONAL ORDER into per-loading-stop lines
+    lines=[];
+    noRecs.forEach(no=>{
+      const nf=no.fields;
+      const delivery=(nf['Delivery Location']||[]).map(id=>lN[id]||id).join(', ')||'—';
+      const client=(nf.Client||[]).map(id=>cN[id]||id).join(', ')||'—';
+      const base={ noId:no.id, delivery, client,
+        loadDate:nf['Loading DateTime']||'', delDate:nf['Delivery DateTime']||'',
+        temp:nf['Temperature °C']!=null?nf['Temperature °C']:null,
+        goods:nf.Goods||'', dir:nf.Direction||'' };
+
+      const linkedId=(nf['Linked Order']||[])[0];
+      const of=linkedId?orderMap[linkedId]:null;
+
+      let added=0;
+      if(of){
+        [1,2,3].forEach(i=>{
+          const locIds=of[`Loading Location ${i}`];
+          const pal=of[`Loading Pallets ${i}`];
+          if(locIds&&locIds.length&&pal){
+            lines.push({...base, id:no.id+'_'+i, supplier:locIds.map(id=>lN[id]||id).join(', '), pal});
+            added++;
+          }
+        });
+      }
+      // Fallback if no linked order or no stops found
+      if(!added){
+        const pickup=(nf['Pickup Location']||[]).map(id=>lN[id]||id).join(', ')||'—';
+        lines.push({...base, id:no.id+'_1', supplier:pickup, pal:nf.Pallets||0});
+      }
     });
 
-    setStatus('ok',`${lines.length} γραμμές φόρτωσης`);
+    setStatus('ok',`${lines.length} γραμμές φόρτωσης από ${noRecs.length} εντολές`);
     applyFilter();
   }catch(e){
     setStatus('err','Σφάλμα: '+e.message);
