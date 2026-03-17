@@ -70,18 +70,19 @@ input[type=date]:focus,select:focus{border-color:var(--primary);}
 .pool-list::-webkit-scrollbar{width:4px;}
 .pool-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
 
-/* DATE TABS */
-.date-tabs{display:flex;gap:0;border-bottom:2px solid var(--border);background:var(--bg);flex-shrink:0;overflow-x:auto;}
-.date-tabs::-webkit-scrollbar{height:0;}
-.date-tab{padding:8px 14px;font-size:11px;font-weight:700;color:var(--muted);cursor:pointer;
-  border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap;
-  transition:all .15s;letter-spacing:.5px;font-family:'Barlow',sans-serif;}
-.date-tab:hover{color:var(--dark);}
-.date-tab.active{color:var(--primary);border-bottom-color:var(--primary);}
-.date-tab .dtab-cnt{font-size:10px;background:var(--border);color:var(--mid);
-  padding:1px 5px;border-radius:10px;margin-left:4px;font-weight:700;}
-.date-tab.active .dtab-cnt{background:var(--primary);color:#fff;}
-.pool-inner{padding:10px;overflow-y:auto;flex:1;}
+/* DATE DIVIDER */
+.date-divider{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 12px 6px;margin-top:4px;
+}
+.date-divider-label{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:15px;font-weight:900;color:var(--dark);
+  letter-spacing:1px;white-space:nowrap;
+}
+.date-divider-line{flex:1;height:2px;background:var(--primary);opacity:.25;}
+.date-divider-cnt{font-size:10px;font-weight:700;color:var(--muted);white-space:nowrap;}
+.pool-inner{padding:0 10px 10px;overflow-y:auto;flex:1;}
 
 /* LOADING LINE CARD — core unit */
 .lcard{
@@ -276,7 +277,6 @@ input[type=date]:focus,select:focus{border-color:var(--primary);}
         <div class="ps-label">PAL</div>
       </div>
     </div>
-    <div class="date-tabs" id="dateTabs"></div>
     <div class="pool-list" id="poolList">
       <div class="pool-inner" id="poolInner"><div class="empty">Φόρτωση...</div></div>
     </div>
@@ -471,7 +471,7 @@ function applyFilter(){
 
 function lineCardHTML(l, src){
   const inT=inTruck(l.id);
-  const ds=l.loadDate?l.loadDate.substring(5).replace('-','/'):null;
+  const ds=l.loadDate?fmtDate(l.loadDate):null;
   const isSplit=l.splitFrom!=null;
   const ci=orderColorMap[l.noId]??0;
   const colors=['#2D7FF9','#E040FB','#FF6D00','#00BFA5','#F9A825','#E53935','#43A047','#00ACC1','#8D6E63','#546E7A'];
@@ -505,17 +505,22 @@ function bindCards(container, src){
   });
 }
 
+function fmtDate(iso){
+  // iso = "2026-03-09" → "09/03"
+  if(!iso||iso==='—') return '—';
+  const parts=iso.substring(0,10).split('-');
+  return parts[2]+'/'+parts[1];
+}
+
 function renderPool(){
   const inner=document.getElementById('poolInner');
-  const tabsEl=document.getElementById('dateTabs');
 
   if(!filtered.length){
-    tabsEl.innerHTML='';
     inner.innerHTML='<div class="empty">Δεν βρέθηκαν εντολές groupage.<br>Ελέγξτε ότι έχει τσεκαριστεί<br><strong>National Groupage</strong> στις εντολές.</div>';
     return;
   }
 
-  // Build date groups
+  // Group by date, sorted
   const groups={};
   filtered.forEach(l=>{
     const d=l.loadDate?l.loadDate.substring(0,10):'—';
@@ -524,30 +529,22 @@ function renderPool(){
   });
   const dates=Object.keys(groups).sort();
 
-  // Auto-select first tab if none active or active tab no longer exists
-  if(!activeTab||!groups[activeTab]) activeTab=dates[0];
-
-  // Render tabs
-  tabsEl.innerHTML=dates.map(d=>{
-    const label=d==='—'?'—':d.substring(5).replace('-','/');
+  // Render: continuous scroll with dividers between dates
+  let html='';
+  dates.forEach((d,idx)=>{
+    const label=fmtDate(d);
     const cnt=groups[d].length;
-    const isActive=d===activeTab;
-    return `<div class="date-tab${isActive?' active':''}" onclick="setTab('${d}')">${label}<span class="dtab-cnt">${cnt}</span></div>`;
-  }).join('');
+    const totalPal=groups[d].reduce((s,l)=>s+l.pal,0);
+    html+=`<div class="date-divider">
+      <span class="date-divider-label">${label}</span>
+      <div class="date-divider-line"></div>
+      <span class="date-divider-cnt">${cnt} γρ · ${totalPal} PAL</span>
+    </div>`;
+    html+=groups[d].map(l=>lineCardHTML(l,'pool')).join('');
+  });
 
-  // Render cards for active tab
-  const visible=groups[activeTab]||[];
-  if(!visible.length){
-    inner.innerHTML='<div class="empty">Κανένα για αυτή την ημερομηνία.</div>';
-    return;
-  }
-  inner.innerHTML=visible.map(l=>lineCardHTML(l,'pool')).join('');
+  inner.innerHTML=html;
   bindCards(inner,'pool');
-}
-
-function setTab(date){
-  activeTab=date;
-  renderPool();
 }
 
 // Return to pool on drop
