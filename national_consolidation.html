@@ -157,6 +157,36 @@ input[type=date]:focus,select:focus{border-color:var(--primary);}
 #toast{position:fixed;bottom:20px;right:24px;background:var(--dark);color:#fff;padding:9px 16px;border-radius:6px;font-size:12px;font-weight:600;opacity:0;transition:opacity .3s;pointer-events:none;z-index:999;box-shadow:0 4px 12px rgba(0,0,0,.2);}
 #toast.on{opacity:1;}
 
+/* SPLIT */
+.split-btn{
+  background:none;border:1px solid var(--border);color:var(--muted);
+  width:22px;height:22px;border-radius:4px;cursor:pointer;font-size:13px;
+  font-weight:700;line-height:1;padding:0;transition:all .12s;flex-shrink:0;
+  font-family:'Barlow',sans-serif;
+}
+.split-btn:hover{background:var(--primary-light);border-color:var(--primary);color:var(--primary);}
+.split-tag{font-size:9px;font-weight:700;background:#FFF3CD;color:#856404;padding:1px 5px;border-radius:3px;letter-spacing:.5px;}
+
+/* SPLIT MODAL */
+.split-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:200;align-items:center;justify-content:center;backdrop-filter:blur(3px);}
+.split-overlay.show{display:flex;}
+.split-modal{background:var(--card);border:1px solid var(--border);border-top:3px solid var(--primary);border-radius:10px;width:360px;padding:24px;box-shadow:0 8px 30px rgba(0,0,0,.15);animation:slideUp .15s ease;}
+@keyframes slideUp{from{transform:translateY(16px);opacity:0}to{transform:translateY(0);opacity:1}}
+.split-title{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;color:var(--dark);margin-bottom:4px;}
+.split-sub{font-size:12px;color:var(--muted);margin-bottom:18px;}
+.split-row{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+.split-input{
+  width:70px;background:#fff;border:2px solid var(--border);border-radius:6px;
+  color:var(--dark);padding:8px 10px;font-size:16px;font-weight:700;
+  font-family:'Barlow Condensed',sans-serif;outline:none;text-align:center;transition:border-color .15s;
+}
+.split-input:focus{border-color:var(--primary);}
+.split-eq{font-size:13px;color:var(--muted);font-weight:600;}
+.split-total{font-size:13px;font-weight:700;}
+.split-total.ok{color:var(--green);}
+.split-total.err{color:var(--red);}
+.split-actions{display:flex;gap:8px;margin-top:6px;}
+
 /* PRINT */
 @media print{
   body{background:#fff;height:auto;overflow:visible;}
@@ -405,18 +435,22 @@ function applyFilter(){
 function lineCardHTML(l, src){
   const inT=inTruck(l.id);
   const ds=l.loadDate?l.loadDate.substring(5).replace('-','/'):null;
+  const isSplit=l.splitFrom!=null;
   return `<div class="lcard${inT?' in-truck':''}" data-id="${l.id}" data-src="${src}" draggable="true">
     <div class="lcard-left">
-      <div class="lcard-supplier">${l.supplier}</div>
+      <div class="lcard-supplier">${l.supplier}${isSplit?` <span class="split-tag">τμήμα</span>`:''}</div>
       <div class="lcard-meta">
         <span class="lcard-arrow">→</span>
         <span class="lcard-dest">${l.delivery}</span>
       </div>
       ${ds?`<span class="lcard-date">${ds}</span>`:''}
     </div>
-    <div class="lcard-right">
-      <div class="lcard-pal">${l.pal}</div>
-      <div class="lcard-pallabel">PAL</div>
+    <div class="lcard-right" style="display:flex;align-items:center;gap:8px;">
+      <div style="text-align:right">
+        <div class="lcard-pal">${l.pal}</div>
+        <div class="lcard-pallabel">PAL</div>
+      </div>
+      <button class="split-btn" onclick="startSplit('${l.id}',${l.pal},event)" title="Διαχωρισμός">÷</button>
     </div>
   </div>`;
 }
@@ -568,9 +602,106 @@ function toast(m){
   setTimeout(()=>el.classList.remove('on'),2200);
 }
 
+// SPLIT
+let splitTarget=null;
+
+function startSplit(lineId, maxPal, evt){
+  evt.stopPropagation(); evt.preventDefault();
+  const l=lines.find(x=>x.id===lineId);
+  if(!l) return;
+  splitTarget=l;
+
+  document.getElementById('splitSupplier').textContent=l.supplier;
+  document.getElementById('splitMax').textContent=maxPal+' PAL συνολικά';
+  document.getElementById('splitA').value=Math.floor(maxPal/2);
+  document.getElementById('splitB').value=maxPal-Math.floor(maxPal/2);
+  updateSplitCalc();
+  document.getElementById('splitOverlay').classList.add('show');
+  document.getElementById('splitA').focus();
+  document.getElementById('splitA').select();
+}
+
+function updateSplitCalc(){
+  if(!splitTarget) return;
+  const a=parseInt(document.getElementById('splitA').value)||0;
+  const b=parseInt(document.getElementById('splitB').value)||0;
+  const total=splitTarget.pal;
+  const sum=a+b;
+  const el=document.getElementById('splitCalc');
+  el.textContent=`${a} + ${b} = ${sum}`;
+  el.className='split-total '+(sum===total?'ok':'err');
+  document.getElementById('splitConfirm').disabled=(sum!==total||a<=0||b<=0);
+}
+
+function syncSplitB(){
+  if(!splitTarget) return;
+  const a=parseInt(document.getElementById('splitA').value)||0;
+  document.getElementById('splitB').value=Math.max(0,splitTarget.pal-a);
+  updateSplitCalc();
+}
+
+function confirmSplit(){
+  if(!splitTarget) return;
+  const a=parseInt(document.getElementById('splitA').value)||0;
+  const b=parseInt(document.getElementById('splitB').value)||0;
+  if(a+b!==splitTarget.pal||a<=0||b<=0) return;
+
+  const base={...splitTarget};
+  const idA=splitTarget.id+'_sa';
+  const idB=splitTarget.id+'_sb';
+
+  // Remove original from lines
+  const idx=lines.findIndex(x=>x.id===splitTarget.id);
+  if(idx>-1) lines.splice(idx,1,...[
+    {...base, id:idA, pal:a, splitFrom:splitTarget.id},
+    {...base, id:idB, pal:b, splitFrom:splitTarget.id}
+  ]);
+
+  // Also remove from any truck that had the original
+  trucks.forEach(t=>{
+    const ti=t.lines.findIndex(x=>x.id===splitTarget.id);
+    if(ti>-1) t.lines.splice(ti,1);
+  });
+
+  closeSplit();
+  renderTrucks(); applyFilter();
+  toast(`÷ ${splitTarget.supplier}: ${a} + ${b} PAL`);
+  splitTarget=null;
+}
+
+function closeSplit(){
+  document.getElementById('splitOverlay').classList.remove('show');
+  splitTarget=null;
+}
+
 // INIT
 loadLines();
 addTruck(); addTruck(); addTruck();
 </script>
+<!-- SPLIT MODAL -->
+<div class="split-overlay" id="splitOverlay" onclick="if(event.target===this)closeSplit()">
+  <div class="split-modal">
+    <div class="split-title">Διαχωρισμός Παλετών</div>
+    <div class="split-sub" id="splitSupplier"></div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:12px;" id="splitMax"></div>
+    <div class="split-row">
+      <div>
+        <div style="font-size:9px;font-weight:700;color:var(--muted);letter-spacing:1.5px;margin-bottom:4px;">ΦΟΡΤΗΓΟ Α</div>
+        <input class="split-input" id="splitA" type="number" min="1" oninput="syncSplitB()">
+      </div>
+      <div class="split-eq">+</div>
+      <div>
+        <div style="font-size:9px;font-weight:700;color:var(--muted);letter-spacing:1.5px;margin-bottom:4px;">ΦΟΡΤΗΓΟ Β</div>
+        <input class="split-input" id="splitB" type="number" min="1" oninput="updateSplitCalc()">
+      </div>
+      <div class="split-eq">=</div>
+      <div class="split-total" id="splitCalc">0</div>
+    </div>
+    <div class="split-actions">
+      <button class="btn btn-primary" id="splitConfirm" onclick="confirmSplit()" style="flex:1">✓ Διαχωρισμός</button>
+      <button class="btn btn-outline" onclick="closeSplit()">Άκυρο</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
