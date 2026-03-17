@@ -138,6 +138,8 @@ input[type=date]:focus,select:focus{border-color:var(--primary);}
   letter-spacing:1px;text-transform:uppercase;transition:all .15s;margin:4px 0;
 }
 .dzone.over{border-color:var(--primary);background:var(--primary-light);color:var(--primary);}
+.tcol.drop-active{background:#EBF2FE;}
+.tcol.drop-active .tscroll{outline:2px dashed var(--primary);outline-offset:-4px;border-radius:4px;}
 
 /* ADD TRUCK */
 .add-truck-col{
@@ -166,6 +168,18 @@ input[type=date]:focus,select:focus{border-color:var(--primary);}
 }
 .split-btn:hover{background:var(--primary-light);border-color:var(--primary);color:var(--primary);}
 .split-tag{font-size:9px;font-weight:700;background:#FFF3CD;color:#856404;padding:1px 5px;border-radius:3px;letter-spacing:.5px;}
+/* ORDER COLOR STRIPES */
+.oc-0{border-left-color:#2D7FF9;}
+.oc-1{border-left-color:#E040FB;}
+.oc-2{border-left-color:#FF6D00;}
+.oc-3{border-left-color:#00BFA5;}
+.oc-4{border-left-color:#F9A825;}
+.oc-5{border-left-color:#E53935;}
+.oc-6{border-left-color:#43A047;}
+.oc-7{border-left-color:#00ACC1;}
+.oc-8{border-left-color:#8D6E63;}
+.oc-9{border-left-color:#546E7A;}
+.oc-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:5px;flex-shrink:0;}
 
 /* SPLIT MODAL */
 .split-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:200;align-items:center;justify-content:center;backdrop-filter:blur(3px);}
@@ -273,6 +287,7 @@ const T_ORDERS='tblgHlNmLBH3JTdIM';
 
 // lines = one per NATIONAL ORDER record (each is already 1 loading line)
 let lines=[], filtered=[], trucks=[], tc=1;
+let orderColorMap={};
 let dragId=null, dragFrom=null;
 
 // Default: today + 14 days
@@ -396,6 +411,11 @@ async function loadLines(){
       }
     });
 
+    // Build color map: noId -> color index
+    orderColorMap={};
+    const uniqueNoIds=[...new Set(lines.map(l=>l.noId))];
+    uniqueNoIds.forEach((id,i)=>{ orderColorMap[id]=i%10; });
+
     setStatus('ok',`${lines.length} γραμμές φόρτωσης από ${noRecs.length} εντολές`);
     applyFilter();
   }catch(e){
@@ -436,9 +456,12 @@ function lineCardHTML(l, src){
   const inT=inTruck(l.id);
   const ds=l.loadDate?l.loadDate.substring(5).replace('-','/'):null;
   const isSplit=l.splitFrom!=null;
-  return `<div class="lcard${inT?' in-truck':''}" data-id="${l.id}" data-src="${src}" draggable="true">
+  const ci=orderColorMap[l.noId]??0;
+  const colors=['#2D7FF9','#E040FB','#FF6D00','#00BFA5','#F9A825','#E53935','#43A047','#00ACC1','#8D6E63','#546E7A'];
+  const col=colors[ci];
+  return `<div class="lcard${inT?' in-truck':''} oc-${ci}" data-id="${l.id}" data-src="${src}" draggable="true">
     <div class="lcard-left">
-      <div class="lcard-supplier">${l.supplier}${isSplit?` <span class="split-tag">τμήμα</span>`:''}</div>
+      <div class="lcard-supplier"><span class="oc-dot" style="background:${col}"></span>${l.supplier}${isSplit?` <span class="split-tag">τμήμα</span>`:''}</div>
       <div class="lcard-meta">
         <span class="lcard-arrow">→</span>
         <span class="lcard-dest">${l.delivery}</span>
@@ -553,19 +576,24 @@ function renderTrucks(){
 
     area.insertBefore(col,btn);
 
-    const sc=col.querySelector('.tscroll');
-    sc.addEventListener('dragover',e=>{
+    // Drag/drop on entire column — avoids dragleave firing on child cards
+    col.addEventListener('dragover',e=>{
       e.preventDefault();
-      const dz=col.querySelector('.dzone');if(dz)dz.classList.add('over');
+      e.dataTransfer.dropEffect='move';
+      col.classList.add('drop-active');
     });
-    sc.addEventListener('dragleave',()=>{
-      const dz=col.querySelector('.dzone');if(dz)dz.classList.remove('over');
+    col.addEventListener('dragleave',e=>{
+      // Only remove if leaving the column entirely (not entering a child)
+      if(!col.contains(e.relatedTarget)){
+        col.classList.remove('drop-active');
+      }
     });
-    sc.addEventListener('drop',e=>{
+    col.addEventListener('drop',e=>{
       e.preventDefault();
-      const dz=col.querySelector('.dzone');if(dz)dz.classList.remove('over');
+      col.classList.remove('drop-active');
       handleDrop(truck.id);
     });
+    const sc=col.querySelector('.tscroll');
     bindCards(sc,truck.id);
   });
 
