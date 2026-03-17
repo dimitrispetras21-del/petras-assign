@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Petras Group — National Consolidation Planner</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;900&family=Barlow+Condensed:wght@700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --primary:#2D7FF9;--primary-dark:#1A6DE3;--primary-light:rgba(45,127,249,.08);
+  --dark:#1B2A4A;--navy:#2B3F60;--mid:#4A6280;--muted:#7A8BA5;
+  --bg:#F5F7FA;--card:#FFFFFF;--border:#E0E5EC;
+  --green:#20C997;--red:#E85050;--orange:#F0A500;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--dark);font-family:'Barlow',sans-serif;height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+
+/* HEADER */
+header{background:var(--card);border-bottom:2px solid var(--primary);padding:12px 28px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 1px 4px rgba(0,0,0,.08);flex-shrink:0;}
+.logo{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;letter-spacing:2px;color:var(--dark);}
+.logo small{display:block;font-size:9px;letter-spacing:3px;color:var(--primary);font-weight:600;font-family:'Barlow',sans-serif;}
+.hdr-actions{display:flex;gap:8px;align-items:center;}
+
+/* BUTTONS */
+.btn{padding:8px 16px;border:none;border-radius:6px;font-weight:700;font-size:12px;cursor:pointer;font-family:'Barlow',sans-serif;transition:all .12s;letter-spacing:.5px;}
+.btn:hover{transform:translateY(-1px);}
+.btn-primary{background:var(--primary);color:#fff;}
+.btn-primary:hover{background:var(--primary-dark);}
+.btn-outline{background:var(--card);color:var(--mid);border:1px solid var(--border);}
+.btn-outline:hover{border-color:var(--primary);color:var(--primary);}
+.btn-dark{background:var(--dark);color:#fff;}
+.btn-dark:hover{background:var(--navy);}
+.btn-kill{background:none;border:1px solid var(--border);color:var(--muted);padding:4px 9px;font-size:11px;border-radius:4px;cursor:pointer;font-family:'Barlow',sans-serif;font-weight:600;transition:all .12s;}
+.btn-kill:hover{background:#FEE;border-color:var(--red);color:var(--red);}
+
+/* FILTERS */
+.filters{background:var(--card);border-bottom:1px solid var(--border);padding:10px 28px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;flex-shrink:0;}
+.fl{font-size:10px;font-weight:700;color:var(--muted);letter-spacing:2px;text-transform:uppercase;}
+input[type=date],select{background:#fff;border:1px solid var(--border);border-radius:5px;color:var(--dark);padding:7px 10px;font-size:12px;font-family:'Barlow',sans-serif;outline:none;transition:border-color .15s;}
+input[type=date]:focus,select:focus{border-color:var(--primary);}
+.vsep{width:1px;height:22px;background:var(--border);}
+
+/* STATUS BAR */
+#sbar{padding:7px 28px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--border);background:var(--card);display:flex;align-items:center;gap:16px;flex-shrink:0;}
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:6px;}
+.dot-load{background:var(--primary);animation:blink 1s infinite;}
+.dot-ok{background:var(--green);}
+.dot-err{background:var(--red);}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+
+/* WORKSPACE */
+.workspace{display:flex;flex:1;overflow:hidden;}
+
+/* LEFT POOL */
+.pool{width:300px;min-width:260px;border-right:2px solid var(--primary);display:flex;flex-direction:column;background:var(--card);}
+.panel-hdr{padding:11px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--dark);}
+.panel-title{font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:900;letter-spacing:2px;color:#fff;}
+.badge{font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;letter-spacing:.5px;}
+.badge-blue{background:var(--primary);color:#fff;}
+.badge-green{background:rgba(32,201,151,.2);color:var(--green);}
+.badge-orange{background:rgba(240,165,0,.2);color:var(--orange);}
+
+/* TOTAL PAL SUMMARY */
+.pool-summary{padding:10px 14px;border-bottom:1px solid var(--border);background:#F8FAFF;display:flex;align-items:center;justify-content:space-between;}
+.ps-label{font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;}
+.ps-num{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:var(--primary);}
+.ps-sub{font-size:10px;color:var(--muted);}
+
+.pool-list{overflow-y:auto;flex:1;padding:10px;}
+.pool-list::-webkit-scrollbar{width:4px;}
+.pool-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+
+/* LOADING LINE CARD — core unit */
+.lcard{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-left:4px solid var(--primary);
+  border-radius:6px;
+  margin-bottom:6px;
+  padding:9px 12px 8px;
+  cursor:grab;
+  transition:all .15s;
+  user-select:none;
+  box-shadow:0 1px 3px rgba(0,0,0,.05);
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+}
+.lcard:hover{box-shadow:0 3px 10px rgba(45,127,249,.18);border-color:var(--primary);transform:translateY(-1px);}
+.lcard.dragging{opacity:.3;cursor:grabbing;}
+.lcard.in-truck{border-left-color:var(--green);background:#F8FFFE;opacity:.6;}
+
+.lcard-left{flex:1;min-width:0;}
+.lcard-supplier{font-size:13px;font-weight:700;color:var(--dark);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.lcard-meta{font-size:11px;color:var(--muted);margin-top:2px;display:flex;align-items:center;gap:4px;}
+.lcard-arrow{color:var(--border);}
+.lcard-dest{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px;}
+
+.lcard-right{flex-shrink:0;text-align:right;}
+.lcard-pal{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:var(--primary);line-height:1;}
+.lcard-pallabel{font-size:9px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;}
+
+/* date tag */
+.lcard-date{display:inline-block;background:#EBF2FE;color:var(--primary);font-size:10px;font-weight:700;padding:1px 7px;border-radius:3px;margin-top:4px;}
+
+/* TRUCKS AREA */
+.trucks-wrap{flex:1;display:flex;overflow-x:auto;overflow-y:hidden;background:var(--bg);}
+.trucks-wrap::-webkit-scrollbar{height:5px;}
+.trucks-wrap::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+
+.tcol{min-width:270px;width:270px;border-right:1px solid var(--border);display:flex;flex-direction:column;background:var(--card);flex-shrink:0;}
+
+/* TRUCK HEADER */
+.thead{padding:12px 14px;border-bottom:1px solid var(--border);}
+.tnr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.tni{
+  background:transparent;border:none;border-bottom:2px solid var(--border);
+  color:var(--dark);font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:900;
+  letter-spacing:1px;width:160px;outline:none;padding:2px 0;text-transform:uppercase;transition:border-color .15s;
+}
+.tni:focus{border-bottom-color:var(--primary);}
+
+/* PAL COUNTER */
+.tcap-row{display:flex;align-items:center;gap:12px;}
+.tpal-num{font-family:'Barlow Condensed',sans-serif;font-size:32px;font-weight:900;line-height:1;}
+.tpal-right{flex:1;}
+.tpal-label{font-size:9px;font-weight:700;color:var(--muted);letter-spacing:2px;margin-bottom:3px;}
+.tpal-meta{font-size:10px;font-weight:600;color:var(--muted);margin-bottom:5px;display:flex;justify-content:space-between;}
+.tbar-bg{height:6px;background:var(--border);border-radius:3px;overflow:hidden;}
+.tbar{height:100%;border-radius:3px;transition:width .35s,background .35s;}
+
+/* truck lines list */
+.tscroll{flex:1;overflow-y:auto;padding:8px;}
+.tscroll::-webkit-scrollbar{width:3px;}
+.tscroll::-webkit-scrollbar-thumb{background:var(--border);}
+
+.dzone{
+  border:2px dashed var(--border);border-radius:6px;padding:20px 14px;
+  text-align:center;font-size:11px;font-weight:700;color:var(--muted);
+  letter-spacing:1px;text-transform:uppercase;transition:all .15s;margin:4px 0;
+}
+.dzone.over{border-color:var(--primary);background:var(--primary-light);color:var(--primary);}
+
+/* ADD TRUCK */
+.add-truck-col{
+  min-width:160px;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:10px;cursor:pointer;padding:20px;
+  border-right:1px solid var(--border);flex-shrink:0;background:var(--bg);
+  color:var(--muted);transition:all .15s;
+}
+.add-truck-col:hover{background:#EBF2FE;color:var(--primary);}
+.add-icon{width:44px;height:44px;border-radius:50%;border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:22px;transition:all .15s;}
+.add-truck-col:hover .add-icon{border-color:var(--primary);}
+.add-label{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;}
+
+.empty{text-align:center;padding:36px 16px;color:var(--muted);font-size:12px;line-height:2;}
+
+/* TOAST */
+#toast{position:fixed;bottom:20px;right:24px;background:var(--dark);color:#fff;padding:9px 16px;border-radius:6px;font-size:12px;font-weight:600;opacity:0;transition:opacity .3s;pointer-events:none;z-index:999;box-shadow:0 4px 12px rgba(0,0,0,.2);}
+#toast.on{opacity:1;}
+
+/* PRINT */
+@media print{
+  body{background:#fff;height:auto;overflow:visible;}
+  header .hdr-actions,.filters,#sbar,.pool,.add-truck-col,.btn-kill{display:none!important;}
+  .workspace{height:auto;overflow:visible;display:block;}
+  .trucks-wrap{display:block;overflow:visible;}
+  .tcol{width:100%!important;min-width:unset;border:none;page-break-after:always;background:#fff;}
+  .thead{border:2px solid var(--primary);border-radius:6px;margin-bottom:12px;}
+  .lcard{border:1px solid #E0E5EC;box-shadow:none;page-break-inside:avoid;background:#fff;}
+  .lcard-supplier,.lcard-meta,.lcard-pal{color:#000!important;}
+  .tbar-bg,.dzone{display:none;}
+  .tni{font-size:20px;color:#1B2A4A;border:none;}
+  .print-date{display:block!important;}
+}
+.print-date{display:none;font-size:10px;color:var(--muted);margin-top:4px;}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">PETRAS GROUP<small>NATIONAL CONSOLIDATION PLANNER</small></div>
+  <div class="hdr-actions">
+    <button class="btn btn-outline" onclick="loadLines()">↻ Refresh</button>
+    <button class="btn btn-outline" onclick="clearAll()">Clear All</button>
+    <button class="btn btn-dark" onclick="window.print()">⎙ Print</button>
+  </div>
+</header>
+
+<div class="filters">
+  <span class="fl">Φόρτωση από</span>
+  <input type="date" id="fFrom" onchange="applyFilter()">
+  <span style="color:var(--muted)">→</span>
+  <input type="date" id="fTo" onchange="applyFilter()">
+  <div class="vsep"></div>
+  <span class="fl">Εμφάνιση</span>
+  <select id="fStatus" onchange="applyFilter()">
+    <option value="free">Μόνο αδέσμευτες</option>
+    <option value="">Όλες</option>
+  </select>
+</div>
+
+<div id="sbar">
+  <span><span class="dot dot-load" id="sdot"></span><span id="stxt">Σύνδεση στο Airtable...</span></span>
+  <span id="scnt"></span>
+</div>
+
+<div class="workspace">
+  <!-- LEFT: all loading lines -->
+  <div class="pool">
+    <div class="panel-hdr">
+      <span class="panel-title">ΦΟΡΤΩΣΕΙΣ</span>
+      <span class="badge badge-blue" id="pcnt">0</span>
+    </div>
+    <div class="pool-summary">
+      <div>
+        <div class="ps-label">Σύνολο Παλετών</div>
+        <div class="ps-sub" id="pool-assigned-info">— αδέσμευτες</div>
+      </div>
+      <div style="text-align:right">
+        <div class="ps-num" id="pool-total-pal">0</div>
+        <div class="ps-label">PAL</div>
+      </div>
+    </div>
+    <div class="pool-list" id="poolList"><div class="empty">Φόρτωση...</div></div>
+  </div>
+
+  <!-- RIGHT: truck columns -->
+  <div class="trucks-wrap" id="trucksArea">
+    <div class="add-truck-col" onclick="addTruck()">
+      <div class="add-icon">+</div>
+      <div class="add-label">Νέο Φορτηγό</div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const AT='patpPJXnFYnxdgoK3.a2162b09fbb214628114ff2ce68bb5a7b30aea2061b14f9562a1ab222585cf08';
+const BASE='appElT5CQV6JQvym8';
+const T_NO='tblGHCCsTMqAy4KR2';
+const T_CL='tblFWKAQVUzAM8mCE';
+const T_LO='tblxu8DRfTQOFRCzS';
+
+// lines = one per NATIONAL ORDER record (each is already 1 loading line)
+let lines=[], filtered=[], trucks=[], tc=1;
+let dragId=null, dragFrom=null;
+
+// Default: today + 14 days
+const d0=new Date();
+const dFrom=new Date(d0); dFrom.setDate(dFrom.getDate()-14);
+document.getElementById('fFrom').value=dFrom.toISOString().split('T')[0];
+const dTo=new Date(d0); dTo.setDate(dTo.getDate()+14);
+document.getElementById('fTo').value=dTo.toISOString().split('T')[0];
+
+async function atFetchFields(tableId, fields, extraParams={}){
+  let all=[],offset=null;
+  do{
+    let url=`https://api.airtable.com/v0/${BASE}/${tableId}?pageSize=100`;
+    for(const [k,v] of Object.entries(extraParams)){
+      url+=`&${encodeURIComponent(k)}=${encodeURIComponent(v)}`;
+    }
+    fields.forEach(f=>{ url+=`&fields%5B%5D=${encodeURIComponent(f)}`; });
+    if(offset) url+=`&offset=${encodeURIComponent(offset)}`;
+    const r=await fetch(url,{headers:{Authorization:`Bearer ${AT}`}});
+    if(!r.ok){const t=await r.text();throw new Error(`HTTP ${r.status}: ${t.substring(0,200)}`);}
+    const d=await r.json();
+    if(d.error) throw new Error(JSON.stringify(d.error));
+    all=all.concat(d.records||[]); offset=d.offset||null;
+  }while(offset);
+  return all;
+}
+
+async function resolveIds(tableId,ids){
+  if(!ids.length) return {};
+  const names={};
+  for(let i=0;i<ids.length;i+=10){
+    const chunk=ids.slice(i,i+10);
+    const formula=`OR(${chunk.map(id=>`RECORD_ID()="${id}"`).join(',')})`;
+    try{
+      const url=`https://api.airtable.com/v0/${BASE}/${tableId}?filterByFormula=${encodeURIComponent(formula)}&fields%5B%5D=Name`;
+      const r=await fetch(url,{headers:{Authorization:`Bearer ${AT}`}});
+      const d=await r.json();
+      (d.records||[]).forEach(rec=>names[rec.id]=rec.fields.Name||rec.id);
+    }catch(e){console.warn('resolveIds error',e);}
+  }
+  return names;
+}
+
+async function loadLines(){
+  setStatus('load','Φόρτωση εντολών groupage...');
+  try{
+    // Server-side filter: only National Groupage = TRUE
+    const recs=await atFetchFields(T_NO,
+      ['Name','Client','Pickup Location','Delivery Location',
+       'Loading DateTime','Delivery DateTime','Pallets',
+       'Temperature °C','Goods','Status','Direction'],
+      {'filterByFormula':'{National Groupage}=1'}
+    );
+
+    // Collect IDs for resolution
+    const cIds=new Set(), lIds=new Set();
+    recs.forEach(r=>{
+      (r.fields.Client||[]).forEach(id=>cIds.add(id));
+      (r.fields['Pickup Location']||[]).forEach(id=>lIds.add(id));
+      (r.fields['Delivery Location']||[]).forEach(id=>lIds.add(id));
+    });
+
+    const [cN,lN]=await Promise.all([
+      resolveIds(T_CL,[...cIds]),
+      resolveIds(T_LO,[...lIds])
+    ]);
+
+    lines=recs.map(r=>{
+      const f=r.fields;
+      const loc=arr=>(arr||[]).map(id=>lN[id]||id).join(', ')||'—';
+      const cli=arr=>(arr||[]).map(id=>cN[id]||id).join(', ')||'—';
+      return{
+        id: r.id,
+        supplier: loc(f['Pickup Location']),   // the loading point
+        delivery: loc(f['Delivery Location']),  // where it goes
+        client:   cli(f.Client),
+        loadDate: f['Loading DateTime']||'',
+        delDate:  f['Delivery DateTime']||'',
+        pal:      f.Pallets||0,
+        temp:     f['Temperature °C']!=null?f['Temperature °C']:null,
+        goods:    f.Goods||'',
+        dir:      f.Direction||'',
+        status:   f.Status||''
+      };
+    });
+
+    setStatus('ok',`${lines.length} γραμμές φόρτωσης`);
+    applyFilter();
+  }catch(e){
+    setStatus('err','Σφάλμα: '+e.message);
+    console.error(e);
+  }
+}
+
+function inTruck(id){return trucks.some(t=>t.lines.some(l=>l.id===id));}
+
+function updateSummary(){
+  const free=filtered.filter(l=>!inTruck(l.id));
+  const totalFree=free.reduce((s,l)=>s+l.pal,0);
+  const totalAll=filtered.reduce((s,l)=>s+l.pal,0);
+  document.getElementById('pool-total-pal').textContent=totalFree;
+  document.getElementById('pool-assigned-info').textContent=`${free.length} αδέσμευτες από ${filtered.length}`;
+  document.getElementById('pcnt').textContent=filtered.length;
+  document.getElementById('scnt').textContent=`${free.length} αδέσμευτες · ${totalFree} PAL ελεύθερες`;
+}
+
+function applyFilter(){
+  const from=document.getElementById('fFrom').value;
+  const to=document.getElementById('fTo').value;
+  const st=document.getElementById('fStatus').value;
+
+  filtered=lines.filter(l=>{
+    if(st==='free'&&inTruck(l.id)) return false;
+    if(from&&l.loadDate&&l.loadDate.substring(0,10)<from) return false;
+    if(to&&l.loadDate&&l.loadDate.substring(0,10)>to) return false;
+    return true;
+  });
+
+  renderPool();
+  updateSummary();
+}
+
+function lineCardHTML(l, src){
+  const inT=inTruck(l.id);
+  const ds=l.loadDate?l.loadDate.substring(5).replace('-','/'):null;
+  return `<div class="lcard${inT?' in-truck':''}" data-id="${l.id}" data-src="${src}" draggable="true">
+    <div class="lcard-left">
+      <div class="lcard-supplier">${l.supplier}</div>
+      <div class="lcard-meta">
+        <span class="lcard-arrow">→</span>
+        <span class="lcard-dest">${l.delivery}</span>
+      </div>
+      ${ds?`<span class="lcard-date">${ds}</span>`:''}
+    </div>
+    <div class="lcard-right">
+      <div class="lcard-pal">${l.pal}</div>
+      <div class="lcard-pallabel">PAL</div>
+    </div>
+  </div>`;
+}
+
+function bindCards(container, src){
+  container.querySelectorAll('.lcard').forEach(c=>{
+    c.addEventListener('dragstart',e=>{
+      dragId=c.dataset.id; dragFrom=c.dataset.src;
+      c.classList.add('dragging'); e.dataTransfer.effectAllowed='move';
+    });
+    c.addEventListener('dragend',()=>c.classList.remove('dragging'));
+  });
+}
+
+function renderPool(){
+  const el=document.getElementById('poolList');
+  if(!filtered.length){
+    el.innerHTML='<div class="empty">Δεν βρέθηκαν εντολές groupage.<br>Ελέγξτε ότι έχει τσεκαριστεί<br><strong>National Groupage</strong> στις εντολές.</div>';
+    return;
+  }
+  el.innerHTML=filtered.map(l=>lineCardHTML(l,'pool')).join('');
+  bindCards(el,'pool');
+}
+
+// Return to pool on drop
+document.getElementById('poolList').addEventListener('dragover',e=>e.preventDefault());
+document.getElementById('poolList').addEventListener('drop',e=>{
+  e.preventDefault();
+  if(dragFrom&&dragFrom!=='pool'){
+    const t=trucks.find(t=>t.id===dragFrom);
+    if(t){
+      t.lines=t.lines.filter(l=>l.id!==dragId);
+      toast('↩ Επιστράφηκε στη λίστα');
+      dragId=null; dragFrom=null;
+      renderTrucks(); applyFilter();
+    }
+  }
+});
+
+// --- TRUCKS ---
+function addTruck(){
+  trucks.push({id:'t'+Date.now(), name:'ΦΟΡΤΗΓΟ '+tc++, lines:[]});
+  renderTrucks();
+}
+
+function delTruck(id){
+  const t=trucks.find(x=>x.id===id);
+  if(t?.lines.length&&!confirm(`Το φορτηγό έχει ${t.lines.length} γραμμές. Σίγουρα;`)) return;
+  trucks=trucks.filter(x=>x.id!==id);
+  applyFilter(); renderTrucks();
+}
+
+function clearAll(){
+  if(!trucks.length) return;
+  if(!confirm('Καθαρισμός όλων;')) return;
+  trucks=[]; tc=1; applyFilter(); renderTrucks();
+}
+
+function renameTruck(id,v){const t=trucks.find(x=>x.id===id);if(t)t.name=v;}
+
+function renderTrucks(){
+  const area=document.getElementById('trucksArea');
+  const btn=area.querySelector('.add-truck-col');
+  area.querySelectorAll('.tcol').forEach(el=>el.remove());
+
+  trucks.forEach(truck=>{
+    const total=truck.lines.reduce((s,l)=>s+l.pal,0);
+    const pct=Math.min((total/33)*100,100);
+    const barC=pct<60?'var(--green)':pct<90?'var(--orange)':'var(--red)';
+
+    const col=document.createElement('div');
+    col.className='tcol';
+    col.innerHTML=`
+      <div class="thead">
+        <div class="tnr">
+          <input class="tni" value="${truck.name}"
+            onchange="renameTruck('${truck.id}',this.value)"
+            onclick="this.select()"/>
+          <button class="btn-kill" onclick="delTruck('${truck.id}')">✕</button>
+        </div>
+        <div class="tcap-row">
+          <div>
+            <div class="tpal-label">ΠΑΛΕΤΕΣ</div>
+            <div class="tpal-num" style="color:${barC}">${total}</div>
+          </div>
+          <div class="tpal-right">
+            <div class="tpal-meta">
+              <span>${truck.lines.length} γραμμές</span>
+              <span style="font-weight:800;color:${barC}">${total} / 33</span>
+            </div>
+            <div class="tbar-bg"><div class="tbar" style="width:${pct}%;background:${barC}"></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="tscroll">
+        ${truck.lines.length===0
+          ?`<div class="dzone">Σύρτε γραμμές φόρτωσης εδώ</div>`
+          :truck.lines.map(l=>lineCardHTML(l,truck.id)).join('')}
+      </div>`;
+
+    area.insertBefore(col,btn);
+
+    const sc=col.querySelector('.tscroll');
+    sc.addEventListener('dragover',e=>{
+      e.preventDefault();
+      const dz=col.querySelector('.dzone');if(dz)dz.classList.add('over');
+    });
+    sc.addEventListener('dragleave',()=>{
+      const dz=col.querySelector('.dzone');if(dz)dz.classList.remove('over');
+    });
+    sc.addEventListener('drop',e=>{
+      e.preventDefault();
+      const dz=col.querySelector('.dzone');if(dz)dz.classList.remove('over');
+      handleDrop(truck.id);
+    });
+    bindCards(sc,truck.id);
+  });
+
+  applyFilter();
+}
+
+function handleDrop(tid){
+  if(!dragId) return;
+  const line=lines.find(l=>l.id===dragId);
+  if(!line) return;
+
+  // Remove from source truck
+  if(dragFrom&&dragFrom!=='pool'){
+    const src=trucks.find(t=>t.id===dragFrom);
+    if(src) src.lines=src.lines.filter(l=>l.id!==dragId);
+  }
+  // Add to target
+  const tgt=trucks.find(t=>t.id===tid);
+  if(tgt&&!tgt.lines.find(l=>l.id===dragId)){
+    tgt.lines.push(line);
+    toast(`✓ ${line.supplier} ${line.pal} PAL → ${tgt.name}`);
+  }
+  dragId=null; dragFrom=null;
+  renderTrucks(); applyFilter();
+}
+
+function setStatus(t,m){
+  document.getElementById('sdot').className='dot '+(t==='load'?'dot-load':t==='ok'?'dot-ok':'dot-err');
+  document.getElementById('stxt').textContent=m;
+}
+function toast(m){
+  const el=document.getElementById('toast');
+  el.textContent=m; el.classList.add('on');
+  setTimeout(()=>el.classList.remove('on'),2200);
+}
+
+// INIT
+loadLines();
+addTruck(); addTruck(); addTruck();
+</script>
+</body>
+</html>
