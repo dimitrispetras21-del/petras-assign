@@ -485,15 +485,6 @@ function renderTrucks(){
     return null;
   }
 
-  // DEBUG: log all tcol positions on dragstart
-  document.addEventListener('dragstart', function(){
-    const cols = document.querySelectorAll('.tcol');
-    console.log('=== TCOL POSITIONS ===');
-    cols.forEach((col,i)=>{
-      const r = col.getBoundingClientRect();
-      console.log(`Truck ${i+1} (${col.dataset.truckId}): left=${Math.round(r.left)} right=${Math.round(r.right)} top=${Math.round(r.top)} bottom=${Math.round(r.bottom)}`);
-    });
-  });
 
   // Single document-level dragover
   document.addEventListener('dragover', function(e){
@@ -516,9 +507,7 @@ function renderTrucks(){
     if(!dragId) return;
     e.preventDefault();
 
-    console.log('DROP at', Math.round(e.clientX), Math.round(e.clientY));
     const col = getTcolAtPoint(e.clientX, e.clientY);
-    console.log('Col found:', col ? col.dataset.truckId : 'NONE');
     document.querySelectorAll('.tcol').forEach(c => c.classList.remove('drag-over'));
 
     if(col && col.dataset.truckId){
@@ -564,7 +553,7 @@ function handleDrop(tid){
 }
 
 /* TRUCKS MGMT */
-function addTruck(){trucks.push({id:'t'+Date.now(),name:'ΦΟΡΤΗΓΟ '+tc++,lines:[]});renderTrucks();}
+function addTruck(){trucks.push({id:'t'+tc,name:'ΦΟΡΤΗΓΟ '+tc++,lines:[]});renderTrucks();}
 function delTruck(id){
   const t=trucks.find(x=>x.id===id);
   if(t?.lines.length&&!confirm(`Φορτηγό με ${t.lines.length} γραμμές. Σίγουρα;`))return;
