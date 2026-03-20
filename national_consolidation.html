@@ -635,43 +635,40 @@ async function saveTruck(truckId){
   try{
     const total=truck.lines.reduce((s,l)=>s+l.pal,0);
 
-    // Build fields — only plain scalars first (no linked records)
+    // STEP 1: Only plain scalar fields — guaranteed safe
     const fields={
-      'Name':     truck.name+' — '+dateVal,
-      'Status':   'Pending',
+      'Name':          truck.name+' — '+dateVal,
+      'Status':        'Pending',
       'Total Pallets': total
     };
     if(dateVal) fields['Date']=dateVal;
-
-    // Direction — plain string
     const dirLine=truck.lines.find(l=>l.dir);
-    if(dirLine && typeof dirLine.dir==='string') fields['Direction']=dirLine.dir;
-
-    // Pallets 1-10 — plain numbers
+    if(dirLine?.dir) fields['Direction']=String(dirLine.dir);
     truck.lines.slice(0,10).forEach((l,i)=>{
-      if(typeof l.pal==='number' && l.pal>0) fields[`Pallets ${i+1}`]=l.pal;
+      if(l.pal>0) fields[`Pallets ${i+1}`]=Number(l.pal);
     });
 
-    // Source Orders — linked record IDs (strings starting with rec)
+    // STEP 2: Source Orders — validate each ID strictly
     const srcIds=[];
-    truck.lines.forEach(l=>{
-      const id=String(l.noId||'');
-      if(id.startsWith('rec') && !srcIds.includes(id)) srcIds.push(id);
-    });
+    for(const l of truck.lines){
+      const raw=l.noId;
+      const id=typeof raw==='string'?raw:null;
+      if(id && /^rec[a-zA-Z0-9]{14}$/.test(id) && !srcIds.includes(id)) srcIds.push(id);
+    }
     if(srcIds.length) fields['Source Orders']=srcIds.map(id=>({id}));
 
-    // Loading Location 1-10 — linked record IDs
+    // STEP 3: Loading Locations — validate each ID strictly
     truck.lines.slice(0,10).forEach((l,i)=>{
-      const lid=String(l.locId||'');
-      if(lid.startsWith('rec')) fields[`Loading Location ${i+1}`]=[{id:lid}];
+      const raw=l.locId;
+      const id=typeof raw==='string'?raw:null;
+      if(id && /^rec[a-zA-Z0-9]{14}$/.test(id)) fields[`Loading Location ${i+1}`]=[{id}];
     });
 
-    console.log('SAVE payload:', JSON.stringify(fields));
+    console.log('PAYLOAD', JSON.stringify(fields));
     const res=await atCreate(T_LOADS, fields);
-    console.log('SAVE response:', JSON.stringify(res).slice(0,300));
-    if(!res.id) throw new Error(res.error?.message||JSON.stringify(res).slice(0,200));
+    if(!res.id) throw new Error(res.error?.message||JSON.stringify(res).slice(0,300));
 
-    // Mark source NATIONAL ORDERS as Assigned
+    // Mark NATIONAL ORDERS as Assigned
     for(const id of srcIds) await atPatch(T_NO, id, {Status:'Assigned'});
 
     // Add to local savedPlans list
