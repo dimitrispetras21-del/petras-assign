@@ -886,28 +886,42 @@ function renderSavedList(){
         <div class="sc-date">${dateDisp}</div>
       </div>
       <div class="sc-lines-wrap">${lineRows}</div>
-      <div class="sc-footer">
-        <button class="sc-restore" onclick="restorePlan(${i})">↩ Επαναφορά</button>
+      <div class="sc-footer" style="display:flex;gap:5px;">
+        <button class="sc-restore" style="flex:1" onclick="restorePlan(${i})">↩ Επαναφορά</button>
+        <button class="sc-restore" style="flex:0;padding:5px 9px;background:rgba(220,38,38,.1);border-color:rgba(220,38,38,.25);color:#F87171;" onclick="deleteSaved(${i})" title="Διαγραφή">✕</button>
       </div>
     </div>`;
   }).join('');
 }
 
 
+async function _undoPlan(p){
+  setStatus('load','Αναίρεση...');
+  // 1. Delete CONSOLIDATED LOADS record
+  if(p.atId){
+    try{ await atDelete(T_LOADS, p.atId); }
+    catch(e){ console.warn('CL delete failed',e); }
+  }
+  // 2. Revert NATIONAL ORDERS → Pending + remove National Groupage Assigned
+  const srcIds=[...new Set(p.lines.map(l=>String(l.noId||'')).filter(id=>id.startsWith('rec')))];
+  for(const id of srcIds){
+    try{ await atPatch(T_NO, id, {Status:'Pending'}); }
+    catch(e){ console.warn('revert status',e); }
+  }
+  setStatus('ok','Αναίρεση ολοκληρώθηκε');
+}
+
 async function restorePlan(i){
   const p=savedPlans[i];
-  if(!confirm(`Επαναφορά "${p.name}" για επεξεργασία;`))return;
+  if(!confirm(`Επαναφορά "${p.name}" για επεξεργασία;
+Θα διαγραφεί από το Consolidated Loads.`))return;
+
+  await _undoPlan(p);
 
   // Add lines back to pool
   p.lines.forEach(l=>{
     if(!lines.find(x=>x.id===l.id)) lines.push(l);
   });
-
-  // Revert NATIONAL ORDER status to Pending
-  const srcIds=[...new Set(p.lines.map(l=>String(l.noId||'')).filter(id=>id.startsWith('rec')))];
-  for(const id of srcIds){
-    try{ await atPatch(T_NO, id, {Status:'Pending'}); }catch(e){ console.warn('revert',e); }
-  }
 
   // Restore truck for re-editing
   const newId='t'+tc;
@@ -918,13 +932,15 @@ async function restorePlan(i){
   toast(`↩ ${p.name} επαναφέρθηκε`);
 }
 
-function deleteSaved(i){
+async function deleteSaved(i){
   const p=savedPlans[i];
-  if(!confirm(`Διαγραφή "${p.name}" από τη λίστα;
-(Το Airtable record παραμένει)`))return;
+  if(!confirm(`Διαγραφή "${p.name}";
+Θα διαγραφεί και από το Consolidated Loads.`))return;
+
+  await _undoPlan(p);
   savedPlans.splice(i,1);
   renderAll();
-  toast(`🗑 ${p.name} αφαιρέθηκε από τη λίστα`);
+  toast(`🗑 ${p.name} διαγράφηκε`);
 }
 
 /* GLOBAL SAVE (topbar button — saves all active trucks) */
@@ -935,6 +951,10 @@ async function savePlan(){
 }
 
 /* UTILS */
+async function atDelete(tbl,id){
+  const r=await fetch(`https://api.airtable.com/v0/${BASE}/${tbl}/${id}`,{method:'DELETE',headers:{Authorization:`Bearer ${AT}`}});
+  return r.json();
+}
 function setStatus(t,m){document.getElementById('sdot').className='sdot '+(t==='load'?'load':t==='ok'?'ok':'err');document.getElementById('stxt').textContent=m;}
 function toast(m){const el=document.getElementById('toast');el.textContent=m;el.classList.add('on');setTimeout(()=>el.classList.remove('on'),2400);}
 
