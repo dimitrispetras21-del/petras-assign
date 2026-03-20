@@ -632,34 +632,45 @@ async function saveTruck(truckId){
 
   try{
     const total=truck.lines.reduce((s,l)=>s+l.pal,0);
+
+    // Build fields — only plain scalars first (no linked records)
     const fields={
-      'Name':truck.name+' — '+dateVal,
-      'Status':'Pending',
-      'Total Pallets':total
+      'Name':     truck.name+' — '+dateVal,
+      'Status':   'Pending',
+      'Total Pallets': total
     };
-    if(dateVal)fields['Date']=dateVal;
+    if(dateVal) fields['Date']=dateVal;
+
+    // Direction — plain string
     const dirLine=truck.lines.find(l=>l.dir);
-    if(dirLine)fields['Direction']=dirLine.dir;
-    const srcIds=[...new Set(truck.lines.map(l=>typeof l.noId==='string'?l.noId:l.noId?.id||null).filter(Boolean))];
-    if(srcIds.length)fields['Source Orders']=srcIds.map(id=>({id}));
+    if(dirLine && typeof dirLine.dir==='string') fields['Direction']=dirLine.dir;
+
+    // Pallets 1-10 — plain numbers
     truck.lines.slice(0,10).forEach((l,i)=>{
-      const n=i+1;
-      // Nuclear string coercion
-      let lid=l.locId;
-      if(lid&&typeof lid==='object') lid=lid.id||null;
-      if(lid&&typeof lid==='string'&&lid.startsWith('rec')) fields[`Loading Location ${n}`]=[{id:lid}];
-      if(l.pal) fields[`Pallets ${n}`]=l.pal;
+      if(typeof l.pal==='number' && l.pal>0) fields[`Pallets ${i+1}`]=l.pal;
     });
 
-    console.log('Saving fields:', JSON.stringify(fields).slice(0,300));
-    const res=await atCreate(T_LOADS,fields);
-    if(!res.id) throw new Error((res.error?.message||JSON.stringify(res)).slice(0,200));
+    // Source Orders — linked record IDs (strings starting with rec)
+    const srcIds=[];
+    truck.lines.forEach(l=>{
+      const id=String(l.noId||'');
+      if(id.startsWith('rec') && !srcIds.includes(id)) srcIds.push(id);
+    });
+    if(srcIds.length) fields['Source Orders']=srcIds.map(id=>({id}));
 
-    // Mark source orders as Assigned
-    for(const rawId of srcIds){
-      const cleanId=typeof rawId==='string'?rawId:rawId?.id;
-      if(cleanId&&cleanId.startsWith('rec')) await atPatch(T_NO,cleanId,{Status:'Assigned'});
-    }
+    // Loading Location 1-10 — linked record IDs
+    truck.lines.slice(0,10).forEach((l,i)=>{
+      const lid=String(l.locId||'');
+      if(lid.startsWith('rec')) fields[`Loading Location ${i+1}`]=[{id:lid}];
+    });
+
+    console.log('SAVE payload:', JSON.stringify(fields));
+    const res=await atCreate(T_LOADS, fields);
+    console.log('SAVE response:', JSON.stringify(res).slice(0,300));
+    if(!res.id) throw new Error(res.error?.message||JSON.stringify(res).slice(0,200));
+
+    // Mark source NATIONAL ORDERS as Assigned
+    for(const id of srcIds) await atPatch(T_NO, id, {Status:'Assigned'});
 
     // Add to local savedPlans list
     savedPlans.push({
