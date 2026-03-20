@@ -448,7 +448,7 @@ async function loadLines(){
     const noRecs=await atFetch(T_NO,
       ['Name','Client','Pickup Location 1','Pickup Location 2','Pickup Location 3',
        'Delivery Location 1','Loading DateTime','Delivery DateTime',
-       'Temperature °C','Goods','Status','Direction','Linked Order','Groupage ID','Notes'],
+       'Temperature °C','Goods','Status','Direction','Linked Order','Groupage ID','Notes','Reference'],
       {filterByFormula:"AND({National Groupage}=1,{Status}!='Groupage Assigned')"}
     );
     if(!noRecs.length){lines=[];setStatus('ok','0 εντολές');renderPool();return;}
@@ -459,7 +459,7 @@ async function loadLines(){
     if(orderIds.size){
       const formula=`OR(${[...orderIds].map(id=>`RECORD_ID()="${id}"`).join(',')})`;
       const recs=await atFetch(T_ORDERS,
-        ['Order Number','Loading Location 1','Loading Location 2','Loading Location 3',
+        ['Order Number','Reference','Loading Location 1','Loading Location 2','Loading Location 3',
          'Loading Pallets 1','Loading Pallets 2','Loading Pallets 3'],
         {filterByFormula:formula}
       );
@@ -482,14 +482,13 @@ async function loadLines(){
     noRecs.forEach(no=>{
       const nf=no.fields;
       const delivery=(nf['Delivery Location 1']||[]).map(id=>lN[id]||id).join(', ')||'—';
-      const base={noId:no.id,delivery,loadDate:nf['Loading DateTime']||'',dir:nf.Direction||'',ref:'',notes:nf['Notes']||''};
+      const base={noId:no.id,delivery,loadDate:nf['Loading DateTime']||'',dir:nf.Direction||'',ref:nf['Reference']?'('+nf['Reference']+')':'',notes:nf['Notes']||''};
       const linkedId=(nf['Linked Order']||[])[0];
       const of=linkedId?orderMap[linkedId]:null;
       let added=0;
       if(of){
         // Extract ref code: last 4 chars of Order Number after final '-'
-        const orderNum=of['Order Number']||'';
-        const refCode=orderNum.includes('-')?'-'+orderNum.split('-').pop().trim():'';
+        const refCode=of['Reference']?'('+of['Reference']+')':'';
         [1,2,3].forEach(i=>{
           const locIds=of[`Loading Location ${i}`];
           const pal=of[`Loading Pallets ${i}`];
