@@ -8,224 +8,157 @@
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
-  --navy:        #080F1A;
-  --navy-mid:    #0B1929;
-  --navy-light:  #122238;
-  --navy-hover:  #17304F;
-  --silver:      #C4CFDB;
-  --silver-dim:  #6E8099;
-  --silver-light:#E2E8F0;
-  --bg:          #F7F8FA;
-  --bg-card:     #FFFFFF;
-  --bg-hover:    #F0F2F5;
-  --text:        #111827;
-  --text-mid:    #4B5563;
-  --text-dim:    #9CA3AF;
-  --border:      rgba(0,0,0,0.06);
-  --border-mid:  rgba(0,0,0,0.10);
-  --border-dark: rgba(0,0,0,0.16);
-  --accent:      #0B1929;
-  --success:     #059669;
-  --success-bg:  rgba(5,150,105,0.08);
-  --danger:      #DC2626;
-  --danger-bg:   rgba(220,38,38,0.08);
-  --warning:     #D97706;
-  --warning-bg:  rgba(217,119,6,0.08);
+  --navy-mid:#0B1929; --navy-light:#122238;
+  --silver-light:#E2E8F0; --silver-dim:#6E8099;
+  --bg:#F7F8FA; --bg-card:#FFFFFF; --bg-hover:#F0F2F5;
+  --text:#111827; --text-mid:#4B5563; --text-dim:#9CA3AF;
+  --border:rgba(0,0,0,0.06); --border-mid:rgba(0,0,0,0.10); --border-dark:rgba(0,0,0,0.16);
+  --accent:#0B1929;
+  --success:#059669; --success-bg:rgba(5,150,105,0.08);
+  --danger:#DC2626; --danger-bg:rgba(220,38,38,0.08);
+  --warning:#D97706; --warning-bg:rgba(217,119,6,0.08);
 }
 html,body{height:100%;overflow:hidden;}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column;}
 
-/* ── TOPBAR ── */
-.topbar{height:52px;background:var(--bg-card);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:16px;flex-shrink:0;box-shadow:0 1px 0 var(--border);}
-.t-brand{display:flex;align-items:center;gap:12px;padding-right:18px;border-right:1px solid var(--border);}
-.t-page{font-family:'Syne',sans-serif;font-size:14px;font-weight:600;color:var(--text);flex:1;letter-spacing:-.1px;}
-.t-actions{display:flex;align-items:center;gap:8px;}
+/* TOPBAR */
+.topbar{height:52px;background:var(--bg-card);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:16px;flex-shrink:0;}
+.t-brand{display:flex;align-items:center;gap:10px;padding-right:16px;border-right:1px solid var(--border);}
+.t-page{font-family:'Syne',sans-serif;font-size:14px;font-weight:600;color:var(--text);flex:1;}
+.t-actions{display:flex;gap:8px;}
 
-/* ── BUTTONS ── */
-.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 16px;border-radius:7px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;border:none;white-space:nowrap;}
-.btn-primary{background:var(--accent);border:1px solid var(--accent);color:#fff;}
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:7px;font-family:'DM Sans',sans-serif;font-size:12.5px;font-weight:500;cursor:pointer;border:none;white-space:nowrap;transition:all .15s;}
+.btn-primary{background:var(--accent);color:#fff;}
 .btn-primary:hover{background:var(--navy-light);}
 .btn-ghost{background:transparent;border:1px solid var(--border-mid);color:var(--text-mid);}
 .btn-ghost:hover{background:var(--bg-hover);color:var(--text);}
-.btn-sm{padding:6px 12px;font-size:12px;border-radius:6px;}
-.btn-ico{width:26px;height:26px;padding:0;display:inline-flex;align-items:center;justify-content:center;border-radius:5px;background:transparent;border:1px solid var(--border-mid);color:var(--text-dim);cursor:pointer;transition:all .12s;font-family:'DM Sans',sans-serif;font-size:13px;}
-.btn-ico:hover{background:var(--bg-hover);border-color:var(--border-dark);color:var(--text);}
+.btn-sm{padding:5px 11px;font-size:12px;border-radius:6px;}
 
-/* ── FILTER BAR ── */
+/* FILTER BAR */
 .fbar{height:46px;background:var(--bg-card);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:12px;flex-shrink:0;}
-.flbl{font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--text-dim);white-space:nowrap;}
-.finput,.fsel{background:var(--bg);border:1px solid var(--border-dark);border-radius:6px;padding:5px 10px;height:30px;font-family:'DM Sans',sans-serif;font-size:12.5px;color:var(--text);outline:none;transition:border-color .15s;cursor:pointer;}
+.flbl{font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--text-dim);}
+.finput,.fsel{background:var(--bg);border:1px solid var(--border-dark);border-radius:6px;padding:5px 10px;height:30px;font-family:'DM Sans',sans-serif;font-size:12.5px;color:var(--text);outline:none;}
 .finput:focus,.fsel:focus{border-color:var(--accent);}
-.fsep{width:1px;height:18px;background:var(--border-mid);flex-shrink:0;}
+.fsep{width:1px;height:18px;background:var(--border-mid);}
 
-/* ── STATUS BAR ── */
+/* STATUS */
 .sbar{padding:4px 24px;background:var(--bg-card);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--text-dim);flex-shrink:0;min-height:28px;}
-.sdot{width:6px;height:6px;border-radius:50%;background:var(--text-dim);flex-shrink:0;}
+.sdot{width:6px;height:6px;border-radius:50%;background:var(--text-dim);}
 .sdot.ok{background:var(--success);}
 .sdot.load{background:var(--warning);animation:pulse .8s infinite;}
 .sdot.err{background:var(--danger);}
 @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
 
-/* ── WORKSPACE ── */
+/* WORKSPACE */
 .workspace{flex:1;display:flex;overflow:hidden;}
 
-/* ── POOL PANEL ── */
+/* POOL */
 .pool{width:280px;flex-shrink:0;background:var(--bg-card);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
-.pool-hd{padding:14px 16px 10px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--navy-mid);}
+.pool-hd{padding:14px 16px 10px;border-bottom:1px solid var(--border);background:var(--navy-mid);}
 .pool-ttl{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(196,207,219,.5);margin-bottom:4px;}
 .pool-stat{font-family:'Syne',sans-serif;font-size:26px;font-weight:800;color:#E2E8F0;letter-spacing:-1.5px;line-height:1;}
 .pool-stat span{font-family:'DM Sans',sans-serif;font-size:11px;font-weight:400;color:var(--silver-dim);letter-spacing:0;}
-.pool-body{flex:1;overflow-y:auto;padding:8px;scrollbar-width:thin;scrollbar-color:#D1D5DB transparent;transition:background .15s;background:var(--bg);}
-.pool-body.dactive{background:var(--success-bg);}
+.pool-body{flex:1;overflow-y:auto;padding:8px;background:var(--bg);}
+.pool-body.drag-over{background:var(--success-bg);}
 
-/* ── DATE DIVIDER ── */
-.ddiv{display:flex;align-items:center;gap:8px;padding:6px 0 5px;margin-top:2px;}
+/* DATE DIVIDER */
+.ddiv{display:flex;align-items:center;gap:8px;padding:6px 0 5px;}
 .ddiv-lbl{font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-dim);white-space:nowrap;}
 .ddiv-line{flex:1;height:1px;background:var(--border);}
 .ddiv-cnt{font-size:9px;color:var(--text-dim);white-space:nowrap;}
 
-/* ── LINE CARD (pool) ── */
-.lcard{
-  background:var(--bg-card);border:1px solid var(--border-mid);border-radius:6px;
-  padding:8px 10px;margin-bottom:4px;cursor:grab;
-  display:flex;align-items:stretch;gap:8px;
-  transition:box-shadow .15s,border-color .15s,opacity .15s;
-  user-select:none;
-}
+/* LINE CARD */
+.lcard{background:var(--bg-card);border:1px solid var(--border-mid);border-radius:6px;padding:8px 10px;margin-bottom:4px;cursor:grab;display:flex;align-items:stretch;gap:8px;user-select:none;transition:box-shadow .15s,opacity .15s;}
 .lcard:hover{border-color:var(--border-dark);box-shadow:0 2px 8px rgba(0,0,0,.07);}
-.lcard:active{cursor:grabbing;}
-.lcard.dragging{opacity:.35;}
-
-/* ── LINE CARD (assigned — dark like TMS wi-card-ok) ── */
-.lcard.in-truck{
-  background:#1E3A8A;
-  border:none;border-left:2px solid #93C5FD;
-  border-radius:3px;
-}
+.lcard.dragging{opacity:.3;}
+.lcard.in-truck{background:#1E3A8A;border:none;border-left:2px solid #93C5FD;border-radius:3px;}
 .lcard.in-truck .lcard-sup{color:#EFF6FF;font-weight:800;}
-.lcard.in-truck .lcard-dst{color:rgba(239,246,255,.7);}
-.lcard.in-truck .lcard-tags .bdg{background:rgba(255,255,255,.1);color:rgba(239,246,255,.8);}
+.lcard.in-truck .lcard-dst{color:rgba(239,246,255,.6);}
 .lcard.in-truck .lcard-pal{color:#EFF6FF;}
-.lcard.in-truck .lcard-plbl{color:rgba(239,246,255,.5);}
-.lcard.in-truck .lcard-strip{background:rgba(147,197,253,.4);}
-
-/* Split child */
+.lcard.in-truck .lcard-plbl{color:rgba(239,246,255,.4);}
 .lcard.split-child{border-left:2.5px solid var(--warning)!important;}
 .lcard.split-child.in-truck{background:#065F46;border-left-color:#34D399!important;}
 .lcard.split-child.in-truck .lcard-sup{color:#ECFDF5;}
-.lcard.split-child.in-truck .lcard-dst{color:rgba(236,253,245,.7);}
-.lcard.split-child.in-truck .lcard-pal{color:#ECFDF5;}
-
-/* Strip color accent */
 .lcard-strip{width:3px;border-radius:2px;flex-shrink:0;align-self:stretch;}
 .c0{background:#3B82F6;}.c1{background:#10B981;}.c2{background:#F59E0B;}
 .c3{background:#EF4444;}.c4{background:#8B5CF6;}.c5{background:#EC4899;}
 .c6{background:#14B8A6;}.c7{background:#F97316;}.c8{background:#6366F1;}.c9{background:#84CC16;}
-
-.lcard-body{flex:1;min-width:0;pointer-events:none;}
-.lcard-sup{font-size:11px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:1px;letter-spacing:.2px;}
-.lcard-dst{font-size:10px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px;}
-.lcard-tags{display:flex;gap:3px;flex-wrap:wrap;}
-.bdg{display:inline-flex;align-items:center;padding:1px 5px;border-radius:3px;font-size:9px;font-weight:600;letter-spacing:.3px;text-transform:uppercase;}
+.lcard-body{flex:1;min-width:0;}
+.lcard-sup{font-size:11px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:.2px;}
+.lcard-dst{font-size:10px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;margin-bottom:3px;}
+.lcard-tags{display:flex;gap:3px;}
+.bdg{display:inline-flex;padding:1px 5px;border-radius:3px;font-size:9px;font-weight:600;letter-spacing:.3px;text-transform:uppercase;}
 .bg{background:rgba(156,163,175,.12);color:#6B7280;}
 .by{background:var(--warning-bg);color:var(--warning);}
-.lcard-r{flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;pointer-events:none;}
+.lcard-r{flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;}
 .lcard-pal{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:var(--text);letter-spacing:-1px;line-height:1;text-align:right;}
-.lcard-plbl{font-size:7px;font-weight:700;letter-spacing:1.5px;color:var(--text-dim);text-transform:uppercase;text-align:right;}
-.lcard-spl{opacity:0;transition:opacity .12s;pointer-events:all;}
-.lcard:hover .lcard-spl{opacity:1;}
+.lcard-plbl{font-size:7px;font-weight:700;letter-spacing:1.5px;color:var(--text-dim);text-transform:uppercase;}
+.spl-btn{opacity:0;width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:4px;background:transparent;border:1px solid var(--border-mid);color:var(--text-dim);cursor:pointer;font-size:12px;transition:all .12s;}
+.lcard:hover .spl-btn{opacity:1;}
+.spl-btn:hover{background:var(--bg-hover);color:var(--text);}
 .pool-empty{padding:32px 16px;text-align:center;font-size:12px;color:var(--text-dim);line-height:1.7;}
-.pool-empty strong{color:var(--text-mid);}
 
-/* ── TRUCKS AREA ── */
-.trucks{flex:1;display:flex;align-items:flex-start;gap:10px;padding:12px;overflow-x:auto;overflow-y:hidden;background:var(--bg);scrollbar-width:thin;scrollbar-color:#D1D5DB transparent;}
+/* TRUCKS AREA */
+.trucks{flex:1;display:flex;align-items:flex-start;gap:10px;padding:12px;overflow-x:auto;overflow-y:hidden;background:var(--bg);}
 
-/* ── TRUCK COLUMN ── */
-.tcol{
-  width:236px;flex-shrink:0;
-  background:var(--bg-card);border:1px solid var(--border);border-radius:10px;
-  display:flex;flex-direction:column;
-  height:calc(100vh - 52px - 46px - 28px - 24px);
-  overflow:hidden;transition:border-color .15s,box-shadow .15s;
-}
-.tcol.dactive{border-color:rgba(147,197,253,.5);box-shadow:0 0 0 3px rgba(30,58,138,.08);}
-
-/* Truck header — dark navy like sidebar */
-.tcol-hd{padding:12px 12px 8px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--navy-mid);pointer-events:none;}
+/* TRUCK COLUMN */
+.tcol{width:236px;flex-shrink:0;background:var(--bg-card);border:2px solid transparent;border-radius:10px;display:flex;flex-direction:column;height:calc(100vh - 52px - 46px - 28px - 24px);transition:border-color .15s;}
+.tcol.drag-over{border-color:var(--accent);background:rgba(11,25,41,.02);}
+.tcol-hd{padding:12px 12px 8px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--navy-mid);border-radius:8px 8px 0 0;}
 .tcol-nrow{display:flex;align-items:center;gap:6px;margin-bottom:8px;}
-.tcol-name{
-  flex:1;font-family:'Syne',sans-serif;font-size:10px;font-weight:700;
-  color:var(--silver-light);background:transparent;border:none;outline:none;
-  letter-spacing:1px;text-transform:uppercase;
-  padding:3px 5px;border-radius:4px;transition:background .12s;
-}
+.tcol-name{flex:1;font-family:'Syne',sans-serif;font-size:10px;font-weight:700;color:var(--silver-light);background:transparent;border:none;outline:none;letter-spacing:1px;text-transform:uppercase;padding:3px 5px;border-radius:4px;}
 .tcol-name:focus{background:rgba(255,255,255,.08);}
-.tcol-name::placeholder{color:var(--silver-dim);}
-.tcol-del{width:22px;height:22px;padding:0;display:inline-flex;align-items:center;justify-content:center;border-radius:4px;background:transparent;border:1px solid rgba(255,255,255,.1);color:rgba(196,207,219,.4);cursor:pointer;font-size:11px;transition:all .12s;}
-.tcol-del:hover{background:rgba(220,38,38,.15);border-color:rgba(220,38,38,.3);color:#FCA5A5;}
-
+.tcol-del{width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:4px;background:transparent;border:1px solid rgba(255,255,255,.1);color:rgba(196,207,219,.4);cursor:pointer;font-size:11px;}
+.tcol-del:hover{background:rgba(220,38,38,.15);color:#FCA5A5;}
 .tcol-stats{display:flex;align-items:center;gap:8px;}
 .tcol-pal{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;letter-spacing:-1.5px;line-height:1;}
 .tcol-of{font-size:10px;color:var(--silver-dim);align-self:flex-end;padding-bottom:2px;}
 .tcol-bw{flex:1;height:3px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden;}
 .tcol-bar{height:100%;border-radius:2px;transition:width .3s,background .3s;}
+.tcol-body{flex:1;padding:8px;background:var(--bg);overflow-y:auto;}
+.dzone{height:100%;min-height:80px;border:1.5px dashed var(--border-dark);border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--text-dim);font-size:11px;pointer-events:none;}
+.tcol-foot{padding:6px 10px;border-top:1px solid var(--border);background:var(--bg-card);flex-shrink:0;display:flex;justify-content:space-between;font-size:11px;color:var(--text-dim);border-radius:0 0 8px 8px;}
+.tcol-foot strong{font-family:'Syne',sans-serif;font-size:12px;font-weight:800;color:var(--text);}
 
-.tcol-body{flex:1;overflow-y:auto;padding:8px;background:var(--bg);scrollbar-width:thin;scrollbar-color:#D1D5DB transparent;min-height:200px;height:100%;}
-.dzone{height:60px;border:1.5px dashed var(--border-dark);border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--text-dim);font-size:11px;transition:border-color .15s,background .15s;pointer-events:none;}
-
-
-.tcol.dactive .dzone{border-color:rgba(147,197,253,.4);background:rgba(30,58,138,.04);color:var(--text-mid);}
-
-/* total strip at bottom of truck */
-.tcol-total{
-  padding:6px 10px;border-top:1px solid var(--border);
-  background:var(--bg-card);flex-shrink:0;
-  display:flex;align-items:center;justify-content:space-between;
-  font-size:10px;color:var(--text-dim);
-}
-.tcol-total strong{font-family:'Syne',sans-serif;font-size:12px;font-weight:800;color:var(--text);}
-
-/* Add truck CTA */
-.add-col{width:90px;flex-shrink:0;align-self:stretch;border:1.5px dashed var(--border-dark);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;cursor:pointer;color:var(--text-dim);font-size:11.5px;transition:border-color .15s,color .15s,background .15s;padding:16px;text-align:center;}
+/* ADD TRUCK */
+.add-col{width:90px;flex-shrink:0;align-self:stretch;border:1.5px dashed var(--border-dark);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;cursor:pointer;color:var(--text-dim);font-size:11.5px;transition:all .15s;text-align:center;}
 .add-col:hover{border-color:var(--accent);color:var(--text-mid);background:rgba(11,25,41,.03);}
 .add-col .plus{font-size:24px;font-weight:300;line-height:1;}
 
-/* ── MODAL ── */
+/* MODAL */
 .overlay{display:none;position:fixed;inset:0;background:rgba(5,14,26,.75);backdrop-filter:blur(4px);z-index:1000;align-items:center;justify-content:center;}
 .overlay.show{display:flex;}
-.modal{background:var(--bg-card);border:1px solid var(--border-mid);border-radius:12px;width:360px;max-width:96vw;box-shadow:0 24px 60px rgba(0,0,0,.22);animation:mIn .2s cubic-bezier(.22,1,.36,1);}
+.modal{background:var(--bg-card);border:1px solid var(--border-mid);border-radius:12px;width:360px;box-shadow:0 24px 60px rgba(0,0,0,.22);animation:mIn .2s cubic-bezier(.22,1,.36,1);}
 @keyframes mIn{from{opacity:0;transform:translateY(12px) scale(.97);}to{opacity:1;transform:none;}}
 .mhd{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);}
 .mttl{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--text);}
-.mcls{width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:5px;cursor:pointer;color:var(--text-dim);font-size:16px;transition:all .12s;}
+.mcls{width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:5px;cursor:pointer;color:var(--text-dim);font-size:16px;}
 .mcls:hover{background:var(--bg);color:var(--text);}
 .mbdy{padding:20px;}
 .mft{display:flex;gap:8px;justify-content:flex-end;padding:14px 20px;border-top:1px solid var(--border);}
 .srow{display:flex;align-items:flex-end;gap:10px;margin-bottom:14px;}
 .sfld{flex:1;display:flex;flex-direction:column;gap:5px;}
 .sfld label{font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--text-dim);}
-.sinput{width:100%;background:var(--bg);border:1px solid var(--border-dark);border-radius:7px;padding:8px 12px;font-family:'Syne',sans-serif;font-size:20px;font-weight:700;color:var(--text);outline:none;text-align:center;transition:border-color .15s;}
+.sinput{width:100%;background:var(--bg);border:1px solid var(--border-dark);border-radius:7px;padding:8px 12px;font-family:'Syne',sans-serif;font-size:20px;font-weight:700;color:var(--text);outline:none;text-align:center;}
 .sinput:focus{border-color:var(--accent);}
 .seq{font-size:18px;color:var(--text-dim);font-weight:300;padding-bottom:9px;}
 .stot{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;padding:6px 10px;border-radius:6px;border:1px solid transparent;white-space:nowrap;flex-shrink:0;}
 .stot.ok{background:var(--success-bg);color:var(--success);border-color:rgba(5,150,105,.2);}
 .stot.err{background:var(--danger-bg);color:var(--danger);border-color:rgba(220,38,38,.2);}
 
-/* ── TOAST ── */
-.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(6px);background:var(--navy-mid);color:var(--silver-light);padding:9px 18px;border-radius:8px;font-size:12.5px;font-weight:500;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;z-index:2000;white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,.3);}
+/* TOAST */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(6px);background:var(--navy-mid);color:var(--silver-light);padding:9px 18px;border-radius:8px;font-size:12.5px;font-weight:500;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;z-index:2000;white-space:nowrap;}
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0);}
-
 ::-webkit-scrollbar{width:5px;height:5px;}
-::-webkit-scrollbar-track{background:transparent;}
 ::-webkit-scrollbar-thumb{background:#D1D5DB;border-radius:3px;}
 </style>
 </head>
 <body>
 
-<!-- TOPBAR -->
 <div class="topbar">
   <div class="t-brand">
-    <img src="https://dimitrispetras21-del.github.io/PETRASGROUP-TMS/logo.png" style="height:36px;filter:brightness(0);opacity:.85;" alt="Petras Group">
+    <img src="https://dimitrispetras21-del.github.io/PETRASGROUP-TMS/logo.png" style="height:34px;filter:brightness(0);opacity:.85;">
   </div>
   <div class="t-page">National Pick Ups</div>
   <div class="t-actions">
@@ -236,15 +169,14 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);dis
   </div>
 </div>
 
-<!-- FILTER BAR -->
 <div class="fbar">
-  <span class="flbl">Ημ/νία από</span>
-  <input type="date" id="fFrom" class="finput" onchange="applyFilter()">
+  <span class="flbl">Από</span>
+  <input type="date" id="fFrom" class="finput" onchange="renderPool()">
   <span style="color:var(--text-dim);font-size:11px;">→</span>
-  <input type="date" id="fTo" class="finput" onchange="applyFilter()">
+  <input type="date" id="fTo" class="finput" onchange="renderPool()">
   <div class="fsep"></div>
   <span class="flbl">Κατεύθυνση</span>
-  <select id="fDir" class="fsel" onchange="applyFilter()">
+  <select id="fDir" class="fsel" onchange="renderPool()">
     <option value="">Όλες</option>
     <option value="ΚΑΘΟΔΟΣ">ΚΑΘΟΔΟΣ</option>
     <option value="ΑΝΟΔΟΣ">ΑΝΟΔΟΣ</option>
@@ -253,36 +185,25 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);dis
   <button class="btn btn-ghost btn-sm" onclick="clearFilters()">Καθαρισμός</button>
 </div>
 
-<!-- STATUS BAR -->
 <div class="sbar">
   <div class="sdot" id="sdot"></div>
   <span id="stxt">Φόρτωση...</span>
 </div>
 
-<!-- WORKSPACE -->
 <div class="workspace">
-
-  <!-- POOL -->
   <div class="pool">
     <div class="pool-hd">
       <div class="pool-ttl">Εκκρεμείς γραμμές</div>
-      <div class="pool-stat" id="poolCount">— <span>PAL διαθέσιμα</span></div>
+      <div class="pool-stat" id="poolCount">— <span>PAL</span></div>
     </div>
-    <div class="pool-body" id="poolInner"
-         ondragover="event.preventDefault();this.classList.add('dactive')"
-         ondragleave="if(!this.contains(event.relatedTarget))this.classList.remove('dactive')"
-         ondrop="onPoolDrop(event)">
-    </div>
+    <div class="pool-body" id="poolBody"></div>
   </div>
-
-  <!-- TRUCKS -->
   <div class="trucks" id="trucksArea">
     <div class="add-col" onclick="addTruck()">
       <div class="plus">+</div>
       <div>Νέο φορτηγό</div>
     </div>
   </div>
-
 </div>
 
 <!-- SPLIT MODAL -->
@@ -294,17 +215,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);dis
     </div>
     <div class="mbdy">
       <div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:3px;" id="splitSupplier"></div>
-      <div style="font-size:11.5px;color:var(--text-dim);margin-bottom:18px;" id="splitMax"></div>
+      <div style="font-size:11px;color:var(--text-dim);margin-bottom:18px;" id="splitMax"></div>
       <div class="srow">
-        <div class="sfld">
-          <label>Φορτηγό Α</label>
-          <input class="sinput" id="splitA" type="number" min="1" oninput="syncSplitB()">
-        </div>
+        <div class="sfld"><label>Φορτηγό Α</label><input class="sinput" id="splitA" type="number" min="1" oninput="syncSplitB()"></div>
         <div class="seq">+</div>
-        <div class="sfld">
-          <label>Φορτηγό Β</label>
-          <input class="sinput" id="splitB" type="number" min="1" oninput="updateSplitCalc()">
-        </div>
+        <div class="sfld"><label>Φορτηγό Β</label><input class="sinput" id="splitB" type="number" min="1" oninput="updateSplitCalc()"></div>
         <div class="seq">=</div>
         <div class="stot err" id="splitCalc">0</div>
       </div>
@@ -319,20 +234,21 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);dis
 <div class="toast" id="toast"></div>
 
 <script>
-/* ═══ CONFIG ═══════════════════════════════════════════ */
-const AT      = 'patpPJXnFYnxdgoK3.a2162b09fbb214628114ff2ce68bb5a7b30aea2061b14f9562a1ab222585cf08';
-const BASE    = 'appElT5CQV6JQvym8';
-const T_NO    = 'tblGHCCsTMqAy4KR2';
-const T_CL    = 'tblFWKAQVUzAM8mCE';
-const T_LO    = 'tblxu8DRfTQOFRCzS';
-const T_ORDERS= 'tblgHlNmLBH3JTdIM';
-const T_LOADS = 'tbl5XSLQjOnG6yLCW';
+/* CONFIG */
+const AT='patpPJXnFYnxdgoK3.a2162b09fbb214628114ff2ce68bb5a7b30aea2061b14f9562a1ab222585cf08';
+const BASE='appElT5CQV6JQvym8';
+const T_NO='tblGHCCsTMqAy4KR2';
+const T_CL='tblFWKAQVUzAM8mCE';
+const T_LO='tblxu8DRfTQOFRCzS';
+const T_ORDERS='tblgHlNmLBH3JTdIM';
+const T_LOADS='tbl5XSLQjOnG6yLCW';
 
-/* ═══ STATE ════════════════════════════════════════════ */
-let lines=[], filtered=[], trucks=[], tc=1;
-let orderColorMap={}, dragId=null, dragFrom=null, splitTarget=null;
+/* STATE */
+let lines=[], trucks=[], tc=1;
+let colorMap={};
+let dragId=null, dragFrom=null, splitTarget=null;
 
-/* ═══ DATE DEFAULTS ════════════════════════════════════ */
+/* DATE DEFAULTS */
 (function(){
   const d=new Date();
   const f=new Date(d); f.setDate(f.getDate()-14);
@@ -341,59 +257,45 @@ let orderColorMap={}, dragId=null, dragFrom=null, splitTarget=null;
   document.getElementById('fTo').value=t.toISOString().split('T')[0];
 })();
 
-/* ═══ AIRTABLE HELPERS ═════════════════════════════════ */
-async function atFetch(tbl, fields, params={}){
-  let all=[], offset=null;
+/* API */
+async function atFetch(tbl,fields,params={}){
+  let all=[],offset=null;
   do{
     let url=`https://api.airtable.com/v0/${BASE}/${tbl}?pageSize=100`;
-    for(const [k,v] of Object.entries(params))
-      url+=`&${encodeURIComponent(k)}=${encodeURIComponent(v)}`;
-    fields.forEach(f=>{ url+=`&fields%5B%5D=${encodeURIComponent(f)}`; });
-    if(offset) url+=`&offset=${encodeURIComponent(offset)}`;
+    for(const[k,v]of Object.entries(params))url+=`&${encodeURIComponent(k)}=${encodeURIComponent(v)}`;
+    fields.forEach(f=>{url+=`&fields%5B%5D=${encodeURIComponent(f)}`;});
+    if(offset)url+=`&offset=${encodeURIComponent(offset)}`;
     const r=await fetch(url,{headers:{Authorization:`Bearer ${AT}`}});
-    if(!r.ok){const t=await r.text();throw new Error(`HTTP ${r.status}: ${t.slice(0,200)}`);}
+    if(!r.ok)throw new Error(`HTTP ${r.status}`);
     const d=await r.json();
-    if(d.error) throw new Error(JSON.stringify(d.error));
-    all=all.concat(d.records||[]); offset=d.offset||null;
+    if(d.error)throw new Error(JSON.stringify(d.error));
+    all=all.concat(d.records||[]);offset=d.offset||null;
   }while(offset);
   return all;
 }
-
-async function resolveIds(tbl, ids){
-  if(!ids.length) return {};
+async function resolveIds(tbl,ids){
+  if(!ids.length)return{};
   const map={};
   for(let i=0;i<ids.length;i+=10){
     const chunk=ids.slice(i,i+10);
     const f=`OR(${chunk.map(id=>`RECORD_ID()="${id}"`).join(',')})`;
-    try{
-      const url=`https://api.airtable.com/v0/${BASE}/${tbl}?filterByFormula=${encodeURIComponent(f)}&fields%5B%5D=Name`;
-      const r=await fetch(url,{headers:{Authorization:`Bearer ${AT}`}});
-      const d=await r.json();
-      (d.records||[]).forEach(rec=>map[rec.id]=rec.fields.Name||rec.id);
-    }catch(e){console.warn('resolveIds',e);}
+    const url=`https://api.airtable.com/v0/${BASE}/${tbl}?filterByFormula=${encodeURIComponent(f)}&fields%5B%5D=Name`;
+    const r=await fetch(url,{headers:{Authorization:`Bearer ${AT}`}});
+    const d=await r.json();
+    (d.records||[]).forEach(rec=>map[rec.id]=rec.fields.Name||rec.id);
   }
   return map;
 }
-
-async function atPatch(tbl, id, fields){
-  const r=await fetch(`https://api.airtable.com/v0/${BASE}/${tbl}/${id}`,{
-    method:'PATCH',headers:{Authorization:`Bearer ${AT}`,'Content-Type':'application/json'},
-    body:JSON.stringify({fields})
-  });
-  return r.json();
+async function atPatch(tbl,id,fields){
+  return(await fetch(`https://api.airtable.com/v0/${BASE}/${tbl}/${id}`,{method:'PATCH',headers:{Authorization:`Bearer ${AT}`,'Content-Type':'application/json'},body:JSON.stringify({fields})})).json();
+}
+async function atCreate(tbl,fields){
+  return(await fetch(`https://api.airtable.com/v0/${BASE}/${tbl}`,{method:'POST',headers:{Authorization:`Bearer ${AT}`,'Content-Type':'application/json'},body:JSON.stringify({fields})})).json();
 }
 
-async function atCreate(tbl, fields){
-  const r=await fetch(`https://api.airtable.com/v0/${BASE}/${tbl}`,{
-    method:'POST',headers:{Authorization:`Bearer ${AT}`,'Content-Type':'application/json'},
-    body:JSON.stringify({fields})
-  });
-  return r.json();
-}
-
-/* ═══ LOAD DATA ════════════════════════════════════════ */
+/* LOAD */
 async function loadLines(){
-  setStatus('load','Φόρτωση εντολών groupage...');
+  setStatus('load','Φόρτωση...');
   try{
     const noRecs=await atFetch(T_NO,
       ['Name','Client','Pickup Location 1','Pickup Location 2','Pickup Location 3',
@@ -401,14 +303,8 @@ async function loadLines(){
        'Temperature °C','Goods','Status','Direction','Linked Order'],
       {filterByFormula:'{National Groupage}=1'}
     );
+    if(!noRecs.length){lines=[];setStatus('ok','0 εντολές');renderPool();return;}
 
-    if(!noRecs.length){
-      lines=[];
-      setStatus('ok','0 εντολές groupage — τσεκάρε το National Groupage στις εντολές');
-      applyFilter(); return;
-    }
-
-    // Fetch linked ORDERS for stop data
     const orderIds=new Set();
     noRecs.forEach(r=>(r.fields['Linked Order']||[]).forEach(id=>orderIds.add(id)));
     let orderMap={};
@@ -422,31 +318,23 @@ async function loadLines(){
       recs.forEach(r=>{orderMap[r.id]=r.fields;});
     }
 
-    // Collect IDs for resolution
-    const lIds=new Set(), cIds=new Set();
+    const lIds=new Set(),cIds=new Set();
     noRecs.forEach(r=>{
       (r.fields.Client||[]).forEach(id=>cIds.add(id));
       (r.fields['Delivery Location 1']||[]).forEach(id=>lIds.add(id));
-      ['Pickup Location 1','Pickup Location 2','Pickup Location 3'].forEach(f=>
-        (r.fields[f]||[]).forEach(id=>lIds.add(id)));
+      ['Pickup Location 1','Pickup Location 2','Pickup Location 3'].forEach(f=>(r.fields[f]||[]).forEach(id=>lIds.add(id)));
     });
     Object.values(orderMap).forEach(f=>{
       [1,2,3].forEach(i=>(f[`Loading Location ${i}`]||[]).forEach(id=>lIds.add(id)));
     });
 
-    const [cN,lN]=await Promise.all([resolveIds(T_CL,[...cIds]),resolveIds(T_LO,[...lIds])]);
+    const[cN,lN]=await Promise.all([resolveIds(T_CL,[...cIds]),resolveIds(T_LO,[...lIds])]);
 
-    // Explode each NATIONAL ORDER → per-stop draggable lines
     lines=[];
     noRecs.forEach(no=>{
       const nf=no.fields;
       const delivery=(nf['Delivery Location 1']||[]).map(id=>lN[id]||id).join(', ')||'—';
-      const base={
-        noId:no.id, delivery,
-        client:(nf.Client||[]).map(id=>cN[id]||id).join(', ')||'—',
-        loadDate:nf['Loading DateTime']||'',
-        dir:nf.Direction||''
-      };
+      const base={noId:no.id,delivery,loadDate:nf['Loading DateTime']||'',dir:nf.Direction||''};
       const linkedId=(nf['Linked Order']||[])[0];
       const of=linkedId?orderMap[linkedId]:null;
       let added=0;
@@ -461,66 +349,42 @@ async function loadLines(){
         });
       }
       if(!added){
-        const pu1=nf['Pickup Location 1']||[];
-        const pickup=pu1.map(id=>lN[id]||id).join(', ')||'—';
-        lines.push({...base,id:no.id+'_1',supplier:pickup,pal:nf.Pallets||0,locId:pu1[0]||null});
+        const pu=(nf['Pickup Location 1']||[]).map(id=>lN[id]||id).join(', ')||'—';
+        lines.push({...base,id:no.id+'_1',supplier:pu,pal:nf.Pallets||0,locId:(nf['Pickup Location 1']||[])[0]||null});
       }
     });
 
-    orderColorMap={};
-    [...new Set(lines.map(l=>l.noId))].forEach((id,i)=>{orderColorMap[id]=i%10;});
-    setStatus('ok',`${lines.length} γραμμές φόρτωσης από ${noRecs.length} εντολές`);
-    applyFilter();
+    colorMap={};
+    [...new Set(lines.map(l=>l.noId))].forEach((id,i)=>{colorMap[id]=i%10;});
+    setStatus('ok',`${lines.length} γραμμές από ${noRecs.length} εντολές`);
+    renderPool();
   }catch(e){setStatus('err','Σφάλμα: '+e.message);console.error(e);}
 }
 
-/* ═══ FILTER ═══════════════════════════════════════════ */
+/* HELPERS */
 function inTruck(id){return trucks.some(t=>t.lines.some(l=>l.id===id));}
-
-function applyFilter(){
+function fmtDate(iso){if(!iso||iso==='—')return null;const p=iso.slice(0,10).split('-');return p[2]+'/'+p[1];}
+function getFiltered(){
   const from=document.getElementById('fFrom').value;
-  const to  =document.getElementById('fTo').value;
-  const dir =document.getElementById('fDir').value;
-  filtered=lines.filter(l=>{
-    if(inTruck(l.id)) return false;
-    if(from&&l.loadDate&&l.loadDate.slice(0,10)<from) return false;
-    if(to  &&l.loadDate&&l.loadDate.slice(0,10)>to)   return false;
-    if(dir &&l.dir!==dir) return false;
+  const to=document.getElementById('fTo').value;
+  const dir=document.getElementById('fDir').value;
+  return lines.filter(l=>{
+    if(inTruck(l.id))return false;
+    if(from&&l.loadDate&&l.loadDate.slice(0,10)<from)return false;
+    if(to&&l.loadDate&&l.loadDate.slice(0,10)>to)return false;
+    if(dir&&l.dir!==dir)return false;
     return true;
   });
-  const pal=filtered.reduce((s,l)=>s+l.pal,0);
-  document.getElementById('poolCount').innerHTML=pal+' <span>PAL · '+filtered.length+' γραμμές</span>';
-  renderPool();
-  renderTrucks();
 }
 
-function clearFilters(){
-  const d=new Date();
-  const f=new Date(d); f.setDate(f.getDate()-14);
-  const t=new Date(d); t.setDate(t.getDate()+14);
-  document.getElementById('fFrom').value=f.toISOString().split('T')[0];
-  document.getElementById('fTo').value=t.toISOString().split('T')[0];
-  document.getElementById('fDir').value='';
-  applyFilter();
-}
-
-/* ═══ CARD HTML ════════════════════════════════════════ */
-function fmtDate(iso){
-  if(!iso||iso==='—') return null;
-  const p=iso.slice(0,10).split('-');
-  return p[2]+'/'+p[1];
-}
-
-function cardHTML(l, src){
-  const ci=orderColorMap[l.noId]??0;
+/* CARD HTML */
+function cardHTML(l){
+  const ci=colorMap[l.noId]??0;
   const ds=fmtDate(l.loadDate);
   const isSplit=!!l.splitFrom;
-  const tags=[
-    l.dir?`<span class="bdg bg">${l.dir}</span>`:'',
-    isSplit?`<span class="bdg by">τμήμα</span>`:'',
-    ds?`<span class="bdg bg">${ds}</span>`:''
-  ].filter(Boolean).join('');
-  return `<div class="lcard${isSplit?' split-child':''}" data-id="${l.id}" data-src="${src}" draggable="true">
+  const inT=inTruck(l.id);
+  const tags=[l.dir?`<span class="bdg bg">${l.dir}</span>`:'',isSplit?`<span class="bdg by">τμήμα</span>`:'',ds?`<span class="bdg bg">${ds}</span>`:''].filter(Boolean).join('');
+  return `<div class="lcard${inT?' in-truck':''}${isSplit?' split-child':''}" data-id="${l.id}" draggable="true">
     <div class="lcard-strip c${ci}"></div>
     <div class="lcard-body">
       <div class="lcard-sup">${l.supplier}</div>
@@ -529,94 +393,54 @@ function cardHTML(l, src){
     </div>
     <div class="lcard-r">
       <div><div class="lcard-pal">${l.pal}</div><div class="lcard-plbl">PAL</div></div>
-      <div class="lcard-spl"><button class="btn-ico" style="width:22px;height:22px;font-size:12px;" onclick="startSplit('${l.id}',${l.pal},event)" title="Διαχωρισμός">÷</button></div>
+      <button class="spl-btn" onclick="startSplit('${l.id}',${l.pal},event)" title="Διαχωρισμός">÷</button>
     </div>
   </div>`;
 }
 
-function bindCards(el, src){
-  el.querySelectorAll('.lcard').forEach(card=>{
-    card.setAttribute('draggable','true');
-    card.addEventListener('dragstart',e=>{
-      dragId=card.dataset.id; dragFrom=card.dataset.src;
-      card.classList.add('dragging');
-      e.dataTransfer.setData('text/plain', card.dataset.id);
-      e.dataTransfer.effectAllowed='move';
-    });
-    card.addEventListener('dragend',()=>{
-      card.classList.remove('dragging');
-      document.querySelectorAll('.tcol').forEach(t=>t.classList.remove('dactive'));
-    });
-  });
-}
-
-/* ═══ RENDER POOL ══════════════════════════════════════ */
+/* RENDER POOL */
 function renderPool(){
-  const el=document.getElementById('poolInner');
-  if(!filtered.length){
-    el.innerHTML='<div class="pool-empty">Δεν βρέθηκαν εντολές groupage.<br>Ελέγξτε ότι έχει τσεκαριστεί<br><strong>National Groupage</strong> στις εντολές.</div>';
-    return;
-  }
+  const filtered=getFiltered();
+  const pal=filtered.reduce((s,l)=>s+l.pal,0);
+  document.getElementById('poolCount').innerHTML=pal+' <span>PAL · '+filtered.length+' γραμμές</span>';
+  const el=document.getElementById('poolBody');
+  if(!filtered.length){el.innerHTML='<div class="pool-empty">Δεν βρέθηκαν εντολές.<br>Τσεκάρε <strong>National Groupage</strong>.</div>';return;}
   const groups={};
   filtered.forEach(l=>{const d=l.loadDate?l.loadDate.slice(0,10):'—';(groups[d]=groups[d]||[]).push(l);});
   let html='';
   Object.keys(groups).sort().forEach(d=>{
-    const g=groups[d], pal=g.reduce((s,l)=>s+l.pal,0), lbl=fmtDate(d)||d;
-    html+=`<div class="ddiv"><span class="ddiv-lbl">${lbl}</span><div class="ddiv-line"></div><span class="ddiv-cnt">${g.length} γρ · ${pal} PAL</span></div>`;
-    html+=g.map(l=>cardHTML(l,'pool')).join('');
+    const g=groups[d],p=g.reduce((s,l)=>s+l.pal,0),lbl=fmtDate(d)||d;
+    html+=`<div class="ddiv"><span class="ddiv-lbl">${lbl}</span><div class="ddiv-line"></div><span class="ddiv-cnt">${g.length} γρ · ${p} PAL</span></div>`;
+    html+=g.map(l=>cardHTML(l)).join('');
   });
   el.innerHTML=html;
-  bindCards(el,'pool');
+  // Bind dragstart to pool cards
+  el.querySelectorAll('.lcard').forEach(card=>{
+    card.addEventListener('dragstart',e=>{
+      dragId=card.dataset.id; dragFrom='pool';
+      card.classList.add('dragging');
+      e.dataTransfer.setData('text/plain',dragId);
+      e.dataTransfer.effectAllowed='move';
+    });
+    card.addEventListener('dragend',()=>card.classList.remove('dragging'));
+  });
 }
 
-function onPoolDrop(e){
-  e.preventDefault();
-  document.getElementById('poolInner').classList.remove('dactive');
-  if(dragFrom&&dragFrom!=='pool'){
-    const t=trucks.find(t=>t.id===dragFrom);
-    if(t){
-      t.lines=t.lines.filter(l=>l.id!==dragId);
-      toast('↩ Επιστράφηκε στη λίστα');
-      dragId=null; dragFrom=null;
-      renderTrucks(); applyFilter();
-    }
-  }
-}
-
-/* ═══ TRUCKS ═══════════════════════════════════════════ */
-function addTruck(){trucks.push({id:'t'+Date.now(),name:'ΦΟΡΤΗΓΟ '+tc++,lines:[]});renderTrucks();}
-
-function delTruck(id){
-  const t=trucks.find(x=>x.id===id);
-  if(t?.lines.length&&!confirm(`Το φορτηγό έχει ${t.lines.length} γραμμές. Σίγουρα;`)) return;
-  trucks=trucks.filter(x=>x.id!==id); applyFilter();
-}
-
-function clearAll(){
-  if(!trucks.length) return;
-  if(!confirm('Καθαρισμός όλων των φορτηγών;')) return;
-  trucks=[]; tc=1; applyFilter();
-}
-
-function renameTruck(id,v){const t=trucks.find(x=>x.id===id);if(t)t.name=v;}
-
+/* RENDER TRUCKS — NO drag listeners here */
 function renderTrucks(){
   const area=document.getElementById('trucksArea');
   const add=area.querySelector('.add-col');
   area.querySelectorAll('.tcol').forEach(el=>el.remove());
-
   trucks.forEach(truck=>{
     const total=truck.lines.reduce((s,l)=>s+l.pal,0);
     const pct=Math.min((total/33)*100,100);
     const bc=pct<60?'var(--success)':pct<90?'var(--warning)':'var(--danger)';
     const col=document.createElement('div');
-    col.className='tcol';
-    col.dataset.truckId=truck.id;
+    col.className='tcol'; col.dataset.truckId=truck.id;
     col.innerHTML=`
       <div class="tcol-hd">
         <div class="tcol-nrow">
-          <input class="tcol-name" value="${truck.name}"
-            onchange="renameTruck('${truck.id}',this.value)" onclick="this.select()">
+          <input class="tcol-name" value="${truck.name}" onchange="renameTruck('${truck.id}',this.value)" onclick="this.select()">
           <button class="tcol-del" onclick="delTruck('${truck.id}')">✕</button>
         </div>
         <div class="tcol-stats">
@@ -627,39 +451,108 @@ function renderTrucks(){
       </div>
       <div class="tcol-body">
         ${truck.lines.length===0
-          ?'<div class="dzone">Σύρτε γραμμές φόρτωσης εδώ</div>'
-          :truck.lines.map(l=>cardHTML(l,truck.id)).join('')}
+          ?'<div class="dzone">Σύρτε γραμμές εδώ</div>'
+          :truck.lines.map(l=>cardHTML(l)).join('')}
       </div>
-      ${truck.lines.length>0?`<div class="tcol-total"><span>${truck.lines.length} γραμμές</span><strong>${total} PAL</strong></div>`:''}`;
-
+      ${truck.lines.length>0?`<div class="tcol-foot"><span>${truck.lines.length} γραμμές</span><strong>${total} PAL</strong></div>`:''}`;
     area.insertBefore(col,add);
-    bindCards(col.querySelector('.tcol-body'), truck.id);
+    // Bind dragstart on truck cards (for re-ordering / returning)
+    col.querySelectorAll('.lcard').forEach(card=>{
+      card.addEventListener('dragstart',e=>{
+        dragId=card.dataset.id; dragFrom=truck.id;
+        card.classList.add('dragging');
+        e.dataTransfer.setData('text/plain',dragId);
+        e.dataTransfer.effectAllowed='move';
+      });
+      card.addEventListener('dragend',()=>card.classList.remove('dragging'));
+    });
   });
 }
 
+/* DRAG — ALL on trucksArea using event delegation */
+(function setupDrag(){
+  const area=document.getElementById('trucksArea');
+
+  // dragover: must call preventDefault to allow drop
+  area.addEventListener('dragover',function(e){
+    e.preventDefault();
+    e.dataTransfer.dropEffect='move';
+    const col=e.target.closest('.tcol');
+    area.querySelectorAll('.tcol').forEach(c=>c.classList.remove('drag-over'));
+    if(col)col.classList.add('drag-over');
+  });
+
+  area.addEventListener('dragleave',function(e){
+    // Only clear if leaving trucksArea entirely
+    if(!area.contains(e.relatedTarget)){
+      area.querySelectorAll('.tcol').forEach(c=>c.classList.remove('drag-over'));
+    }
+  });
+
+  area.addEventListener('drop',function(e){
+    e.preventDefault();
+    const col=e.target.closest('.tcol');
+    area.querySelectorAll('.tcol').forEach(c=>c.classList.remove('drag-over'));
+    if(col&&col.dataset.truckId&&dragId){
+      handleDrop(col.dataset.truckId);
+    }
+  });
+
+  // Pool: return cards on drop
+  const pool=document.getElementById('poolBody');
+  pool.addEventListener('dragover',e=>e.preventDefault());
+  pool.addEventListener('dragleave',e=>{if(!pool.contains(e.relatedTarget))pool.classList.remove('drag-over');});
+  pool.addEventListener('dragover',e=>{e.preventDefault();pool.classList.add('drag-over');});
+  pool.addEventListener('drop',e=>{
+    e.preventDefault();
+    pool.classList.remove('drag-over');
+    if(dragFrom&&dragFrom!=='pool'){
+      const t=trucks.find(t=>t.id===dragFrom);
+      if(t){t.lines=t.lines.filter(l=>l.id!==dragId);toast('↩ Επιστράφηκε');}
+      dragId=null;dragFrom=null;
+      renderTrucks();renderPool();
+    }
+  });
+})();
 
 function handleDrop(tid){
-  if(!dragId) return;
+  if(!dragId)return;
   const line=lines.find(l=>l.id===dragId);
-  if(!line) return;
+  if(!line){dragId=null;return;}
   if(dragFrom&&dragFrom!=='pool'){
     const src=trucks.find(t=>t.id===dragFrom);
-    if(src) src.lines=src.lines.filter(l=>l.id!==dragId);
+    if(src)src.lines=src.lines.filter(l=>l.id!==dragId);
   }
   const tgt=trucks.find(t=>t.id===tid);
   if(tgt&&!tgt.lines.find(l=>l.id===dragId)){
     tgt.lines.push(line);
     toast(`✓ ${line.supplier} — ${line.pal} PAL → ${tgt.name}`);
   }
-  dragId=null; dragFrom=null;
-  renderTrucks(); applyFilter();
+  dragId=null;dragFrom=null;
+  renderTrucks();renderPool();
 }
 
-/* ═══ SPLIT ════════════════════════════════════════════ */
-function startSplit(lineId, maxPal, evt){
-  evt.stopPropagation(); evt.preventDefault();
-  const l=lines.find(x=>x.id===lineId);
-  if(!l) return;
+/* TRUCKS MGMT */
+function addTruck(){trucks.push({id:'t'+Date.now(),name:'ΦΟΡΤΗΓΟ '+tc++,lines:[]});renderTrucks();}
+function delTruck(id){
+  const t=trucks.find(x=>x.id===id);
+  if(t?.lines.length&&!confirm(`Φορτηγό με ${t.lines.length} γραμμές. Σίγουρα;`))return;
+  trucks=trucks.filter(x=>x.id!==id);renderTrucks();renderPool();
+}
+function clearAll(){if(!trucks.length)return;if(!confirm('Καθαρισμός;'))return;trucks=[];tc=1;renderTrucks();renderPool();}
+function renameTruck(id,v){const t=trucks.find(x=>x.id===id);if(t)t.name=v;}
+function clearFilters(){
+  const d=new Date();const f=new Date(d);f.setDate(f.getDate()-14);const t=new Date(d);t.setDate(t.getDate()+14);
+  document.getElementById('fFrom').value=f.toISOString().split('T')[0];
+  document.getElementById('fTo').value=t.toISOString().split('T')[0];
+  document.getElementById('fDir').value='';
+  renderPool();
+}
+
+/* SPLIT */
+function startSplit(lineId,maxPal,evt){
+  evt.stopPropagation();evt.preventDefault();
+  const l=lines.find(x=>x.id===lineId);if(!l)return;
   splitTarget=l;
   document.getElementById('splitSupplier').textContent=l.supplier;
   document.getElementById('splitMax').textContent=maxPal+' PAL συνολικά';
@@ -667,130 +560,62 @@ function startSplit(lineId, maxPal, evt){
   document.getElementById('splitB').value=maxPal-Math.floor(maxPal/2);
   updateSplitCalc();
   document.getElementById('splitOverlay').classList.add('show');
-  document.getElementById('splitA').focus(); document.getElementById('splitA').select();
+  document.getElementById('splitA').focus();document.getElementById('splitA').select();
 }
-function syncSplitB(){
-  if(!splitTarget) return;
-  const a=parseInt(document.getElementById('splitA').value)||0;
-  document.getElementById('splitB').value=Math.max(0,splitTarget.pal-a);
-  updateSplitCalc();
-}
+function syncSplitB(){if(!splitTarget)return;const a=parseInt(document.getElementById('splitA').value)||0;document.getElementById('splitB').value=Math.max(0,splitTarget.pal-a);updateSplitCalc();}
 function updateSplitCalc(){
-  if(!splitTarget) return;
-  const a=parseInt(document.getElementById('splitA').value)||0;
-  const b=parseInt(document.getElementById('splitB').value)||0;
-  const sum=a+b, el=document.getElementById('splitCalc');
-  el.textContent=`${a} + ${b} = ${sum}`;
+  if(!splitTarget)return;
+  const a=parseInt(document.getElementById('splitA').value)||0,b=parseInt(document.getElementById('splitB').value)||0,sum=a+b;
+  const el=document.getElementById('splitCalc');el.textContent=`${a}+${b}=${sum}`;
   el.className='stot '+(sum===splitTarget.pal?'ok':'err');
   document.getElementById('splitConfirm').disabled=(sum!==splitTarget.pal||a<=0||b<=0);
 }
 function confirmSplit(){
-  if(!splitTarget) return;
-  const a=parseInt(document.getElementById('splitA').value)||0;
-  const b=parseInt(document.getElementById('splitB').value)||0;
-  if(a+b!==splitTarget.pal||a<=0||b<=0) return;
-  const base={...splitTarget};
-  const idA=splitTarget.id+'_sa', idB=splitTarget.id+'_sb';
+  if(!splitTarget)return;
+  const a=parseInt(document.getElementById('splitA').value)||0,b=parseInt(document.getElementById('splitB').value)||0;
+  if(a+b!==splitTarget.pal||a<=0||b<=0)return;
+  const base={...splitTarget},idA=splitTarget.id+'_sa',idB=splitTarget.id+'_sb';
   const idx=lines.findIndex(x=>x.id===splitTarget.id);
-  if(idx>-1) lines.splice(idx,1,
-    {...base,id:idA,pal:a,splitFrom:splitTarget.id},
-    {...base,id:idB,pal:b,splitFrom:splitTarget.id}
-  );
+  if(idx>-1)lines.splice(idx,1,{...base,id:idA,pal:a,splitFrom:splitTarget.id},{...base,id:idB,pal:b,splitFrom:splitTarget.id});
   trucks.forEach(t=>{const ti=t.lines.findIndex(x=>x.id===splitTarget.id);if(ti>-1)t.lines.splice(ti,1);});
-  toast(`÷ ${splitTarget.supplier}: ${a} + ${b} PAL`);
-  const st=splitTarget; splitTarget=null;
-  closeSplit(); renderTrucks(); applyFilter();
+  toast(`÷ ${splitTarget.supplier}: ${a}+${b} PAL`);
+  splitTarget=null;closeSplit();renderTrucks();renderPool();
 }
 function closeSplit(){document.getElementById('splitOverlay').classList.remove('show');splitTarget=null;}
 
-/* ═══ SAVE PLAN → CONSOLIDATED LOADS ══════════════════ */
+/* SAVE */
 async function savePlan(){
   const active=trucks.filter(t=>t.lines.length>0);
   if(!active.length){toast('Δεν υπάρχουν φορτηγά με γραμμές');return;}
   const dateVal=document.getElementById('fFrom')?.value||new Date().toISOString().split('T')[0];
-  if(!confirm(`Αποθήκευση ${active.length} φορτίου/ων στο CONSOLIDATED LOADS;\n\nΤα αντίστοιχα NATIONAL ORDERS → Status: Assigned.`)) return;
-  setStatus('load','Αποθήκευση πλάνου...');
-  let saved=0, errors=0;
+  if(!confirm(`Αποθήκευση ${active.length} φορτίου/ων στο CONSOLIDATED LOADS;`))return;
+  setStatus('load','Αποθήκευση...');
+  let saved=0,errors=0;
   for(const truck of active){
     try{
-      const fields={
-        'Name':truck.name+' — '+dateVal,
-        'Status':'Pending',
-        'Total Pallets':truck.lines.reduce((s,l)=>s+l.pal,0)
-      };
-      if(dateVal) fields['Date']=dateVal;
-      const dirLine=truck.lines.find(l=>l.dir);
-      if(dirLine) fields['Direction']=dirLine.dir;
+      const fields={'Name':truck.name+' — '+dateVal,'Status':'Pending','Total Pallets':truck.lines.reduce((s,l)=>s+l.pal,0)};
+      if(dateVal)fields['Date']=dateVal;
+      const dirLine=truck.lines.find(l=>l.dir);if(dirLine)fields['Direction']=dirLine.dir;
       const srcIds=[...new Set(truck.lines.map(l=>l.noId).filter(Boolean))];
-      if(srcIds.length) fields['Source Orders']=srcIds.map(id=>({id}));
-      truck.lines.slice(0,10).forEach((l,i)=>{
-        const n=i+1;
-        if(l.locId) fields[`Loading Location ${n}`]=[{id:l.locId}];
-        fields[`Pallets ${n}`]=l.pal;
-      });
+      if(srcIds.length)fields['Source Orders']=srcIds.map(id=>({id}));
+      truck.lines.slice(0,10).forEach((l,i)=>{const n=i+1;if(l.locId)fields[`Loading Location ${n}`]=[{id:l.locId}];fields[`Pallets ${n}`]=l.pal;});
       const res=await atCreate(T_LOADS,fields);
-      if(res.id){
-        saved++;
-        toast(`✓ ${truck.name} — ${fields['Total Pallets']} PAL αποθηκεύτηκε`);
-        for(const noId of srcIds) await atPatch(T_NO,noId,{Status:'Assigned'});
-      } else {
-        console.error('Save error:',res); errors++;
-        toast(`❌ Σφάλμα: ${truck.name} — ${res.error?.message||'?'}`);
-      }
+      if(res.id){saved++;for(const noId of srcIds)await atPatch(T_NO,noId,{Status:'Assigned'});}
+      else{console.error(res);errors++;}
     }catch(e){console.error(e);errors++;}
   }
-  if(!errors){
-    setStatus('ok',`✅ ${saved} φορτί${saved===1?'ο':'α'} αποθηκεύτηκ${saved===1?'ε':'αν'} στο CONSOLIDATED LOADS`);
-    setTimeout(()=>loadLines(),1500);
-  } else {
-    setStatus('err',`${saved} OK, ${errors} σφάλματα — δες console`);
-  }
+  if(!errors){setStatus('ok',`✅ ${saved} φορτία αποθηκεύτηκαν`);setTimeout(()=>loadLines(),1500);}
+  else setStatus('err',`${saved} OK, ${errors} σφάλματα`);
+  toast(errors?'Σφάλματα — δες console':`✅ ${saved} φορτία αποθηκεύτηκαν`);
 }
 
-/* ═══ UTILS ════════════════════════════════════════════ */
-function setStatus(type,msg){
-  document.getElementById('sdot').className='sdot '+(type==='load'?'load':type==='ok'?'ok':'err');
-  document.getElementById('stxt').textContent=msg;
-}
-function toast(msg){
-  const el=document.getElementById('toast');
-  el.textContent=msg; el.classList.add('on');
-  setTimeout(()=>el.classList.remove('on'),2400);
-}
+/* UTILS */
+function setStatus(t,m){document.getElementById('sdot').className='sdot '+(t==='load'?'load':t==='ok'?'ok':'err');document.getElementById('stxt').textContent=m;}
+function toast(m){const el=document.getElementById('toast');el.textContent=m;el.classList.add('on');setTimeout(()=>el.classList.remove('on'),2400);}
 
-/* ═══ DRAG SYSTEM: dragenter tracking ══════════════════ */
-let hoveredTruckId = null;
-
-// Use dragenter on trucksArea to track which truck we're over
-// dragenter fires on the EXACT element under cursor — reliable
-document.getElementById('trucksArea').addEventListener('dragenter', function(e){
-  const tcol = e.target.closest('.tcol');
-  document.querySelectorAll('.tcol').forEach(t => t.classList.remove('dactive'));
-  if(tcol && tcol.dataset.truckId){
-    tcol.classList.add('dactive');
-    hoveredTruckId = tcol.dataset.truckId;
-  } else {
-    hoveredTruckId = null;
-  }
-}, true); // capture phase — fires before any child handlers
-
-document.getElementById('trucksArea').addEventListener('dragover', function(e){
-  e.preventDefault();
-  e.dataTransfer.dropEffect = 'move';
-});
-
-document.getElementById('trucksArea').addEventListener('drop', function(e){
-  e.preventDefault();
-  document.querySelectorAll('.tcol').forEach(t => t.classList.remove('dactive'));
-  if(hoveredTruckId){
-    handleDrop(hoveredTruckId);
-    hoveredTruckId = null;
-  }
-});
-
-/* ═══ INIT ═════════════════════════════════════════════ */
+/* INIT */
 loadLines();
-addTruck(); addTruck(); addTruck();
+addTruck();addTruck();addTruck();
 </script>
 </body>
 </html>
