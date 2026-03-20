@@ -579,6 +579,14 @@ function renderPool(){
 
 /* RENDER TRUCKS — NO drag listeners here */
 function renderTrucks(){
+  // Preserve any date input values before DOM rebuild
+  document.querySelectorAll('.tcol').forEach(col=>{
+    const di=col.querySelector('.tcol-date');
+    if(di && di.value){
+      const t=trucks.find(x=>x.id===col.dataset.truckId);
+      if(t && !t.date) t.date=di.value;  // only if not already set
+    }
+  });
   const area=document.getElementById('trucksArea');
   const add=area.querySelector('.add-col');
   area.querySelectorAll('.tcol').forEach(el=>el.remove());
@@ -628,6 +636,8 @@ function renderTrucks(){
     const di=col.querySelector('.tcol-date');
     if(di){
       di.value=truck.date||'';
+      di.dataset.truckId=truck.id;
+      di.addEventListener('input',e=>{setTruckDate(truck.id,e.target.value);});
       di.addEventListener('change',e=>{setTruckDate(truck.id,e.target.value);});
     }
   });
@@ -730,7 +740,16 @@ function delTruck(id){
 }
 function clearAll(){if(!trucks.length)return;if(!confirm('Καθαρισμός;'))return;trucks=[];tc=1;renderTrucks();renderPool();}
 function renameTruck(id,v){const t=trucks.find(x=>x.id===id);if(t)t.name=v;}
-function setTruckDate(id,v){const t=trucks.find(x=>x.id===id);if(t)t.date=v;}
+function setTruckDate(id,v){
+  const t=trucks.find(x=>x.id===id);
+  if(t) t.date=v;
+  // Update tcol-foot date display if present
+  const col=document.querySelector(`.tcol[data-truck-id="${id}"]`);
+  if(col){
+    const foot=col.querySelector('.tcol-foot');
+    if(foot) foot.dataset.date=v;
+  }
+}
 function clearFilters(){
   const d=new Date();const f=new Date(d);f.setDate(f.getDate()-14);const t=new Date(d);t.setDate(t.getDate()+14);
   document.getElementById('fFrom').value=f.toISOString().split('T')[0];
