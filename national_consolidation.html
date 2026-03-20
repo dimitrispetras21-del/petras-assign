@@ -535,17 +535,17 @@ function cardHTML(l, src){
 }
 
 function bindCards(el, src){
-  el.querySelectorAll('.lcard').forEach(c=>{
-    c.addEventListener('dragstart',e=>{
-      dragId=c.dataset.id; dragFrom=c.dataset.src;
-      c.classList.add('dragging');
+  el.querySelectorAll('.lcard').forEach(card=>{
+    card.setAttribute('draggable','true');
+    card.addEventListener('dragstart',e=>{
+      dragId=card.dataset.id; dragFrom=card.dataset.src;
+      card.classList.add('dragging');
+      e.dataTransfer.setData('text/plain', card.dataset.id);
       e.dataTransfer.effectAllowed='move';
-      // Freeze all tcol children so they don't block dragover
-
     });
-    c.addEventListener('dragend',()=>{
-      c.classList.remove('dragging');
-
+    card.addEventListener('dragend',()=>{
+      card.classList.remove('dragging');
+      document.querySelectorAll('.tcol').forEach(t=>t.classList.remove('dactive'));
     });
   });
 }
@@ -611,6 +611,7 @@ function renderTrucks(){
     const bc=pct<60?'var(--success)':pct<90?'var(--warning)':'var(--danger)';
     const col=document.createElement('div');
     col.className='tcol';
+    col.dataset.truckId=truck.id;
     col.innerHTML=`
       <div class="tcol-hd">
         <div class="tcol-nrow">
@@ -624,33 +625,15 @@ function renderTrucks(){
           <div class="tcol-bw"><div class="tcol-bar" style="width:${pct}%;background:${bc}"></div></div>
         </div>
       </div>
-      <div class="tcol-body" id="tbody_${truck.id}">
+      <div class="tcol-body">
         ${truck.lines.length===0
-          ?'<div class="dzone" id="dzone_'+truck.id+'">Σύρτε γραμμές φόρτωσης εδώ</div>'
+          ?'<div class="dzone">Σύρτε γραμμές φόρτωσης εδώ</div>'
           :truck.lines.map(l=>cardHTML(l,truck.id)).join('')}
       </div>
       ${truck.lines.length>0?`<div class="tcol-total"><span>${truck.lines.length} γραμμές</span><strong>${total} PAL</strong></div>`:''}`;
 
     area.insertBefore(col,add);
-
-    // Attach listeners to the INNER scroll body — this is what works
-    const scroll = col.querySelector('.tcol-body');
-    scroll.addEventListener('dragover', e => {
-      e.preventDefault();
-      e.stopPropagation();
-      col.classList.add('dactive');
-    });
-    scroll.addEventListener('dragleave', e => {
-      e.stopPropagation();
-      if(!col.contains(e.relatedTarget)) col.classList.remove('dactive');
-    });
-    scroll.addEventListener('drop', e => {
-      e.preventDefault();
-      e.stopPropagation();
-      col.classList.remove('dactive');
-      handleDrop(truck.id);
-    });
-    bindCards(scroll, truck.id);
+    bindCards(col.querySelector('.tcol-body'), truck.id);
   });
 }
 
@@ -774,6 +757,32 @@ function toast(msg){
   el.textContent=msg; el.classList.add('on');
   setTimeout(()=>el.classList.remove('on'),2400);
 }
+
+/* ═══ DOCUMENT-LEVEL DRAG SYSTEM ══════════════════════ */
+// dragover fires on document → find which .tcol the cursor is over
+// This bypasses ALL child element blocking issues
+document.addEventListener('dragover', function(e){
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+
+  // Find the tcol under cursor
+  const els = document.elementsFromPoint(e.clientX, e.clientY);
+  const tcol = els.find(el => el.classList && el.classList.contains('tcol'));
+
+  // Update highlight
+  document.querySelectorAll('.tcol').forEach(t => t.classList.remove('dactive'));
+  if(tcol) tcol.classList.add('dactive');
+});
+
+document.addEventListener('drop', function(e){
+  e.preventDefault();
+  const els = document.elementsFromPoint(e.clientX, e.clientY);
+  const tcol = els.find(el => el.classList && el.classList.contains('tcol'));
+  document.querySelectorAll('.tcol').forEach(t => t.classList.remove('dactive'));
+  if(tcol && tcol.dataset.truckId) {
+    handleDrop(tcol.dataset.truckId);
+  }
+});
 
 /* ═══ INIT ═════════════════════════════════════════════ */
 loadLines();
