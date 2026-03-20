@@ -668,11 +668,12 @@ function confirmSplit(){
 function closeSplit(){document.getElementById('splitOverlay').classList.remove('show');splitTarget=null;}
 
 /* SAVE PER TRUCK */
+const _saving = new Set();
 async function saveTruck(truckId){
-  console.log('saveTruck called', truckId);
+  if(_saving.has(truckId)){toast('Ήδη αποθηκεύεται...');return;}
+  _saving.add(truckId);
   const truck=trucks.find(t=>t.id===truckId);
-  if(!truck||!truck.lines.length){toast('Το φορτηγό είναι άδειο');return;}
-  console.log('truck lines:', truck.lines.map(l=>({noId:l.noId, locId:l.locId, pal:l.pal})));
+  if(!truck||!truck.lines.length){_saving.delete(truckId);toast('Το φορτηγό είναι άδειο');return;}
 
   const dateVal=document.getElementById('fFrom')?.value||new Date().toISOString().split('T')[0];
   setStatus('load',`Αποθήκευση ${truck.name}...`);
@@ -710,12 +711,11 @@ async function saveTruck(truckId){
       if(id && /^rec[a-zA-Z0-9]{14}$/.test(id)) fields[`Loading Location ${i+1}`]=[id];
     });
 
-    console.log('PAYLOAD', JSON.stringify(fields));
     const res=await atCreate(T_LOADS, fields);
     if(!res.id) throw new Error(res.error?.message||JSON.stringify(res).slice(0,300));
 
     // Mark NATIONAL ORDERS as Assigned
-    for(const id of srcIds) await atPatch(T_NO, id, {Status:'Assigned'});
+    for(const id of srcIds) await atPatch(T_NO, id, {Status:'Confirmed'});
 
     // Add to local savedPlans list
     savedPlans.push({
@@ -736,6 +736,7 @@ async function saveTruck(truckId){
     setStatus('err','Σφάλμα: '+e.message);
     toast('❌ Σφάλμα: '+e.message);
     console.error(e);
+    _saving.delete(truckId);
   }
 }
 
