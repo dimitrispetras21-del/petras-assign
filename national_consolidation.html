@@ -767,20 +767,31 @@ function renderSavedList(){
       </div>
       <div class="saved-row-actions">
         <button class="saved-row-btn restore" onclick="restorePlan(${i})">↩ Επαναφορά</button>
-        <button class="saved-row-btn del" onclick="deleteSaved(${i})">✕</button>
       </div>
     </div>`;
   }).join('');
 }
 
 
-function restorePlan(i){
+async function restorePlan(i){
   const p=savedPlans[i];
-  if(!confirm(`Επαναφορά "${p.name}" για επεξεργασία;
-Θα αφαιρεθεί από τη λίστα αποθηκευμένων.`))return;
-  // Create new truck with saved lines
+  if(!confirm(`Επαναφορά "${p.name}" για επεξεργασία;`))return;
+
+  // Add lines back to pool
+  p.lines.forEach(l=>{
+    if(!lines.find(x=>x.id===l.id)) lines.push(l);
+  });
+
+  // Revert NATIONAL ORDER status to Pending
+  const srcIds=[...new Set(p.lines.map(l=>String(l.noId||'')).filter(id=>id.startsWith('rec')))];
+  for(const id of srcIds){
+    try{ await atPatch(T_NO, id, {Status:'Pending'}); }catch(e){ console.warn('revert',e); }
+  }
+
+  // Restore truck for re-editing
   const newId='t'+tc;
-  trucks.push({id:newId,name:p.name,lines:[...p.lines]});tc++;
+  trucks.push({id:newId, name:p.name, lines:[...p.lines], date:p.date||''});
+  tc++;
   savedPlans.splice(i,1);
   renderAll();
   toast(`↩ ${p.name} επαναφέρθηκε`);
