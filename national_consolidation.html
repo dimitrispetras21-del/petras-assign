@@ -306,9 +306,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);dis
 
 <div class="fbar">
   <span class="flbl">Από</span>
-  <input type="date" id="fFrom" class="finput" onchange="renderPool()">
+  <input type="date" id="fFrom" class="finput" onchange="renderPool();loadSavedPlans()">
   <span style="color:var(--text-dim);font-size:11px;">→</span>
-  <input type="date" id="fTo" class="finput" onchange="renderPool()">
+  <input type="date" id="fTo" class="finput" onchange="renderPool();loadSavedPlans()">
   <div class="fsep"></div>
   <span class="flbl">Κατεύθυνση</span>
   <select id="fDir" class="fsel" onchange="renderPool()">
@@ -980,8 +980,67 @@ async function atDelete(tbl,id){
 function setStatus(t,m){document.getElementById('sdot').className='sdot '+(t==='load'?'load':t==='ok'?'ok':'err');document.getElementById('stxt').textContent=m;}
 function toast(m){const el=document.getElementById('toast');el.textContent=m;el.classList.add('on');setTimeout(()=>el.classList.remove('on'),2400);}
 
+/* LOAD SAVED PLANS from CONSOLIDATED LOADS */
+async function loadSavedPlans(){
+  try{
+    const from=document.getElementById('fFrom').value;
+    const to=document.getElementById('fTo').value;
+
+    // Filter by Date range + Status = Pending (not yet assigned to a trip)
+    let formula=`{Status}='Pending'`;
+    if(from) formula=`AND(${formula},{Date}>='${from}')`;
+    if(to)   formula=`AND(${formula},{Date}<='${to}')`;
+
+    const fields=['Name','Date','Total Pallets','Direction','Source Orders',
+      'Pallets 1','Pallets 2','Pallets 3','Pallets 4','Pallets 5',
+      'Pallets 6','Pallets 7','Pallets 8','Pallets 9','Pallets 10',
+      'Loading Location 1','Loading Location 2','Loading Location 3',
+      'Loading Location 4','Loading Location 5'];
+
+    const recs=await atFetch(T_LOADS, fields, {filterByFormula:formula});
+
+    // Resolve location names
+    const locIds=new Set();
+    recs.forEach(r=>{
+      [1,2,3,4,5].forEach(i=>(r.fields[`Loading Location ${i}`]||[]).forEach(id=>locIds.add(id)));
+    });
+    const lN=locIds.size?await resolveIds('tblxu8DRfTQOFRCzS',[...locIds]):{};
+
+    savedPlans=recs.map(r=>{
+      const f=r.fields;
+      // Rebuild lines from flat Pallets/Loading Location fields
+      const lines=[];
+      for(let i=1;i<=10;i++){
+        const pal=f[`Pallets ${i}`];
+        const locArr=f[`Loading Location ${i}`];
+        if(!pal&&!locArr?.length) break;
+        const locId=locArr?.[0]||null;
+        const supplier=locId?(lN[locId]||locId):'—';
+        lines.push({
+          id:`${r.id}_${i}`,
+          noId:(f['Source Orders']||[])[0]||null,
+          supplier,locId,pal:pal||0,
+          delivery:'',dir:f.Direction||'',loadDate:f.Date||'',ref:''
+        });
+      }
+      return {
+        atId:r.id,
+        name:f.Name||'—',
+        date:f.Date||'',
+        total:f['Total Pallets']||lines.reduce((s,l)=>s+l.pal,0),
+        lines
+      };
+    });
+
+    renderSavedList();
+    setStatus('ok',`${savedPlans.length} αποθηκευμένα φορτία`);
+  }catch(e){
+    console.error('loadSavedPlans error',e);
+  }
+}
+
 /* INIT */
-loadLines();
+Promise.all([loadLines(), loadSavedPlans()]);
 addTruck();addTruck();addTruck();
 </script>
 </body>
