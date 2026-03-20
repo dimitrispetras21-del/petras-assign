@@ -642,8 +642,13 @@ async function saveTruck(truckId){
       'Total Pallets': total
     };
     if(dateVal) fields['Date']=dateVal;
+    // Map direction to CONSOLIDATED LOADS singleSelect values
     const dirLine=truck.lines.find(l=>l.dir);
-    if(dirLine?.dir) fields['Direction']=String(dirLine.dir);
+    if(dirLine?.dir){
+      const d=String(dirLine.dir).toUpperCase();
+      if(d.includes('NORTH')||d.includes('ΚΑΘΟΔ')) fields['Direction']='ΚΑΘΟΔΟΣ';
+      else if(d.includes('SOUTH')||d.includes('ΑΝΟΔ')) fields['Direction']='ΑΝΟΔΟΣ';
+    }
     truck.lines.slice(0,10).forEach((l,i)=>{
       if(l.pal>0) fields[`Pallets ${i+1}`]=Number(l.pal);
     });
