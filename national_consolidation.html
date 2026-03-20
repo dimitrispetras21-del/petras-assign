@@ -579,12 +579,12 @@ function renderPool(){
 
 /* RENDER TRUCKS — NO drag listeners here */
 function renderTrucks(){
-  // Preserve any date input values before DOM rebuild
+  // Always sync date from DOM before rebuild
   document.querySelectorAll('.tcol').forEach(col=>{
     const di=col.querySelector('.tcol-date');
     if(di && di.value){
       const t=trucks.find(x=>x.id===col.dataset.truckId);
-      if(t && !t.date) t.date=di.value;  // only if not already set
+      if(t) t.date=di.value;  // always overwrite — DOM is source of truth
     }
   });
   const area=document.getElementById('trucksArea');
@@ -800,7 +800,10 @@ async function saveTruck(truckId){
   const truck=trucks.find(t=>t.id===truckId);
   if(!truck||!truck.lines.length){_saving.delete(truckId);toast('Το φορτηγό είναι άδειο');return;}
 
-  const dateVal=document.getElementById('fFrom')?.value||new Date().toISOString().split('T')[0];
+  // Read date directly from DOM — most reliable approach
+  const domInput=document.querySelector(`[data-truck-id="${truckId}"] .tcol-date`);
+  const dateVal=domInput?.value||truck.date||document.getElementById('fFrom')?.value||new Date().toISOString().split('T')[0];
+  if(domInput?.value) truck.date=domInput.value;
   setStatus('load',`Αποθήκευση ${truck.name}...`);
 
   try{
