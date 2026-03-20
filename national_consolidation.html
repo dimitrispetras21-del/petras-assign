@@ -715,7 +715,7 @@ async function saveTruck(truckId){
     if(!res.id) throw new Error(res.error?.message||JSON.stringify(res).slice(0,300));
 
     // Mark NATIONAL ORDERS as Assigned
-    for(const id of srcIds) await atPatch(T_NO, id, {Status:'Confirmed'});
+    for(const id of srcIds) await atPatch(T_NO, id, {Status:'Groupage Assigned'});
 
     // Add to local savedPlans list
     savedPlans.push({
