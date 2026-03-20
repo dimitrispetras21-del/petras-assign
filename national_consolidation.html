@@ -60,6 +60,21 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);dis
 .pool-stat{font-family:'Syne',sans-serif;font-size:26px;font-weight:800;color:#E2E8F0;letter-spacing:-1.5px;line-height:1;}
 .pool-stat span{font-family:'DM Sans',sans-serif;font-size:11px;font-weight:400;color:var(--silver-dim);letter-spacing:0;}
 .pool-body{flex:1;overflow-y:auto;padding:8px;background:var(--bg);}
+.saved-hd{background:var(--navy-mid);flex-shrink:0;}
+.saved-list{overflow-y:auto;max-height:220px;background:var(--navy-mid);padding:0 8px 8px;flex-shrink:0;}
+.saved-item{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:8px 10px;margin-bottom:4px;
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);
+  border-radius:6px;cursor:pointer;transition:background .12s;
+  gap:8px;
+}
+.saved-item:hover{background:rgba(255,255,255,.1);}
+.saved-item-name{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;color:var(--silver-light);letter-spacing:.5px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.saved-item-pal{font-family:'Syne',sans-serif;font-size:13px;font-weight:800;color:var(--success);letter-spacing:-1px;flex-shrink:0;}
+.saved-item-del{width:18px;height:18px;display:flex;align-items:center;justify-content:center;border-radius:3px;color:rgba(196,207,219,.3);font-size:11px;cursor:pointer;flex-shrink:0;transition:color .12s;}
+.saved-item-del:hover{color:#FCA5A5;}
+.saved-item.over-limit .saved-item-pal{color:var(--danger);}
 .pool-body.drag-over{background:var(--success-bg);}
 
 /* DATE DIVIDER */
@@ -109,6 +124,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);dis
 .tcol-nrow{display:flex;align-items:center;gap:6px;margin-bottom:8px;}
 .tcol-name{flex:1;font-family:'Syne',sans-serif;font-size:10px;font-weight:700;color:var(--silver-light);background:transparent;border:none;outline:none;letter-spacing:1px;text-transform:uppercase;padding:3px 5px;border-radius:4px;}
 .tcol-name:focus{background:rgba(255,255,255,.08);}
+.tcol-save{width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:4px;background:rgba(5,150,105,.2);border:1px solid rgba(5,150,105,.3);color:#34D399;cursor:pointer;font-size:13px;font-weight:700;transition:all .12s;}
+.tcol-save:hover{background:rgba(5,150,105,.35);}
 .tcol-del{width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:4px;background:transparent;border:1px solid rgba(255,255,255,.1);color:rgba(196,207,219,.4);cursor:pointer;font-size:11px;}
 .tcol-del:hover{background:rgba(220,38,38,.15);color:#FCA5A5;}
 .tcol-stats{display:flex;align-items:center;gap:8px;}
@@ -197,6 +214,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);dis
       <div class="pool-stat" id="poolCount">— <span>PAL</span></div>
     </div>
     <div class="pool-body" id="poolBody"></div>
+    <div class="saved-hd" id="savedHd" style="display:none">
+      <div class="pool-ttl" style="color:rgba(196,207,219,.5);padding:10px 16px 4px;">Αποθηκευμένα φορτία</div>
+    </div>
+    <div class="saved-list" id="savedList"></div>
   </div>
   <div class="trucks" id="trucksArea">
     <div class="add-col" onclick="addTruck()">
@@ -244,7 +265,7 @@ const T_ORDERS='tblgHlNmLBH3JTdIM';
 const T_LOADS='tbl5XSLQjOnG6yLCW';
 
 /* STATE */
-let lines=[], trucks=[], tc=1;
+let lines=[], trucks=[], tc=1, savedPlans=[];
 let colorMap={};
 let dragId=null, dragFrom=null, splitTarget=null;
 
@@ -441,6 +462,7 @@ function renderTrucks(){
       <div class="tcol-hd">
         <div class="tcol-nrow">
           <input class="tcol-name" value="${truck.name}" onchange="renameTruck('${truck.id}',this.value)" onclick="this.select()">
+          <button class="tcol-save" onclick="saveTruck('${truck.id}')" title="Αποθήκευση">↓</button>
           <button class="tcol-del" onclick="delTruck('${truck.id}')">✕</button>
         </div>
         <div class="tcol-stats">
@@ -603,30 +625,103 @@ function confirmSplit(){
 }
 function closeSplit(){document.getElementById('splitOverlay').classList.remove('show');splitTarget=null;}
 
-/* SAVE */
+/* SAVE PER TRUCK */
+async function saveTruck(truckId){
+  const truck=trucks.find(t=>t.id===truckId);
+  if(!truck||!truck.lines.length){toast('Το φορτηγό είναι άδειο');return;}
+
+  const dateVal=document.getElementById('fFrom')?.value||new Date().toISOString().split('T')[0];
+  setStatus('load',`Αποθήκευση ${truck.name}...`);
+
+  try{
+    const total=truck.lines.reduce((s,l)=>s+l.pal,0);
+    const fields={
+      'Name':truck.name+' — '+dateVal,
+      'Status':'Pending',
+      'Total Pallets':total
+    };
+    if(dateVal)fields['Date']=dateVal;
+    const dirLine=truck.lines.find(l=>l.dir);
+    if(dirLine)fields['Direction']=dirLine.dir;
+    const srcIds=[...new Set(truck.lines.map(l=>l.noId).filter(Boolean))];
+    if(srcIds.length)fields['Source Orders']=srcIds.map(id=>({id}));
+    truck.lines.slice(0,10).forEach((l,i)=>{
+      const n=i+1;
+      if(l.locId)fields[`Loading Location ${n}`]=[{id:l.locId}];
+      fields[`Pallets ${n}`]=l.pal;
+    });
+
+    const res=await atCreate(T_LOADS,fields);
+    if(!res.id) throw new Error(res.error?.message||'Unknown error');
+
+    // Mark source orders as Assigned
+    for(const noId of srcIds) await atPatch(T_NO,noId,{Status:'Assigned'});
+
+    // Add to local savedPlans list
+    savedPlans.push({
+      atId: res.id,
+      name: truck.name,
+      date: dateVal,
+      total,
+      lines: [...truck.lines]
+    });
+
+    // Remove truck from active trucks
+    trucks=trucks.filter(t=>t.id!==truckId);
+
+    setStatus('ok',`✅ ${truck.name} αποθηκεύτηκε`);
+    toast(`✅ ${truck.name} — ${total} PAL αποθηκεύτηκε`);
+    renderSavedList();
+    renderTrucks();
+    renderPool();
+  }catch(e){
+    setStatus('err','Σφάλμα: '+e.message);
+    toast('❌ Σφάλμα: '+e.message);
+    console.error(e);
+  }
+}
+
+function renderSavedList(){
+  const list=document.getElementById('savedList');
+  const hd=document.getElementById('savedHd');
+  if(!savedPlans.length){list.innerHTML='';hd.style.display='none';return;}
+  hd.style.display='block';
+  list.innerHTML=savedPlans.map((p,i)=>`
+    <div class="saved-item${p.total>33?' over-limit':''}" onclick="restorePlan(${i})">
+      <div class="saved-item-name">${p.name}</div>
+      <div class="saved-item-pal">${p.total} PAL</div>
+      <div class="saved-item-del" onclick="event.stopPropagation();deleteSaved(${i})" title="Διαγραφή">✕</div>
+    </div>`).join('');
+}
+
+function restorePlan(i){
+  const p=savedPlans[i];
+  if(!confirm(`Επαναφορά "${p.name}" για επεξεργασία;
+Θα αφαιρεθεί από τη λίστα αποθηκευμένων.`))return;
+  // Create new truck with saved lines
+  const newId='t'+tc;
+  trucks.push({id:newId,name:p.name,lines:[...p.lines]});tc++;
+  savedPlans.splice(i,1);
+  renderSavedList();
+  renderTrucks();
+  renderPool();
+  toast(`↩ ${p.name} επαναφέρθηκε`);
+}
+
+function deleteSaved(i){
+  const p=savedPlans[i];
+  if(!confirm(`Διαγραφή "${p.name}" από τη λίστα;
+(Το Airtable record παραμένει)`))return;
+  savedPlans.splice(i,1);
+  renderSavedList();
+  toast(`🗑 ${p.name} αφαιρέθηκε από τη λίστα`);
+}
+
+/* GLOBAL SAVE (topbar button — saves all active trucks) */
 async function savePlan(){
   const active=trucks.filter(t=>t.lines.length>0);
   if(!active.length){toast('Δεν υπάρχουν φορτηγά με γραμμές');return;}
-  const dateVal=document.getElementById('fFrom')?.value||new Date().toISOString().split('T')[0];
-  if(!confirm(`Αποθήκευση ${active.length} φορτίου/ων στο CONSOLIDATED LOADS;`))return;
-  setStatus('load','Αποθήκευση...');
-  let saved=0,errors=0;
-  for(const truck of active){
-    try{
-      const fields={'Name':truck.name+' — '+dateVal,'Status':'Pending','Total Pallets':truck.lines.reduce((s,l)=>s+l.pal,0)};
-      if(dateVal)fields['Date']=dateVal;
-      const dirLine=truck.lines.find(l=>l.dir);if(dirLine)fields['Direction']=dirLine.dir;
-      const srcIds=[...new Set(truck.lines.map(l=>l.noId).filter(Boolean))];
-      if(srcIds.length)fields['Source Orders']=srcIds.map(id=>({id}));
-      truck.lines.slice(0,10).forEach((l,i)=>{const n=i+1;if(l.locId)fields[`Loading Location ${n}`]=[{id:l.locId}];fields[`Pallets ${n}`]=l.pal;});
-      const res=await atCreate(T_LOADS,fields);
-      if(res.id){saved++;for(const noId of srcIds)await atPatch(T_NO,noId,{Status:'Assigned'});}
-      else{console.error(res);errors++;}
-    }catch(e){console.error(e);errors++;}
-  }
-  if(!errors){setStatus('ok',`✅ ${saved} φορτία αποθηκεύτηκαν`);setTimeout(()=>loadLines(),1500);}
-  else setStatus('err',`${saved} OK, ${errors} σφάλματα`);
-  toast(errors?'Σφάλματα — δες console':`✅ ${saved} φορτία αποθηκεύτηκαν`);
+  for(const truck of active) await saveTruck(truck.id);
 }
 
 /* UTILS */
