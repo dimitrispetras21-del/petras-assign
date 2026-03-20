@@ -239,6 +239,7 @@ input[type=date]:focus,select:focus{border-color:var(--primary);}
     <button class="btn btn-outline" onclick="loadLines()">↻ Refresh</button>
     <button class="btn btn-outline" onclick="clearAll()">Clear All</button>
     <button class="btn btn-dark" onclick="window.print()">⎙ Print</button>
+    <button class="btn btn-primary" onclick="savePlan()">💾 Αποθήκευση Πλάνου</button>
   </div>
 </header>
 
@@ -416,7 +417,7 @@ async function loadLines(){
           const locIds=of[`Loading Location ${i}`];
           const pal=of[`Loading Pallets ${i}`];
           if(locIds&&locIds.length&&pal){
-            lines.push({...base, id:no.id+'_'+i, supplier:locIds.map(id=>lN[id]||id).join(', '), pal});
+            lines.push({...base, id:no.id+'_'+i, supplier:locIds.map(id=>lN[id]||id).join(', '), pal, locId:locIds[0]});
             added++;
           }
         });
@@ -424,7 +425,7 @@ async function loadLines(){
       // Fallback if no linked order or no stops found
       if(!added){
         const pickup=(nf['Pickup Location']||[]).map(id=>lN[id]||id).join(', ')||'—';
-        lines.push({...base, id:no.id+'_1', supplier:pickup, pal:nf.Pallets||0});
+        lines.push({...base, id:no.id+'_1', supplier:pickup, pal:nf.Pallets||0, locId:(nf['Pickup Location']||[])[0]||null});
       }
     });
 
@@ -753,6 +754,82 @@ function confirmSplit(){
 function closeSplit(){
   document.getElementById('splitOverlay').classList.remove('show');
   splitTarget=null;
+}
+
+// ── SAVE PLAN ───────────────────────────────────────────────────────
+const AT_BASE2   = 'appElT5CQV6JQvym8';
+const AT_TOKEN2  = 'patpPJXnFYnxdgoK3.a2162b09fbb214628114ff2ce68bb5a7b30aea2061b14f9562a1ab222585cf08';
+const T_CL_LOADS = 'tbl5XSLQjOnG6yLCW';
+
+async function atPatch2(table, id, fields){
+  const r = await fetch(`https://api.airtable.com/v0/${AT_BASE2}/${table}/${id}`, {
+    method: 'PATCH',
+    headers: {'Authorization':'Bearer '+AT_TOKEN2, 'Content-Type':'application/json'},
+    body: JSON.stringify({fields})
+  });
+  return r.json();
+}
+
+async function atCreate2(table, fields){
+  const r = await fetch(`https://api.airtable.com/v0/${AT_BASE2}/${table}`, {
+    method: 'POST',
+    headers: {'Authorization':'Bearer '+AT_TOKEN2, 'Content-Type':'application/json'},
+    body: JSON.stringify({fields})
+  });
+  return r.json();
+}
+
+async function savePlan(){
+  const activeTrucks = trucks.filter(t => t.lines.length > 0);
+  if(!activeTrucks.length){ toast('Δεν υπάρχουν φορτηγά με γραμμές'); return; }
+
+  const dateVal = document.getElementById('fFrom')?.value || new Date().toISOString().split('T')[0];
+  if(!confirm('Αποθήκευση ' + activeTrucks.length + ' φορτίου/ων στο CONSOLIDATED LOADS;\n\nΤα αντίστοιχα NATIONAL ORDERS θα πάρουν Status Assigned.')) return;
+
+  setStatus('load','Αποθήκευση πλάνου...');
+  let saved=0, errors=0;
+
+  for(const truck of activeTrucks){
+    try{
+      const fields = {
+        'Name':          truck.name + ' — ' + dateVal,
+        'Status':        'Pending',
+        'Total Pallets': truck.lines.reduce((s,l)=>s+l.pal,0)
+      };
+      if(dateVal) fields['Date'] = dateVal;
+      const dirLine = truck.lines.find(l=>l.dir);
+      if(dirLine) fields['Direction'] = dirLine.dir;
+
+      const srcIds = [...new Set(truck.lines.map(l=>l.noId).filter(Boolean))];
+      if(srcIds.length) fields['Source Orders'] = srcIds.map(id=>({id}));
+
+      truck.lines.slice(0,10).forEach((l,i)=>{
+        const n=i+1;
+        if(l.locId) fields['Loading Location '+n] = [{id:l.locId}];
+        fields['Pallets '+n] = l.pal;
+      });
+
+      const res = await atCreate2(T_CL_LOADS, fields);
+      if(res.id){
+        saved++;
+        toast('OK: ' + truck.name + ' ' + fields['Total Pallets'] + ' PAL');
+        for(const noId of srcIds){
+          await atPatch2(T_NO, noId, {'Status':'Assigned'});
+        }
+      } else {
+        console.error('Save error:', JSON.stringify(res));
+        errors++;
+        toast('Σφάλμα: ' + truck.name + ' — ' + (res.error?.message||'?'));
+      }
+    } catch(e){ console.error(e); errors++; }
+  }
+
+  if(errors===0){
+    setStatus('ok', saved + ' φορτία αποθηκεύτηκαν στο CONSOLIDATED LOADS');
+    setTimeout(()=>loadLines(), 1500);
+  } else {
+    setStatus('err', saved + ' OK, ' + errors + ' σφάλματα — δες console');
+  }
 }
 
 // INIT
