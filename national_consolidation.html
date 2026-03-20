@@ -643,7 +643,7 @@ async function saveTruck(truckId){
     if(dateVal)fields['Date']=dateVal;
     const dirLine=truck.lines.find(l=>l.dir);
     if(dirLine)fields['Direction']=dirLine.dir;
-    const srcIds=[...new Set(truck.lines.map(l=>l.noId).filter(Boolean))];
+    const srcIds=[...new Set(truck.lines.map(l=>typeof l.noId==='string'?l.noId:l.noId?.id||null).filter(Boolean))];
     if(srcIds.length)fields['Source Orders']=srcIds.map(id=>({id}));
     truck.lines.slice(0,10).forEach((l,i)=>{
       const n=i+1;
