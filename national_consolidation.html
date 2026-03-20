@@ -166,8 +166,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);dis
 <!-- TOPBAR -->
 <div class="topbar">
   <div class="t-brand">
-    <div class="t-mark">PG</div>
-    <span class="t-name">PETRAS GROUP</span>
+    <img src="https://dimitrispetras21-del.github.io/PETRASGROUP-TMS/logo.png" style="height:36px;filter:brightness(0);opacity:.85;" alt="Petras Group">
   </div>
   <div class="t-page">National Pick Ups</div>
   <div class="t-actions">
@@ -338,8 +337,9 @@ async function loadLines(){
   setStatus('load','Φόρτωση εντολών groupage...');
   try{
     const noRecs=await atFetch(T_NO,
-      ['Name','Client','Pickup Location','Delivery Location','Loading DateTime',
-       'Delivery DateTime','Temperature °C','Goods','Status','Direction','Linked Order'],
+      ['Name','Client','Pickup Location 1','Pickup Location 2','Pickup Location 3',
+       'Delivery Location','Loading DateTime','Delivery DateTime',
+       'Temperature °C','Goods','Status','Direction','Linked Order'],
       {filterByFormula:'{National Groupage}=1'}
     );
 
@@ -368,7 +368,8 @@ async function loadLines(){
     noRecs.forEach(r=>{
       (r.fields.Client||[]).forEach(id=>cIds.add(id));
       (r.fields['Delivery Location']||[]).forEach(id=>lIds.add(id));
-      (r.fields['Pickup Location']||[]).forEach(id=>lIds.add(id));
+      ['Pickup Location 1','Pickup Location 2','Pickup Location 3'].forEach(f=>
+        (r.fields[f]||[]).forEach(id=>lIds.add(id)));
     });
     Object.values(orderMap).forEach(f=>{
       [1,2,3].forEach(i=>(f[`Loading Location ${i}`]||[]).forEach(id=>lIds.add(id)));
@@ -401,8 +402,9 @@ async function loadLines(){
         });
       }
       if(!added){
-        const pickup=(nf['Pickup Location']||[]).map(id=>lN[id]||id).join(', ')||'—';
-        lines.push({...base,id:no.id+'_1',supplier:pickup,pal:nf.Pallets||0,locId:(nf['Pickup Location']||[])[0]||null});
+        const pu1=nf['Pickup Location 1']||[];
+        const pickup=pu1.map(id=>lN[id]||id).join(', ')||'—';
+        lines.push({...base,id:no.id+'_1',supplier:pickup,pal:nf.Pallets||0,locId:pu1[0]||null});
       }
     });
 
