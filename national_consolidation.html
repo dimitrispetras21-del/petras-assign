@@ -726,6 +726,9 @@ async function saveTruck(truckId){
       lines: [...truck.lines]
     });
 
+    // Remove saved lines from pool
+    const savedLineIds=new Set(truck.lines.map(l=>l.id));
+    lines=lines.filter(l=>!savedLineIds.has(l.id));
     // Remove truck from active trucks
     trucks=trucks.filter(t=>t.id!==truckId);
 
