@@ -78,6 +78,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);dis
 .lcard.in-truck .lcard-dst{color:rgba(239,246,255,.6);}
 .lcard.in-truck .lcard-pal{color:#EFF6FF;}
 .lcard.in-truck .lcard-plbl{color:rgba(239,246,255,.4);}
+.lcard-ref{display:inline-flex;padding:1px 5px;border-radius:3px;font-size:9px;font-weight:700;letter-spacing:.5px;background:rgba(59,130,246,.1);color:#60A5FA;margin-top:2px;}
+.lcard.in-truck .lcard-ref{background:rgba(147,197,253,.15);color:#93C5FD;}
 .lcard.split-child{border-left:2.5px solid var(--warning)!important;}
 .lcard.split-child.in-truck{background:#065F46;border-left-color:#34D399!important;}
 .lcard.split-child.in-truck .lcard-sup{color:#ECFDF5;}
@@ -190,6 +192,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);dis
   background:rgba(52,211,153,.15);color:#34D399;
   border:1px solid rgba(52,211,153,.2);
 }
+.sc-lines-wrap{padding:4px 8px 2px;}
+.sc-line{display:flex;align-items:center;gap:5px;padding:2px 0;}
+.sc-line-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
+.sc-line-sup{flex:1;font-size:9px;color:rgba(196,207,219,.7);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sc-line-pal{font-family:'Syne',sans-serif;font-size:10px;font-weight:700;color:var(--silver-light);flex-shrink:0;}
 .sc-footer{
   padding:6px 8px;
   border-top:1px solid rgba(255,255,255,.05);
@@ -237,6 +244,50 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);dis
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0);}
 ::-webkit-scrollbar{width:5px;height:5px;}
 ::-webkit-scrollbar-thumb{background:#D1D5DB;border-radius:3px;}
+
+@media print {
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  body { overflow: visible !important; background: #fff !important; }
+  .topbar, .fbar, .sbar, .pool, .saved-panel, .add-col { display: none !important; }
+  .workspace { display: block !important; overflow: visible !important; }
+  .trucks { display: block !important; overflow: visible !important; padding: 0 !important; background: #fff !important; }
+  .tcol {
+    width: 100% !important; height: auto !important;
+    border: 1px solid #ddd !important;
+    break-inside: avoid;
+    page-break-after: always;
+    margin-bottom: 0 !important;
+    display: block !important;
+    border-radius: 0 !important;
+  }
+  .tcol:last-child { page-break-after: avoid; }
+  .tcol-hd {
+    background: #1a2e4a !important;
+    padding: 12px 16px !important;
+    border-radius: 0 !important;
+  }
+  .tcol-name { font-size: 14px !important; letter-spacing: 1px !important; }
+  .tcol-stats { margin-top: 4px; }
+  .tcol-pal { font-size: 20px !important; }
+  .tcol-bw { display: none !important; }
+  .tcol-body { padding: 12px 16px !important; overflow: visible !important; }
+  .tcol-foot { padding: 8px 16px !important; font-size: 12px !important; }
+  .lcard {
+    break-inside: avoid;
+    border: 1px solid #e5e7eb !important;
+    margin-bottom: 4px !important;
+    padding: 6px 10px !important;
+  }
+  .lcard.in-truck { background: #EFF6FF !important; border-left: 3px solid #3B82F6 !important; border-color: #BFDBFE !important; }
+  .lcard-sup { font-size: 11px !important; color: #111 !important; }
+  .lcard-dst { font-size: 10px !important; color: #666 !important; }
+  .lcard-ref { background: #DBEAFE !important; color: #1D4ED8 !important; }
+  .lcard-pal { font-size: 16px !important; color: #111 !important; }
+  .lcard-strip { width: 4px !important; }
+  .lcard-spl, .tcol-date-row, .tcol-del, .tcol-save { display: none !important; }
+  .tcol-date { display: block !important; }
+  .dzone { display: none !important; }
+}
 </style>
 </head>
 <body>
@@ -397,7 +448,7 @@ async function loadLines(){
     const noRecs=await atFetch(T_NO,
       ['Name','Client','Pickup Location 1','Pickup Location 2','Pickup Location 3',
        'Delivery Location 1','Loading DateTime','Delivery DateTime',
-       'Temperature °C','Goods','Status','Direction','Linked Order'],
+       'Temperature °C','Goods','Status','Direction','Linked Order','Groupage ID','Notes'],
       {filterByFormula:"AND({National Groupage}=1,{Status}!='Groupage Assigned')"}
     );
     if(!noRecs.length){lines=[];setStatus('ok','0 εντολές');renderPool();return;}
@@ -431,7 +482,7 @@ async function loadLines(){
     noRecs.forEach(no=>{
       const nf=no.fields;
       const delivery=(nf['Delivery Location 1']||[]).map(id=>lN[id]||id).join(', ')||'—';
-      const base={noId:no.id,delivery,loadDate:nf['Loading DateTime']||'',dir:nf.Direction||''};
+      const base={noId:no.id,delivery,loadDate:nf['Loading DateTime']||'',dir:nf.Direction||'',ref:nf['Groupage ID']||'',notes:nf['Notes']||''};
       const linkedId=(nf['Linked Order']||[])[0];
       const of=linkedId?orderMap[linkedId]:null;
       let added=0;
@@ -486,6 +537,7 @@ function cardHTML(l){
     <div class="lcard-body">
       <div class="lcard-sup">${l.supplier}</div>
       <div class="lcard-dst">→ ${l.delivery}</div>
+      ${l.ref?`<div class="lcard-ref">${l.ref}</div>`:''}
       ${tags?`<div class="lcard-tags">${tags}</div>`:''}
     </div>
     <div class="lcard-r">
@@ -810,18 +862,28 @@ function renderSavedList(){
   body.innerHTML=savedPlans.map((p,i)=>{
     const bc=p.total<=33?'#34D399':'#F87171';
     const dateDisp=p.date?p.date.split('-').reverse().join('/'):'—';
+    // Compact supplier lines
+    const lineRows=p.lines.map(l=>{
+      const ci=colorMap[l.noId]??0;
+      const colors=['#3B82F6','#10B981','#F59E0B','#EF4444','#8B5CF6','#EC4899','#14B8A6','#F97316','#6366F1','#84CC16'];
+      const col=colors[ci%10];
+      const sup=l.supplier.length>18?l.supplier.slice(0,16)+'…':l.supplier;
+      const ref=l.ref?` <span style="color:rgba(147,197,253,.6);font-size:8px;">${l.ref}</span>`:'';
+      return `<div class="sc-line">
+        <div class="sc-line-dot" style="background:${col}"></div>
+        <div class="sc-line-sup">${sup}${ref}</div>
+        <div class="sc-line-pal">${l.pal}</div>
+      </div>`;
+    }).join('');
     return `<div class="sc">
       <div class="sc-header">
-        <div class="sc-name">${p.name}</div>
+        <div style="display:flex;align-items:baseline;justify-content:space-between;">
+          <div class="sc-name">${p.name}</div>
+          <div class="sc-pal" style="color:${bc}">${p.total}</div>
+        </div>
         <div class="sc-date">${dateDisp}</div>
       </div>
-      <div class="sc-body">
-        <div class="sc-pal" style="color:${bc}">${p.total}</div>
-        <div class="sc-meta">
-          <div class="sc-lines">${p.lines.length} ΓΡΑΜΜΕΣ</div>
-          <div class="sc-badge">SAVED</div>
-        </div>
-      </div>
+      <div class="sc-lines-wrap">${lineRows}</div>
       <div class="sc-footer">
         <button class="sc-restore" onclick="restorePlan(${i})">↩ Επαναφορά</button>
       </div>
