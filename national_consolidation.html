@@ -611,7 +611,6 @@ function renderTrucks(){
     const bc=pct<60?'var(--success)':pct<90?'var(--warning)':'var(--danger)';
     const col=document.createElement('div');
     col.className='tcol';
-    const tid2 = truck.id;
     col.innerHTML=`
       <div class="tcol-hd">
         <div class="tcol-nrow">
@@ -625,35 +624,36 @@ function renderTrucks(){
           <div class="tcol-bw"><div class="tcol-bar" style="width:${pct}%;background:${bc}"></div></div>
         </div>
       </div>
-      <div class="tcol-body"
-        ondragover="event.preventDefault();event.stopPropagation();this.closest('.tcol').classList.add('dactive');"
-        ondragleave="if(!this.contains(event.relatedTarget))this.closest('.tcol').classList.remove('dactive');"
-        ondrop="event.preventDefault();event.stopPropagation();this.closest('.tcol').classList.remove('dactive');handleDrop('${truck.id}');">
+      <div class="tcol-body" id="tbody_${truck.id}">
         ${truck.lines.length===0
-          ?'<div class="dzone">Σύρτε γραμμές φόρτωσης εδώ</div>'
+          ?'<div class="dzone" id="dzone_'+truck.id+'">Σύρτε γραμμές φόρτωσης εδώ</div>'
           :truck.lines.map(l=>cardHTML(l,truck.id)).join('')}
       </div>
       ${truck.lines.length>0?`<div class="tcol-total"><span>${truck.lines.length} γραμμές</span><strong>${total} PAL</strong></div>`:''}`;
+
     area.insertBefore(col,add);
 
-    // Simple: attach to tcol directly, ignore child events via closest()
-    (function(truckId){
-      col.ondragover = e => {
-        e.preventDefault();
-        col.classList.add('dactive');
-      };
-      col.ondragleave = e => {
-        if (!col.contains(e.relatedTarget)) col.classList.remove('dactive');
-      };
-      col.ondrop = e => {
-        e.preventDefault();
-        col.classList.remove('dactive');
-        handleDrop(truckId);
-      };
-    })(truck.id);
-    bindCards(col.querySelector('.tcol-body'), truck.id);
+    // Attach listeners to the INNER scroll body — this is what works
+    const scroll = col.querySelector('.tcol-body');
+    scroll.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      col.classList.add('dactive');
+    });
+    scroll.addEventListener('dragleave', e => {
+      e.stopPropagation();
+      if(!col.contains(e.relatedTarget)) col.classList.remove('dactive');
+    });
+    scroll.addEventListener('drop', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      col.classList.remove('dactive');
+      handleDrop(truck.id);
+    });
+    bindCards(scroll, truck.id);
   });
 }
+
 
 function handleDrop(tid){
   if(!dragId) return;
