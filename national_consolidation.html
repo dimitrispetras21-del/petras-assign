@@ -170,7 +170,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);dis
 .tcol-bw{flex:1;height:3px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden;}
 .tcol-bar{height:100%;border-radius:2px;transition:width .3s,background .3s;}
 
-.tcol-body{flex:1;overflow-y:auto;padding:8px;background:var(--bg);scrollbar-width:thin;scrollbar-color:#D1D5DB transparent;min-height:80px;}
+.tcol-body{flex:1;overflow-y:auto;padding:8px;background:var(--bg);scrollbar-width:thin;scrollbar-color:#D1D5DB transparent;min-height:200px;height:100%;}
 .dzone{height:60px;border:1.5px dashed var(--border-dark);border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--text-dim);font-size:11px;transition:border-color .15s,background .15s;pointer-events:none;}
 
 
@@ -611,6 +611,7 @@ function renderTrucks(){
     const bc=pct<60?'var(--success)':pct<90?'var(--warning)':'var(--danger)';
     const col=document.createElement('div');
     col.className='tcol';
+    const tid2 = truck.id;
     col.innerHTML=`
       <div class="tcol-hd">
         <div class="tcol-nrow">
@@ -624,7 +625,10 @@ function renderTrucks(){
           <div class="tcol-bw"><div class="tcol-bar" style="width:${pct}%;background:${bc}"></div></div>
         </div>
       </div>
-      <div class="tcol-body">
+      <div class="tcol-body"
+        ondragover="event.preventDefault();event.stopPropagation();this.closest('.tcol').classList.add('dactive');"
+        ondragleave="if(!this.contains(event.relatedTarget))this.closest('.tcol').classList.remove('dactive');"
+        ondrop="event.preventDefault();event.stopPropagation();this.closest('.tcol').classList.remove('dactive');handleDrop('${truck.id}');">
         ${truck.lines.length===0
           ?'<div class="dzone">Σύρτε γραμμές φόρτωσης εδώ</div>'
           :truck.lines.map(l=>cardHTML(l,truck.id)).join('')}
