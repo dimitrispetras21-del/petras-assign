@@ -656,13 +656,13 @@ async function saveTruck(truckId){
       const id=typeof raw==='string'?raw:null;
       if(id && /^rec[a-zA-Z0-9]{14}$/.test(id) && !srcIds.includes(id)) srcIds.push(id);
     }
-    if(srcIds.length) fields['Source Orders']=srcIds.map(id=>({id}));
+    if(srcIds.length) fields['Source Orders']=srcIds;
 
     // STEP 3: Loading Locations — validate each ID strictly
     truck.lines.slice(0,10).forEach((l,i)=>{
       const raw=l.locId;
       const id=typeof raw==='string'?raw:null;
-      if(id && /^rec[a-zA-Z0-9]{14}$/.test(id)) fields[`Loading Location ${i+1}`]=[{id}];
+      if(id && /^rec[a-zA-Z0-9]{14}$/.test(id)) fields[`Loading Location ${i+1}`]=[id];
     });
 
     console.log('PAYLOAD', JSON.stringify(fields));
