@@ -395,7 +395,7 @@ async function loadLines(){
   try{
     const noRecs=await atFetch(T_NO,
       ['Name','Client','Pickup Location 1','Pickup Location 2','Pickup Location 3',
-       'Delivery Location','Loading DateTime','Delivery DateTime',
+       'Delivery Location 1','Loading DateTime','Delivery DateTime',
        'Temperature °C','Goods','Status','Direction','Linked Order'],
       {filterByFormula:'{National Groupage}=1'}
     );
@@ -424,7 +424,7 @@ async function loadLines(){
     const lIds=new Set(), cIds=new Set();
     noRecs.forEach(r=>{
       (r.fields.Client||[]).forEach(id=>cIds.add(id));
-      (r.fields['Delivery Location']||[]).forEach(id=>lIds.add(id));
+      (r.fields['Delivery Location 1']||[]).forEach(id=>lIds.add(id));
       ['Pickup Location 1','Pickup Location 2','Pickup Location 3'].forEach(f=>
         (r.fields[f]||[]).forEach(id=>lIds.add(id)));
     });
@@ -438,7 +438,7 @@ async function loadLines(){
     lines=[];
     noRecs.forEach(no=>{
       const nf=no.fields;
-      const delivery=(nf['Delivery Location']||[]).map(id=>lN[id]||id).join(', ')||'—';
+      const delivery=(nf['Delivery Location 1']||[]).map(id=>lN[id]||id).join(', ')||'—';
       const base={
         noId:no.id, delivery,
         client:(nf.Client||[]).map(id=>cN[id]||id).join(', ')||'—',
