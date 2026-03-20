@@ -624,9 +624,23 @@ function renderTrucks(){
       ${truck.lines.length>0?`<div class="tcol-total"><span>${truck.lines.length} γραμμές</span><strong>${total} PAL</strong></div>`:''}`;
     area.insertBefore(col,add);
 
-    col.addEventListener('dragover',e=>{e.preventDefault();e.dataTransfer.dropEffect='move';col.classList.add('dactive');});
-    col.addEventListener('dragleave',e=>{if(!col.contains(e.relatedTarget))col.classList.remove('dactive');});
-    col.addEventListener('drop',e=>{e.preventDefault();col.classList.remove('dactive');handleDrop(truck.id);});
+    // dragover/drop on BOTH the column AND the inner scroll body
+    // so that the dzone placeholder doesn't swallow events
+    [col, col.querySelector('.tcol-body')].forEach(el=>{
+      el.addEventListener('dragover',e=>{
+        e.preventDefault(); e.stopPropagation();
+        e.dataTransfer.dropEffect='move';
+        col.classList.add('dactive');
+      });
+      el.addEventListener('dragleave',e=>{
+        if(!col.contains(e.relatedTarget)) col.classList.remove('dactive');
+      });
+      el.addEventListener('drop',e=>{
+        e.preventDefault(); e.stopPropagation();
+        col.classList.remove('dactive');
+        handleDrop(truck.id);
+      });
+    });
     bindCards(col.querySelector('.tcol-body'),truck.id);
   });
 }
