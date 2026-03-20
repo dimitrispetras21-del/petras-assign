@@ -112,6 +112,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);dis
 .tcol-name:focus{background:rgba(255,255,255,.08);}
 .tcol-save{width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:4px;background:rgba(5,150,105,.2);border:1px solid rgba(5,150,105,.3);color:#34D399;cursor:pointer;font-size:13px;font-weight:700;transition:all .12s;}
 .tcol-save:hover{background:rgba(5,150,105,.35);}
+.tcol-date-row{padding:0 0 6px 0;}
+.tcol-date{width:100%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:5px;padding:4px 8px;font-family:'DM Sans',sans-serif;font-size:11px;color:var(--silver-light);outline:none;color-scheme:dark;}
+.tcol-date:focus{border-color:rgba(255,255,255,.3);}
 .tcol-del{width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:4px;background:transparent;border:1px solid rgba(255,255,255,.1);color:rgba(196,207,219,.4);cursor:pointer;font-size:11px;}
 .tcol-del:hover{background:rgba(220,38,38,.15);color:#FCA5A5;}
 .tcol-stats{display:flex;align-items:center;gap:8px;}
@@ -124,14 +127,42 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);dis
 .tcol-foot{padding:6px 10px;border-top:1px solid var(--border);background:var(--bg-card);flex-shrink:0;display:flex;justify-content:space-between;font-size:11px;color:var(--text-dim);border-radius:0 0 8px 8px;}
 .tcol-foot strong{font-family:'Syne',sans-serif;font-size:12px;font-weight:800;color:var(--text);}
 
-/* SAVED (LOCKED) TRUCK COLUMN */
-.tcol.saved{opacity:.75;border:2px solid rgba(5,150,105,.3);}
-.tcol.saved .tcol-hd{background:#065F46;}
-.tcol.saved .tcol-name{color:#A7F3D0;letter-spacing:.5px;}
-.tcol.saved .tcol-body{pointer-events:none;}
-.tcol-restore{width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:4px;background:rgba(52,211,153,.15);border:1px solid rgba(52,211,153,.3);color:#34D399;cursor:pointer;font-size:12px;transition:all .12s;}
-.tcol-restore:hover{background:rgba(52,211,153,.25);}
-.tcol-saved-badge{font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#34D399;padding:2px 6px;background:rgba(52,211,153,.15);border-radius:3px;flex-shrink:0;}
+/* SAVED PANEL */
+.saved-panel{
+  width:220px;flex-shrink:0;
+  background:var(--bg-card);
+  border-left:1px solid var(--border);
+  display:flex;flex-direction:column;overflow:hidden;
+}
+.saved-panel-hd{
+  padding:12px 14px 8px;
+  border-bottom:1px solid var(--border);
+  background:var(--navy-mid);
+  flex-shrink:0;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.saved-panel-ttl{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(196,207,219,.5);}
+.saved-panel-count{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:#34D399;}
+.saved-panel-body{flex:1;overflow-y:auto;padding:8px;}
+.saved-row{
+  border-radius:7px;border:1px solid var(--border-mid);
+  padding:9px 11px;margin-bottom:6px;
+  background:var(--bg-card);
+  transition:box-shadow .15s;
+}
+.saved-row:hover{box-shadow:0 2px 8px rgba(0,0,0,.07);}
+.saved-row-name{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;color:var(--text);letter-spacing:.3px;margin-bottom:3px;}
+.saved-row-date{font-size:10px;color:var(--text-dim);margin-bottom:6px;}
+.saved-row-stats{display:flex;align-items:center;justify-content:space-between;}
+.saved-row-pal{font-family:'Syne',sans-serif;font-size:16px;font-weight:800;letter-spacing:-1px;}
+.saved-row-lines{font-size:10px;color:var(--text-dim);}
+.saved-row-actions{display:flex;gap:4px;margin-top:7px;padding-top:6px;border-top:1px solid var(--border);}
+.saved-row-btn{flex:1;padding:4px 8px;border-radius:5px;font-size:10px;font-weight:600;cursor:pointer;text-align:center;border:1px solid var(--border-mid);background:transparent;color:var(--text-mid);transition:all .12s;}
+.saved-row-btn:hover{background:var(--bg-hover);}
+.saved-row-btn.restore{border-color:rgba(5,150,105,.3);color:var(--success);}
+.saved-row-btn.restore:hover{background:var(--success-bg);}
+.saved-row-btn.del{border-color:rgba(220,38,38,.2);color:var(--danger);}
+.saved-row-btn.del:hover{background:var(--danger-bg);}
 
 /* ADD TRUCK */
 .add-col{width:90px;flex-shrink:0;align-self:stretch;border:1.5px dashed var(--border-dark);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;cursor:pointer;color:var(--text-dim);font-size:11.5px;transition:all .15s;text-align:center;}
@@ -177,7 +208,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);dis
     <button class="btn btn-ghost btn-sm" onclick="loadLines()">↻ Refresh</button>
     <button class="btn btn-ghost btn-sm" onclick="clearAll()">Clear</button>
     <button class="btn btn-ghost btn-sm" onclick="window.print()">⎙ Print</button>
-    <button class="btn btn-primary btn-sm" onclick="savePlan()">↓ Save to Consolidated Loads</button>
   </div>
 </div>
 
@@ -216,6 +246,15 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);dis
       <div class="plus">+</div>
       <div>Νέο φορτηγό</div>
     </div>
+  </div>
+
+  <!-- SAVED PANEL -->
+  <div class="saved-panel" id="savedPanel" style="display:none">
+    <div class="saved-panel-hd">
+      <div class="saved-panel-ttl">✓ Αποθηκευμένα</div>
+      <div class="saved-panel-count" id="savedCount">0</div>
+    </div>
+    <div class="saved-panel-body" id="savedPanelBody"></div>
   </div>
 </div>
 
@@ -457,6 +496,10 @@ function renderTrucks(){
           <button class="tcol-save" onclick="saveTruck('${truck.id}')" title="Αποθήκευση">↓</button>
           <button class="tcol-del" onclick="delTruck('${truck.id}')">✕</button>
         </div>
+        <div class="tcol-date-row">
+          <input type="date" class="tcol-date" value="${truck.date||''}"
+            onchange="setTruckDate('${truck.id}',this.value)">
+        </div>
         <div class="tcol-stats">
           <div class="tcol-pal" style="color:${bc}">${total}</div>
           <div class="tcol-of">/ 33 PAL</div>
@@ -486,6 +529,7 @@ function renderTrucks(){
 
 function renderAll(){
   renderTrucks();
+  renderPool();
   renderSavedList();
 }
 
@@ -572,7 +616,7 @@ function handleDrop(tid){
 }
 
 /* TRUCKS MGMT */
-function addTruck(){trucks.push({id:'t'+tc,name:'ΦΟΡΤΗΓΟ '+tc++,lines:[]});renderTrucks();}
+function addTruck(){trucks.push({id:'t'+tc,name:'ΦΟΡΤΗΓΟ '+tc++,lines:[],date:''});renderTrucks();}
 function delTruck(id){
   const t=trucks.find(x=>x.id===id);
   if(t?.lines.length&&!confirm(`Φορτηγό με ${t.lines.length} γραμμές. Σίγουρα;`))return;
@@ -580,6 +624,7 @@ function delTruck(id){
 }
 function clearAll(){if(!trucks.length)return;if(!confirm('Καθαρισμός;'))return;trucks=[];tc=1;renderTrucks();renderPool();}
 function renameTruck(id,v){const t=trucks.find(x=>x.id===id);if(t)t.name=v;}
+function setTruckDate(id,v){const t=trucks.find(x=>x.id===id);if(t)t.date=v;}
 function clearFilters(){
   const d=new Date();const f=new Date(d);f.setDate(f.getDate()-14);const t=new Date(d);t.setDate(t.getDate()+14);
   document.getElementById('fFrom').value=f.toISOString().split('T')[0];
@@ -687,7 +732,6 @@ async function saveTruck(truckId){
     setStatus('ok',`✅ ${truck.name} αποθηκεύτηκε`);
     toast(`✅ ${truck.name} — ${total} PAL αποθηκεύτηκε`);
     renderAll();
-    renderPool();
   }catch(e){
     setStatus('err','Σφάλμα: '+e.message);
     toast('❌ Σφάλμα: '+e.message);
@@ -696,49 +740,35 @@ async function saveTruck(truckId){
 }
 
 function renderSavedList(){
-  // Now renders as locked columns in trucksArea
-  const area=document.getElementById('trucksArea');
-  area.querySelectorAll('.tcol.saved').forEach(el=>el.remove());
-  const add=area.querySelector('.add-col');
+  const panel = document.getElementById('savedPanel');
+  const body  = document.getElementById('savedPanelBody');
+  const count = document.getElementById('savedCount');
 
-  savedPlans.forEach((p,i)=>{
-    const col=document.createElement('div');
-    col.className='tcol saved';
+  if(!savedPlans.length){
+    panel.style.display='none';
+    return;
+  }
+  panel.style.display='flex';
+  count.textContent=savedPlans.length;
+
+  body.innerHTML=savedPlans.map((p,i)=>{
     const bc=p.total<=33?'var(--success)':'var(--danger)';
-    col.innerHTML=`
-      <div class="tcol-hd">
-        <div class="tcol-nrow">
-          <span class="tcol-name">${p.name}</span>
-          <span class="tcol-saved-badge">✓ SAVED</span>
-          <button class="tcol-restore" onclick="restorePlan(${i})" title="Επαναφορά για επεξεργασία">↩</button>
-          <button class="tcol-del" onclick="deleteSaved(${i})">✕</button>
-        </div>
-        <div class="tcol-stats">
-          <div class="tcol-pal" style="color:${bc}">${p.total}</div>
-          <div class="tcol-of">/ 33 PAL</div>
-          <div class="tcol-bw"><div class="tcol-bar" style="width:${Math.min(p.total/33*100,100)}%;background:${bc}"></div></div>
-        </div>
+    return `<div class="saved-row">
+      <div class="saved-row-name">${p.name}</div>
+      <div class="saved-row-date">${p.date||'—'}</div>
+      <div class="saved-row-stats">
+        <span class="saved-row-pal" style="color:${bc}">${p.total}</span>
+        <span class="saved-row-lines">${p.lines.length} γραμμές</span>
+        <span style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--success);padding:2px 6px;background:var(--success-bg);border-radius:3px;">SAVED</span>
       </div>
-      <div class="tcol-body">
-        ${p.lines.map(l=>{
-          const ci=colorMap[l.noId]??0;
-          const isSplit=!!l.splitFrom;
-          return `<div class="lcard in-truck${isSplit?' split-child':''}">
-            <div class="lcard-strip c${ci}"></div>
-            <div class="lcard-body">
-              <div class="lcard-sup">${l.supplier}</div>
-              <div class="lcard-dst">→ ${l.delivery}</div>
-            </div>
-            <div class="lcard-r">
-              <div><div class="lcard-pal">${l.pal}</div><div class="lcard-plbl">PAL</div></div>
-            </div>
-          </div>`;
-        }).join('')}
+      <div class="saved-row-actions">
+        <button class="saved-row-btn restore" onclick="restorePlan(${i})">↩ Επαναφορά</button>
+        <button class="saved-row-btn del" onclick="deleteSaved(${i})">✕</button>
       </div>
-      <div class="tcol-foot"><span>${p.lines.length} γραμμές</span><strong>${p.total} PAL</strong></div>`;
-    area.insertBefore(col, add);
-  });
+    </div>`;
+  }).join('');
 }
+
 
 function restorePlan(i){
   const p=savedPlans[i];
@@ -749,7 +779,6 @@ function restorePlan(i){
   trucks.push({id:newId,name:p.name,lines:[...p.lines]});tc++;
   savedPlans.splice(i,1);
   renderAll();
-  renderPool();
   toast(`↩ ${p.name} επαναφέρθηκε`);
 }
 
