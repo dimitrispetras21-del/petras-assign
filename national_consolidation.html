@@ -644,16 +644,22 @@ async function saveTruck(truckId){
     if(srcIds.length)fields['Source Orders']=srcIds.map(id=>({id}));
     truck.lines.slice(0,10).forEach((l,i)=>{
       const n=i+1;
-      const lid=typeof l.locId==='string'?l.locId:(l.locId?.id||null);
-      if(lid) fields[`Loading Location ${n}`]=[{id:lid}];
-      fields[`Pallets ${n}`]=l.pal;
+      // Nuclear string coercion
+      let lid=l.locId;
+      if(lid&&typeof lid==='object') lid=lid.id||null;
+      if(lid&&typeof lid==='string'&&lid.startsWith('rec')) fields[`Loading Location ${n}`]=[{id:lid}];
+      if(l.pal) fields[`Pallets ${n}`]=l.pal;
     });
 
+    console.log('Saving fields:', JSON.stringify(fields).slice(0,300));
     const res=await atCreate(T_LOADS,fields);
-    if(!res.id) throw new Error(res.error?.message||'Unknown error');
+    if(!res.id) throw new Error((res.error?.message||JSON.stringify(res)).slice(0,200));
 
     // Mark source orders as Assigned
-    for(const noId of srcIds) await atPatch(T_NO,noId,{Status:'Assigned'});
+    for(const rawId of srcIds){
+      const cleanId=typeof rawId==='string'?rawId:rawId?.id;
+      if(cleanId&&cleanId.startsWith('rec')) await atPatch(T_NO,cleanId,{Status:'Assigned'});
+    }
 
     // Add to local savedPlans list
     savedPlans.push({
