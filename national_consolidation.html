@@ -460,7 +460,7 @@ function renderTrucks(){
     // Attach drag listeners directly on tcol-body — most reliable
     const body=col.querySelector('.tcol-body');
     body.addEventListener('dragover',e=>{
-      e.preventDefault();e.stopPropagation();
+      e.preventDefault();
       e.dataTransfer.dropEffect='move';
       col.classList.add('drag-over');
     });
@@ -468,7 +468,7 @@ function renderTrucks(){
       if(!col.contains(e.relatedTarget))col.classList.remove('drag-over');
     });
     body.addEventListener('drop',e=>{
-      e.preventDefault();e.stopPropagation();
+      e.preventDefault();
       col.classList.remove('drag-over');
       handleDrop(truck.id);
     });
