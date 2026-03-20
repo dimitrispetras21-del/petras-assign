@@ -3,329 +3,297 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Petras Group — National Consolidation Planner</title>
-<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;900&family=Barlow+Condensed:wght@700;900&display=swap" rel="stylesheet">
+<title>National Pick Ups — Petras Group TMS</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
-  --primary:#2D7FF9;--primary-dark:#1A6DE3;--primary-light:rgba(45,127,249,.08);
-  --dark:#1B2A4A;--navy:#2B3F60;--mid:#4A6280;--muted:#7A8BA5;
-  --bg:#F5F7FA;--card:#FFFFFF;--border:#E0E5EC;
-  --green:#20C997;--red:#E85050;--orange:#F0A500;
+  --navy-mid:    #0B1929;
+  --navy-light:  #122238;
+  --silver-light:#E2E8F0;
+  --bg:          #F7F8FA;
+  --bg-card:     #FFFFFF;
+  --bg-hover:    #F0F2F5;
+  --text:        #111827;
+  --text-mid:    #4B5563;
+  --text-dim:    #9CA3AF;
+  --border:      rgba(0,0,0,0.06);
+  --border-mid:  rgba(0,0,0,0.10);
+  --border-dark: rgba(0,0,0,0.16);
+  --accent:      #0B1929;
+  --success:     #059669;
+  --success-bg:  rgba(5,150,105,0.08);
+  --danger:      #DC2626;
+  --danger-bg:   rgba(220,38,38,0.08);
+  --warning:     #D97706;
+  --warning-bg:  rgba(217,119,6,0.08);
 }
-*{margin:0;padding:0;box-sizing:border-box;}
-body{background:var(--bg);color:var(--dark);font-family:'Barlow',sans-serif;height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+html,body{height:100%;overflow:hidden;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column;}
 
-/* HEADER */
-header{background:var(--card);border-bottom:2px solid var(--primary);padding:12px 28px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 1px 4px rgba(0,0,0,.08);flex-shrink:0;}
-.logo{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;letter-spacing:2px;color:var(--dark);}
-.logo small{display:block;font-size:9px;letter-spacing:3px;color:var(--primary);font-weight:600;font-family:'Barlow',sans-serif;}
-.hdr-actions{display:flex;gap:8px;align-items:center;}
+/* ── TOPBAR ── */
+.topbar{height:52px;background:var(--bg-card);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:16px;flex-shrink:0;}
+.t-brand{display:flex;align-items:center;gap:10px;padding-right:18px;border-right:1px solid var(--border);}
+.t-mark{width:28px;height:28px;background:var(--navy-mid);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:11px;font-weight:800;color:#fff;letter-spacing:-.5px;}
+.t-name{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:var(--text);letter-spacing:.5px;}
+.t-page{font-family:'Syne',sans-serif;font-size:14px;font-weight:600;color:var(--text);flex:1;}
+.t-actions{display:flex;align-items:center;gap:8px;}
 
-/* BUTTONS */
-.btn{padding:8px 16px;border:none;border-radius:6px;font-weight:700;font-size:12px;cursor:pointer;font-family:'Barlow',sans-serif;transition:all .12s;letter-spacing:.5px;}
-.btn:hover{transform:translateY(-1px);}
-.btn-primary{background:var(--primary);color:#fff;}
-.btn-primary:hover{background:var(--primary-dark);}
-.btn-outline{background:var(--card);color:var(--mid);border:1px solid var(--border);}
-.btn-outline:hover{border-color:var(--primary);color:var(--primary);}
-.btn-dark{background:var(--dark);color:#fff;}
-.btn-dark:hover{background:var(--navy);}
-.btn-kill{background:none;border:1px solid var(--border);color:var(--muted);padding:4px 9px;font-size:11px;border-radius:4px;cursor:pointer;font-family:'Barlow',sans-serif;font-weight:600;transition:all .12s;}
-.btn-kill:hover{background:#FEE;border-color:var(--red);color:var(--red);}
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:7px;font-family:'DM Sans',sans-serif;font-size:12.5px;font-weight:500;cursor:pointer;transition:all .15s;border:none;white-space:nowrap;}
+.btn-primary{background:var(--accent);border:1px solid var(--accent);color:#fff;}
+.btn-primary:hover{background:var(--navy-light);}
+.btn-ghost{background:transparent;border:1px solid var(--border-mid);color:var(--text-mid);}
+.btn-ghost:hover{background:var(--bg-hover);color:var(--text);}
+.btn-sm{padding:5px 11px;font-size:12px;border-radius:6px;}
+.btn-ico{width:26px;height:26px;padding:0;display:inline-flex;align-items:center;justify-content:center;border-radius:5px;background:transparent;border:1px solid var(--border-mid);color:var(--text-dim);cursor:pointer;transition:all .12s;font-family:'DM Sans',sans-serif;font-size:13px;}
+.btn-ico:hover{background:var(--bg-hover);border-color:var(--border-dark);color:var(--text);}
 
-/* FILTERS */
-.filters{background:var(--card);border-bottom:1px solid var(--border);padding:10px 28px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;flex-shrink:0;}
-.fl{font-size:10px;font-weight:700;color:var(--muted);letter-spacing:2px;text-transform:uppercase;}
-input[type=date],select{background:#fff;border:1px solid var(--border);border-radius:5px;color:var(--dark);padding:7px 10px;font-size:12px;font-family:'Barlow',sans-serif;outline:none;transition:border-color .15s;}
-input[type=date]:focus,select:focus{border-color:var(--primary);}
-.vsep{width:1px;height:22px;background:var(--border);}
+/* ── FILTER BAR ── */
+.fbar{height:46px;background:var(--bg-card);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:12px;flex-shrink:0;}
+.flbl{font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--text-dim);white-space:nowrap;}
+.finput,.fsel{background:var(--bg);border:1px solid var(--border-dark);border-radius:6px;padding:5px 10px;height:30px;font-family:'DM Sans',sans-serif;font-size:12.5px;color:var(--text);outline:none;transition:border-color .15s;cursor:pointer;}
+.finput:focus,.fsel:focus{border-color:var(--accent);}
+.fsep{width:1px;height:18px;background:var(--border-mid);flex-shrink:0;}
 
-/* STATUS BAR */
-#sbar{padding:7px 28px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--border);background:var(--card);display:flex;align-items:center;gap:16px;flex-shrink:0;}
-.dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:6px;}
-.dot-load{background:var(--primary);animation:blink 1s infinite;}
-.dot-ok{background:var(--green);}
-.dot-err{background:var(--red);}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+/* ── STATUS BAR ── */
+.sbar{padding:4px 24px;background:var(--bg);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--text-dim);flex-shrink:0;min-height:28px;}
+.sdot{width:6px;height:6px;border-radius:50%;background:var(--text-dim);flex-shrink:0;}
+.sdot.ok{background:var(--success);}
+.sdot.load{background:var(--warning);animation:pulse .8s infinite;}
+.sdot.err{background:var(--danger);}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
 
-/* WORKSPACE */
-.workspace{display:flex;flex:1;overflow:hidden;}
+/* ── WORKSPACE ── */
+.workspace{flex:1;display:flex;overflow:hidden;}
 
-/* LEFT POOL */
-.pool{width:300px;min-width:260px;border-right:2px solid var(--primary);display:flex;flex-direction:column;background:var(--card);}
-.panel-hdr{padding:11px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--dark);}
-.panel-title{font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:900;letter-spacing:2px;color:#fff;}
-.badge{font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;letter-spacing:.5px;}
-.badge-blue{background:var(--primary);color:#fff;}
-.badge-green{background:rgba(32,201,151,.2);color:var(--green);}
-.badge-orange{background:rgba(240,165,0,.2);color:var(--orange);}
+/* ── POOL ── */
+.pool{width:288px;flex-shrink:0;background:var(--bg-card);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+.pool-hd{padding:14px 16px 10px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.pool-ttl{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-dim);margin-bottom:4px;}
+.pool-stat{font-family:'Syne',sans-serif;font-size:24px;font-weight:800;color:var(--text);letter-spacing:-1.5px;line-height:1;}
+.pool-stat span{font-family:'DM Sans',sans-serif;font-size:12px;font-weight:400;color:var(--text-dim);letter-spacing:0;}
+.pool-body{flex:1;overflow-y:auto;padding:8px;scrollbar-width:thin;scrollbar-color:#D1D5DB transparent;transition:background .15s;}
+.pool-body.dactive{background:var(--success-bg);}
 
-/* TOTAL PAL SUMMARY */
-.pool-summary{padding:10px 14px;border-bottom:1px solid var(--border);background:#F8FAFF;display:flex;align-items:center;justify-content:space-between;}
-.ps-label{font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;}
-.ps-num{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:var(--primary);}
-.ps-sub{font-size:10px;color:var(--muted);}
+/* ── DATE DIVIDER ── */
+.ddiv{display:flex;align-items:center;gap:8px;padding:6px 0 5px;margin-top:2px;}
+.ddiv-lbl{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text-dim);white-space:nowrap;}
+.ddiv-line{flex:1;height:1px;background:var(--border);}
+.ddiv-cnt{font-size:10px;color:var(--text-dim);white-space:nowrap;}
 
-.pool-list{overflow-y:auto;flex:1;padding:0;}
-.pool-list::-webkit-scrollbar{width:4px;}
-.pool-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+/* ── LINE CARD ── */
+.lcard{background:var(--bg-card);border:1px solid var(--border-mid);border-radius:8px;padding:9px 10px;margin-bottom:5px;cursor:grab;display:flex;align-items:stretch;gap:8px;transition:box-shadow .15s,border-color .15s,opacity .15s;user-select:none;}
+.lcard:hover{border-color:var(--border-dark);box-shadow:0 2px 8px rgba(0,0,0,.07);}
+.lcard:active{cursor:grabbing;}
+.lcard.dragging{opacity:.35;}
+.lcard.in-truck{background:var(--bg);}
+.lcard.split-child{border-left:2.5px solid var(--warning)!important;}
+.lcard-strip{width:3px;border-radius:2px;flex-shrink:0;align-self:stretch;}
+.c0{background:#3B82F6;}.c1{background:#10B981;}.c2{background:#F59E0B;}
+.c3{background:#EF4444;}.c4{background:#8B5CF6;}.c5{background:#EC4899;}
+.c6{background:#14B8A6;}.c7{background:#F97316;}.c8{background:#6366F1;}.c9{background:#84CC16;}
+.lcard-body{flex:1;min-width:0;}
+.lcard-sup{font-size:12.5px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:1px;}
+.lcard-dst{font-size:11px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px;}
+.lcard-tags{display:flex;gap:4px;flex-wrap:wrap;}
+.bdg{display:inline-flex;align-items:center;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:500;letter-spacing:.2px;}
+.bg{background:rgba(156,163,175,.12);color:#6B7280;}
+.by{background:var(--warning-bg);color:var(--warning);}
+.lcard-r{flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;}
+.lcard-pal{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--text);letter-spacing:-1px;line-height:1;text-align:right;}
+.lcard-plbl{font-size:8px;font-weight:600;letter-spacing:1.5px;color:var(--text-dim);text-transform:uppercase;text-align:right;}
+.lcard-spl{opacity:0;transition:opacity .12s;}
+.lcard:hover .lcard-spl{opacity:1;}
+.pool-empty{padding:32px 16px;text-align:center;font-size:12px;color:var(--text-dim);line-height:1.7;}
+.pool-empty strong{color:var(--text-mid);}
 
-/* DATE DIVIDER */
-.date-divider{
-  display:flex;align-items:center;gap:10px;
-  padding:10px 12px 6px;margin-top:4px;
-}
-.date-divider-label{
-  font-family:'Barlow Condensed',sans-serif;
-  font-size:15px;font-weight:900;color:var(--dark);
-  letter-spacing:1px;white-space:nowrap;
-}
-.date-divider-line{flex:1;height:2px;background:var(--primary);opacity:.25;}
-.date-divider-cnt{font-size:10px;font-weight:700;color:var(--muted);white-space:nowrap;}
-.pool-inner{padding:0 10px 10px;overflow-y:auto;flex:1;}
+/* ── TRUCKS AREA ── */
+.trucks{flex:1;display:flex;align-items:flex-start;gap:10px;padding:12px;overflow-x:auto;overflow-y:hidden;background:var(--bg);scrollbar-width:thin;scrollbar-color:#D1D5DB transparent;}
 
-/* LOADING LINE CARD — core unit */
-.lcard{
-  background:var(--card);
-  border:1px solid var(--border);
-  border-left:4px solid var(--primary);
-  border-radius:6px;
-  margin-bottom:6px;
-  padding:9px 12px 8px;
-  cursor:grab;
-  transition:all .15s;
-  user-select:none;
-  box-shadow:0 1px 3px rgba(0,0,0,.05);
-  display:flex;align-items:center;justify-content:space-between;gap:10px;
-}
-.lcard:hover{box-shadow:0 3px 10px rgba(45,127,249,.18);border-color:var(--primary);transform:translateY(-1px);}
-.lcard.dragging{opacity:.3;cursor:grabbing;}
-.lcard.in-truck{border-left-color:var(--green);background:#F8FFFE;opacity:.6;}
+/* ── TRUCK COL ── */
+.tcol{width:240px;flex-shrink:0;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;display:flex;flex-direction:column;height:calc(100vh - 52px - 46px - 28px - 24px);overflow:hidden;transition:border-color .15s,box-shadow .15s;}
+.tcol.dactive{border-color:var(--accent);box-shadow:0 0 0 3px rgba(11,25,41,.07);}
+.tcol-hd{padding:12px 12px 8px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.tcol-nrow{display:flex;align-items:center;gap:6px;margin-bottom:8px;}
+.tcol-name{flex:1;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;color:var(--text);background:transparent;border:none;outline:none;letter-spacing:.5px;text-transform:uppercase;padding:3px 5px;border-radius:4px;transition:background .12s;}
+.tcol-name:focus{background:var(--bg);}
+.tcol-stats{display:flex;align-items:center;gap:8px;}
+.tcol-pal{font-family:'Syne',sans-serif;font-size:24px;font-weight:800;letter-spacing:-1.5px;line-height:1;}
+.tcol-of{font-size:11px;color:var(--text-dim);align-self:flex-end;padding-bottom:2px;}
+.tcol-bw{flex:1;height:4px;background:var(--bg);border-radius:2px;overflow:hidden;}
+.tcol-bar{height:100%;border-radius:2px;transition:width .3s,background .3s;}
+.tcol-body{flex:1;overflow-y:auto;padding:8px;scrollbar-width:thin;scrollbar-color:#D1D5DB transparent;}
+.dzone{height:64px;border:1.5px dashed var(--border-dark);border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--text-dim);font-size:11.5px;transition:border-color .15s,background .15s;}
+.tcol.dactive .dzone{border-color:var(--accent);background:rgba(11,25,41,.03);color:var(--text-mid);}
 
-.lcard-left{flex:1;min-width:0;}
-.lcard-supplier{font-size:13px;font-weight:700;color:var(--dark);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.lcard-meta{font-size:11px;color:var(--muted);margin-top:2px;display:flex;align-items:center;gap:4px;}
-.lcard-arrow{color:var(--border);}
-.lcard-dest{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px;}
+/* Add truck CTA */
+.add-col{width:96px;flex-shrink:0;align-self:stretch;border:1.5px dashed var(--border-dark);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;cursor:pointer;color:var(--text-dim);font-size:12px;transition:border-color .15s,color .15s,background .15s;padding:16px;text-align:center;}
+.add-col:hover{border-color:var(--accent);color:var(--text-mid);background:rgba(11,25,41,.03);}
+.add-col .plus{font-size:26px;font-weight:300;line-height:1;}
 
-.lcard-right{flex-shrink:0;text-align:right;}
-.lcard-pal{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:var(--primary);line-height:1;}
-.lcard-pallabel{font-size:9px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;}
+/* ── MODAL ── */
+.overlay{display:none;position:fixed;inset:0;background:rgba(5,14,26,.65);backdrop-filter:blur(4px);z-index:1000;align-items:center;justify-content:center;}
+.overlay.show{display:flex;}
+.modal{background:var(--bg-card);border:1px solid var(--border-mid);border-radius:12px;width:360px;max-width:96vw;box-shadow:0 24px 60px rgba(0,0,0,.18);animation:mIn .2s cubic-bezier(.22,1,.36,1);}
+@keyframes mIn{from{opacity:0;transform:translateY(12px) scale(.97);}to{opacity:1;transform:none;}}
+.mhd{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);}
+.mttl{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--text);}
+.mcls{width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:5px;cursor:pointer;color:var(--text-dim);font-size:16px;transition:all .12s;}
+.mcls:hover{background:var(--bg);color:var(--text);}
+.mbdy{padding:20px;}
+.mft{display:flex;gap:8px;justify-content:flex-end;padding:14px 20px;border-top:1px solid var(--border);}
+.srow{display:flex;align-items:flex-end;gap:10px;margin-bottom:14px;}
+.sfld{flex:1;display:flex;flex-direction:column;gap:5px;}
+.sfld label{font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--text-dim);}
+.sinput{width:100%;background:var(--bg);border:1px solid var(--border-dark);border-radius:7px;padding:8px 12px;font-family:'Syne',sans-serif;font-size:20px;font-weight:700;color:var(--text);outline:none;text-align:center;transition:border-color .15s;}
+.sinput:focus{border-color:var(--accent);}
+.seq{font-size:18px;color:var(--text-dim);font-weight:300;padding-bottom:9px;}
+.stot{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;padding:6px 10px;border-radius:6px;border:1px solid transparent;white-space:nowrap;flex-shrink:0;}
+.stot.ok{background:var(--success-bg);color:var(--success);border-color:rgba(5,150,105,.2);}
+.stot.err{background:var(--danger-bg);color:var(--danger);border-color:rgba(220,38,38,.2);}
 
-/* date tag */
-.lcard-date{display:inline-block;background:#EBF2FE;color:var(--primary);font-size:10px;font-weight:700;padding:1px 7px;border-radius:3px;margin-top:4px;}
-
-/* TRUCKS AREA */
-.trucks-wrap{flex:1;display:flex;overflow-x:auto;overflow-y:hidden;background:var(--bg);}
-.trucks-wrap::-webkit-scrollbar{height:5px;}
-.trucks-wrap::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
-
-.tcol{min-width:270px;width:270px;border-right:1px solid var(--border);display:flex;flex-direction:column;background:var(--card);flex-shrink:0;}
-
-/* TRUCK HEADER */
-.thead{padding:12px 14px;border-bottom:1px solid var(--border);}
-.tnr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
-.tni{
-  background:transparent;border:none;border-bottom:2px solid var(--border);
-  color:var(--dark);font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:900;
-  letter-spacing:1px;width:160px;outline:none;padding:2px 0;text-transform:uppercase;transition:border-color .15s;
-}
-.tni:focus{border-bottom-color:var(--primary);}
-
-/* PAL COUNTER */
-.tcap-row{display:flex;align-items:center;gap:12px;}
-.tpal-num{font-family:'Barlow Condensed',sans-serif;font-size:32px;font-weight:900;line-height:1;}
-.tpal-right{flex:1;}
-.tpal-label{font-size:9px;font-weight:700;color:var(--muted);letter-spacing:2px;margin-bottom:3px;}
-.tpal-meta{font-size:10px;font-weight:600;color:var(--muted);margin-bottom:5px;display:flex;justify-content:space-between;}
-.tbar-bg{height:6px;background:var(--border);border-radius:3px;overflow:hidden;}
-.tbar{height:100%;border-radius:3px;transition:width .35s,background .35s;}
-
-/* truck lines list */
-.tscroll{flex:1;overflow-y:auto;padding:8px;}
-.tscroll::-webkit-scrollbar{width:3px;}
-.tscroll::-webkit-scrollbar-thumb{background:var(--border);}
-
-.dzone{
-  border:2px dashed var(--border);border-radius:6px;padding:20px 14px;
-  text-align:center;font-size:11px;font-weight:700;color:var(--muted);
-  letter-spacing:1px;text-transform:uppercase;transition:all .15s;margin:4px 0;
-}
-.dzone.over{border-color:var(--primary);background:var(--primary-light);color:var(--primary);}
-.tcol.drop-active{background:#EBF2FE;}
-.tcol.drop-active .tscroll{outline:2px dashed var(--primary);outline-offset:-4px;border-radius:4px;}
-
-/* ADD TRUCK */
-.add-truck-col{
-  min-width:160px;display:flex;flex-direction:column;align-items:center;
-  justify-content:center;gap:10px;cursor:pointer;padding:20px;
-  border-right:1px solid var(--border);flex-shrink:0;background:var(--bg);
-  color:var(--muted);transition:all .15s;
-}
-.add-truck-col:hover{background:#EBF2FE;color:var(--primary);}
-.add-icon{width:44px;height:44px;border-radius:50%;border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:22px;transition:all .15s;}
-.add-truck-col:hover .add-icon{border-color:var(--primary);}
-.add-label{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;}
-
-.empty{text-align:center;padding:36px 16px;color:var(--muted);font-size:12px;line-height:2;}
-
-/* TOAST */
-#toast{position:fixed;bottom:20px;right:24px;background:var(--dark);color:#fff;padding:9px 16px;border-radius:6px;font-size:12px;font-weight:600;opacity:0;transition:opacity .3s;pointer-events:none;z-index:999;box-shadow:0 4px 12px rgba(0,0,0,.2);}
-#toast.on{opacity:1;}
-
-/* SPLIT */
-.split-btn{
-  background:none;border:1px solid var(--border);color:var(--muted);
-  width:22px;height:22px;border-radius:4px;cursor:pointer;font-size:13px;
-  font-weight:700;line-height:1;padding:0;transition:all .12s;flex-shrink:0;
-  font-family:'Barlow',sans-serif;
-}
-.split-btn:hover{background:var(--primary-light);border-color:var(--primary);color:var(--primary);}
-.split-tag{font-size:9px;font-weight:700;background:#FFF3CD;color:#856404;padding:1px 5px;border-radius:3px;letter-spacing:.5px;}
-/* ORDER COLOR BLOCKS */
-.oc-0{background:#E8F0FE;border-left-color:#2D7FF9;border-left-width:5px;}
-.oc-1{background:#FCE4EC;border-left-color:#E91E63;border-left-width:5px;}
-.oc-2{background:#FFF3E0;border-left-color:#FF6D00;border-left-width:5px;}
-.oc-3{background:#E0F2F1;border-left-color:#00897B;border-left-width:5px;}
-.oc-4{background:#FFFDE7;border-left-color:#F9A825;border-left-width:5px;}
-.oc-5{background:#FFEBEE;border-left-color:#E53935;border-left-width:5px;}
-.oc-6{background:#E8F5E9;border-left-color:#388E3C;border-left-width:5px;}
-.oc-7{background:#E1F5FE;border-left-color:#0288D1;border-left-width:5px;}
-.oc-8{background:#F3E5F5;border-left-color:#8E24AA;border-left-width:5px;}
-.oc-9{background:#ECEFF1;border-left-color:#546E7A;border-left-width:5px;}
-.oc-dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:5px;flex-shrink:0;}
-
-/* SPLIT MODAL */
-.split-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:200;align-items:center;justify-content:center;backdrop-filter:blur(3px);}
-.split-overlay.show{display:flex;}
-.split-modal{background:var(--card);border:1px solid var(--border);border-top:3px solid var(--primary);border-radius:10px;width:360px;padding:24px;box-shadow:0 8px 30px rgba(0,0,0,.15);animation:slideUp .15s ease;}
-@keyframes slideUp{from{transform:translateY(16px);opacity:0}to{transform:translateY(0);opacity:1}}
-.split-title{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;color:var(--dark);margin-bottom:4px;}
-.split-sub{font-size:12px;color:var(--muted);margin-bottom:18px;}
-.split-row{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
-.split-input{
-  width:70px;background:#fff;border:2px solid var(--border);border-radius:6px;
-  color:var(--dark);padding:8px 10px;font-size:16px;font-weight:700;
-  font-family:'Barlow Condensed',sans-serif;outline:none;text-align:center;transition:border-color .15s;
-}
-.split-input:focus{border-color:var(--primary);}
-.split-eq{font-size:13px;color:var(--muted);font-weight:600;}
-.split-total{font-size:13px;font-weight:700;}
-.split-total.ok{color:var(--green);}
-.split-total.err{color:var(--red);}
-.split-actions{display:flex;gap:8px;margin-top:6px;}
-
-/* PRINT */
-@media print{
-  body{background:#fff;height:auto;overflow:visible;}
-  header .hdr-actions,.filters,#sbar,.pool,.add-truck-col,.btn-kill{display:none!important;}
-  .workspace{height:auto;overflow:visible;display:block;}
-  .trucks-wrap{display:block;overflow:visible;}
-  .tcol{width:100%!important;min-width:unset;border:none;page-break-after:always;background:#fff;}
-  .thead{border:2px solid var(--primary);border-radius:6px;margin-bottom:12px;}
-  .lcard{border:1px solid #E0E5EC;box-shadow:none;page-break-inside:avoid;background:#fff;}
-  .lcard-supplier,.lcard-meta,.lcard-pal{color:#000!important;}
-  .tbar-bg,.dzone{display:none;}
-  .tni{font-size:20px;color:#1B2A4A;border:none;}
-  .print-date{display:block!important;}
-}
-.print-date{display:none;font-size:10px;color:var(--muted);margin-top:4px;}
+/* ── TOAST ── */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(6px);background:var(--navy-mid);color:var(--silver-light);padding:9px 18px;border-radius:8px;font-size:12.5px;font-weight:500;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;z-index:2000;white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,.25);}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0);}
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:#D1D5DB;border-radius:3px;}
 </style>
 </head>
 <body>
-<header>
-  <div class="logo">PETRAS GROUP<small>NATIONAL CONSOLIDATION PLANNER</small></div>
-  <div class="hdr-actions">
-    <button class="btn btn-outline" onclick="loadLines()">↻ Refresh</button>
-    <button class="btn btn-outline" onclick="clearAll()">Clear All</button>
-    <button class="btn btn-dark" onclick="window.print()">⎙ Print</button>
-    <button class="btn btn-primary" onclick="savePlan()">💾 Αποθήκευση Πλάνου</button>
-  </div>
-</header>
 
-<div class="filters">
-  <span class="fl">Φόρτωση από</span>
-  <input type="date" id="fFrom" onchange="applyFilter()">
-  <span style="color:var(--muted)">→</span>
-  <input type="date" id="fTo" onchange="applyFilter()">
-  <div class="vsep"></div>
-  <span class="fl">Εμφάνιση</span>
-  <select id="fStatus" onchange="applyFilter()">
-    <option value="free">Μόνο αδέσμευτες</option>
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="t-brand">
+    <div class="t-mark">PG</div>
+    <span class="t-name">PETRAS GROUP</span>
+  </div>
+  <div class="t-page">National Pick Ups</div>
+  <div class="t-actions">
+    <button class="btn btn-ghost btn-sm" onclick="loadLines()">↻ Refresh</button>
+    <button class="btn btn-ghost btn-sm" onclick="clearAll()">Clear</button>
+    <button class="btn btn-ghost btn-sm" onclick="window.print()">⎙ Print</button>
+    <button class="btn btn-primary btn-sm" onclick="savePlan()">↓ Save to Consolidated Loads</button>
+  </div>
+</div>
+
+<!-- FILTER BAR -->
+<div class="fbar">
+  <span class="flbl">Ημ/νία από</span>
+  <input type="date" id="fFrom" class="finput" onchange="applyFilter()">
+  <span style="color:var(--text-dim);font-size:11px;">→</span>
+  <input type="date" id="fTo" class="finput" onchange="applyFilter()">
+  <div class="fsep"></div>
+  <span class="flbl">Κατεύθυνση</span>
+  <select id="fDir" class="fsel" onchange="applyFilter()">
     <option value="">Όλες</option>
+    <option value="ΚΑΘΟΔΟΣ">ΚΑΘΟΔΟΣ</option>
+    <option value="ΑΝΟΔΟΣ">ΑΝΟΔΟΣ</option>
   </select>
+  <div class="fsep"></div>
+  <button class="btn btn-ghost btn-sm" onclick="clearFilters()">Καθαρισμός</button>
 </div>
 
-<div id="sbar">
-  <span><span class="dot dot-load" id="sdot"></span><span id="stxt">Σύνδεση στο Airtable...</span></span>
-  <span id="scnt"></span>
+<!-- STATUS BAR -->
+<div class="sbar">
+  <div class="sdot" id="sdot"></div>
+  <span id="stxt">Φόρτωση...</span>
 </div>
 
+<!-- WORKSPACE -->
 <div class="workspace">
-  <!-- LEFT: all loading lines -->
-  <div class="pool" style="display:flex;flex-direction:column;">
-    <div class="panel-hdr">
-      <span class="panel-title">ΦΟΡΤΩΣΕΙΣ</span>
-      <span class="badge badge-blue" id="pcnt">0</span>
+
+  <!-- POOL -->
+  <div class="pool">
+    <div class="pool-hd">
+      <div class="pool-ttl">Εκκρεμείς γραμμές</div>
+      <div class="pool-stat" id="poolCount">— <span>PAL διαθέσιμα</span></div>
     </div>
-    <div class="pool-summary">
-      <div>
-        <div class="ps-label">Σύνολο Παλετών</div>
-        <div class="ps-sub" id="pool-assigned-info">— αδέσμευτες</div>
-      </div>
-      <div style="text-align:right">
-        <div class="ps-num" id="pool-total-pal">0</div>
-        <div class="ps-label">PAL</div>
-      </div>
-    </div>
-    <div class="pool-list" id="poolList">
-      <div class="pool-inner" id="poolInner"><div class="empty">Φόρτωση...</div></div>
+    <div class="pool-body" id="poolInner"
+         ondragover="event.preventDefault();this.classList.add('dactive')"
+         ondragleave="if(!this.contains(event.relatedTarget))this.classList.remove('dactive')"
+         ondrop="onPoolDrop(event)">
     </div>
   </div>
 
-  <!-- RIGHT: truck columns -->
-  <div class="trucks-wrap" id="trucksArea">
-    <div class="add-truck-col" onclick="addTruck()">
-      <div class="add-icon">+</div>
-      <div class="add-label">Νέο Φορτηγό</div>
+  <!-- TRUCKS -->
+  <div class="trucks" id="trucksArea">
+    <div class="add-col" onclick="addTruck()">
+      <div class="plus">+</div>
+      <div>Νέο φορτηγό</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- SPLIT MODAL -->
+<div class="overlay" id="splitOverlay" onclick="if(event.target===this)closeSplit()">
+  <div class="modal">
+    <div class="mhd">
+      <div class="mttl">Διαχωρισμός Παλετών</div>
+      <div class="mcls" onclick="closeSplit()">✕</div>
+    </div>
+    <div class="mbdy">
+      <div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:3px;" id="splitSupplier"></div>
+      <div style="font-size:11.5px;color:var(--text-dim);margin-bottom:18px;" id="splitMax"></div>
+      <div class="srow">
+        <div class="sfld">
+          <label>Φορτηγό Α</label>
+          <input class="sinput" id="splitA" type="number" min="1" oninput="syncSplitB()">
+        </div>
+        <div class="seq">+</div>
+        <div class="sfld">
+          <label>Φορτηγό Β</label>
+          <input class="sinput" id="splitB" type="number" min="1" oninput="updateSplitCalc()">
+        </div>
+        <div class="seq">=</div>
+        <div class="stot err" id="splitCalc">0</div>
+      </div>
+    </div>
+    <div class="mft">
+      <button class="btn btn-ghost" onclick="closeSplit()">Άκυρο</button>
+      <button class="btn btn-primary" id="splitConfirm" onclick="confirmSplit()">✓ Διαχωρισμός</button>
     </div>
   </div>
 </div>
 
-<div id="toast"></div>
+<div class="toast" id="toast"></div>
 
 <script>
-const AT='patpPJXnFYnxdgoK3.a2162b09fbb214628114ff2ce68bb5a7b30aea2061b14f9562a1ab222585cf08';
-const BASE='appElT5CQV6JQvym8';
-const T_NO='tblGHCCsTMqAy4KR2';
-const T_CL='tblFWKAQVUzAM8mCE';
-const T_LO='tblxu8DRfTQOFRCzS';
-const T_ORDERS='tblgHlNmLBH3JTdIM';
+/* ═══ CONFIG ═══════════════════════════════════════════ */
+const AT      = 'patpPJXnFYnxdgoK3.a2162b09fbb214628114ff2ce68bb5a7b30aea2061b14f9562a1ab222585cf08';
+const BASE    = 'appElT5CQV6JQvym8';
+const T_NO    = 'tblGHCCsTMqAy4KR2';
+const T_CL    = 'tblFWKAQVUzAM8mCE';
+const T_LO    = 'tblxu8DRfTQOFRCzS';
+const T_ORDERS= 'tblgHlNmLBH3JTdIM';
+const T_LOADS = 'tbl5XSLQjOnG6yLCW';
 
-// lines = one per NATIONAL ORDER record (each is already 1 loading line)
+/* ═══ STATE ════════════════════════════════════════════ */
 let lines=[], filtered=[], trucks=[], tc=1;
-let orderColorMap={};
-let activeTab=null;
-let dragId=null, dragFrom=null;
+let orderColorMap={}, dragId=null, dragFrom=null, splitTarget=null;
 
-// Default: today + 14 days
-const d0=new Date();
-const dFrom=new Date(d0); dFrom.setDate(dFrom.getDate()-14);
-document.getElementById('fFrom').value=dFrom.toISOString().split('T')[0];
-const dTo=new Date(d0); dTo.setDate(dTo.getDate()+14);
-document.getElementById('fTo').value=dTo.toISOString().split('T')[0];
+/* ═══ DATE DEFAULTS ════════════════════════════════════ */
+(function(){
+  const d=new Date();
+  const f=new Date(d); f.setDate(f.getDate()-14);
+  const t=new Date(d); t.setDate(t.getDate()+14);
+  document.getElementById('fFrom').value=f.toISOString().split('T')[0];
+  document.getElementById('fTo').value=t.toISOString().split('T')[0];
+})();
 
-async function atFetchFields(tableId, fields, extraParams={}){
-  let all=[],offset=null;
+/* ═══ AIRTABLE HELPERS ═════════════════════════════════ */
+async function atFetch(tbl, fields, params={}){
+  let all=[], offset=null;
   do{
-    let url=`https://api.airtable.com/v0/${BASE}/${tableId}?pageSize=100`;
-    for(const [k,v] of Object.entries(extraParams)){
+    let url=`https://api.airtable.com/v0/${BASE}/${tbl}?pageSize=100`;
+    for(const [k,v] of Object.entries(params))
       url+=`&${encodeURIComponent(k)}=${encodeURIComponent(v)}`;
-    }
     fields.forEach(f=>{ url+=`&fields%5B%5D=${encodeURIComponent(f)}`; });
     if(offset) url+=`&offset=${encodeURIComponent(offset)}`;
     const r=await fetch(url,{headers:{Authorization:`Bearer ${AT}`}});
-    if(!r.ok){const t=await r.text();throw new Error(`HTTP ${r.status}: ${t.substring(0,200)}`);}
+    if(!r.ok){const t=await r.text();throw new Error(`HTTP ${r.status}: ${t.slice(0,200)}`);}
     const d=await r.json();
     if(d.error) throw new Error(JSON.stringify(d.error));
     all=all.concat(d.records||[]); offset=d.offset||null;
@@ -333,29 +301,46 @@ async function atFetchFields(tableId, fields, extraParams={}){
   return all;
 }
 
-async function resolveIds(tableId,ids){
+async function resolveIds(tbl, ids){
   if(!ids.length) return {};
-  const names={};
+  const map={};
   for(let i=0;i<ids.length;i+=10){
     const chunk=ids.slice(i,i+10);
-    const formula=`OR(${chunk.map(id=>`RECORD_ID()="${id}"`).join(',')})`;
+    const f=`OR(${chunk.map(id=>`RECORD_ID()="${id}"`).join(',')})`;
     try{
-      const url=`https://api.airtable.com/v0/${BASE}/${tableId}?filterByFormula=${encodeURIComponent(formula)}&fields%5B%5D=Name`;
+      const url=`https://api.airtable.com/v0/${BASE}/${tbl}?filterByFormula=${encodeURIComponent(f)}&fields%5B%5D=Name`;
       const r=await fetch(url,{headers:{Authorization:`Bearer ${AT}`}});
       const d=await r.json();
-      (d.records||[]).forEach(rec=>names[rec.id]=rec.fields.Name||rec.id);
-    }catch(e){console.warn('resolveIds error',e);}
+      (d.records||[]).forEach(rec=>map[rec.id]=rec.fields.Name||rec.id);
+    }catch(e){console.warn('resolveIds',e);}
   }
-  return names;
+  return map;
 }
 
+async function atPatch(tbl, id, fields){
+  const r=await fetch(`https://api.airtable.com/v0/${BASE}/${tbl}/${id}`,{
+    method:'PATCH',headers:{Authorization:`Bearer ${AT}`,'Content-Type':'application/json'},
+    body:JSON.stringify({fields})
+  });
+  return r.json();
+}
+
+async function atCreate(tbl, fields){
+  const r=await fetch(`https://api.airtable.com/v0/${BASE}/${tbl}`,{
+    method:'POST',headers:{Authorization:`Bearer ${AT}`,'Content-Type':'application/json'},
+    body:JSON.stringify({fields})
+  });
+  return r.json();
+}
+
+/* ═══ LOAD DATA ════════════════════════════════════════ */
 async function loadLines(){
   setStatus('load','Φόρτωση εντολών groupage...');
   try{
-    const noRecs=await atFetchFields(T_NO,
+    const noRecs=await atFetch(T_NO,
       ['Name','Client','Pickup Location','Delivery Location','Loading DateTime',
        'Delivery DateTime','Temperature °C','Goods','Status','Direction','Linked Order'],
-      {'filterByFormula':'{National Groupage}=1'}
+      {filterByFormula:'{National Groupage}=1'}
     );
 
     if(!noRecs.length){
@@ -364,24 +349,21 @@ async function loadLines(){
       applyFilter(); return;
     }
 
-    // Collect linked ORDER ids
+    // Fetch linked ORDERS for stop data
     const orderIds=new Set();
     noRecs.forEach(r=>(r.fields['Linked Order']||[]).forEach(id=>orderIds.add(id)));
-
-    // Fetch linked ORDERS → Loading Location 1-3 + Pallets 1-3
     let orderMap={};
     if(orderIds.size){
-      const idsArr=[...orderIds];
-      const formula=`OR(${idsArr.map(id=>`RECORD_ID()="${id}"`).join(',')})`;
-      const orderRecs=await atFetchFields(T_ORDERS,
+      const formula=`OR(${[...orderIds].map(id=>`RECORD_ID()="${id}"`).join(',')})`;
+      const recs=await atFetch(T_ORDERS,
         ['Loading Location 1','Loading Location 2','Loading Location 3',
          'Loading Pallets 1','Loading Pallets 2','Loading Pallets 3'],
-        {'filterByFormula':formula}
+        {filterByFormula:formula}
       );
-      orderRecs.forEach(r=>{ orderMap[r.id]=r.fields; });
+      recs.forEach(r=>{orderMap[r.id]=r.fields;});
     }
 
-    // Collect all location IDs
+    // Collect IDs for resolution
     const lIds=new Set(), cIds=new Set();
     noRecs.forEach(r=>{
       (r.fields.Client||[]).forEach(id=>cIds.add(id));
@@ -389,115 +371,110 @@ async function loadLines(){
       (r.fields['Pickup Location']||[]).forEach(id=>lIds.add(id));
     });
     Object.values(orderMap).forEach(f=>{
-      [1,2,3].forEach(i=>{ (f[`Loading Location ${i}`]||[]).forEach(id=>lIds.add(id)); });
+      [1,2,3].forEach(i=>(f[`Loading Location ${i}`]||[]).forEach(id=>lIds.add(id)));
     });
 
-    const [cN,lN]=await Promise.all([
-      resolveIds(T_CL,[...cIds]),
-      resolveIds(T_LO,[...lIds])
-    ]);
+    const [cN,lN]=await Promise.all([resolveIds(T_CL,[...cIds]),resolveIds(T_LO,[...lIds])]);
 
-    // Explode each NATIONAL ORDER into per-loading-stop lines
+    // Explode each NATIONAL ORDER → per-stop draggable lines
     lines=[];
     noRecs.forEach(no=>{
       const nf=no.fields;
       const delivery=(nf['Delivery Location']||[]).map(id=>lN[id]||id).join(', ')||'—';
-      const client=(nf.Client||[]).map(id=>cN[id]||id).join(', ')||'—';
-      const base={ noId:no.id, delivery, client,
-        loadDate:nf['Loading DateTime']||'', delDate:nf['Delivery DateTime']||'',
-        temp:nf['Temperature °C']!=null?nf['Temperature °C']:null,
-        goods:nf.Goods||'', dir:nf.Direction||'' };
-
+      const base={
+        noId:no.id, delivery,
+        client:(nf.Client||[]).map(id=>cN[id]||id).join(', ')||'—',
+        loadDate:nf['Loading DateTime']||'',
+        dir:nf.Direction||''
+      };
       const linkedId=(nf['Linked Order']||[])[0];
       const of=linkedId?orderMap[linkedId]:null;
-
       let added=0;
       if(of){
         [1,2,3].forEach(i=>{
           const locIds=of[`Loading Location ${i}`];
           const pal=of[`Loading Pallets ${i}`];
-          if(locIds&&locIds.length&&pal){
-            lines.push({...base, id:no.id+'_'+i, supplier:locIds.map(id=>lN[id]||id).join(', '), pal, locId:locIds[0]});
+          if(locIds?.length&&pal){
+            lines.push({...base,id:no.id+'_'+i,supplier:locIds.map(id=>lN[id]||id).join(', '),pal,locId:locIds[0]});
             added++;
           }
         });
       }
-      // Fallback if no linked order or no stops found
       if(!added){
         const pickup=(nf['Pickup Location']||[]).map(id=>lN[id]||id).join(', ')||'—';
-        lines.push({...base, id:no.id+'_1', supplier:pickup, pal:nf.Pallets||0, locId:(nf['Pickup Location']||[])[0]||null});
+        lines.push({...base,id:no.id+'_1',supplier:pickup,pal:nf.Pallets||0,locId:(nf['Pickup Location']||[])[0]||null});
       }
     });
 
-    // Build color map: noId -> color index
     orderColorMap={};
-    const uniqueNoIds=[...new Set(lines.map(l=>l.noId))];
-    uniqueNoIds.forEach((id,i)=>{ orderColorMap[id]=i%10; });
-
+    [...new Set(lines.map(l=>l.noId))].forEach((id,i)=>{orderColorMap[id]=i%10;});
     setStatus('ok',`${lines.length} γραμμές φόρτωσης από ${noRecs.length} εντολές`);
     applyFilter();
-  }catch(e){
-    setStatus('err','Σφάλμα: '+e.message);
-    console.error(e);
-  }
+  }catch(e){setStatus('err','Σφάλμα: '+e.message);console.error(e);}
 }
 
+/* ═══ FILTER ═══════════════════════════════════════════ */
 function inTruck(id){return trucks.some(t=>t.lines.some(l=>l.id===id));}
-
-function updateSummary(){
-  const free=filtered.filter(l=>!inTruck(l.id));
-  const totalFree=free.reduce((s,l)=>s+l.pal,0);
-  const totalAll=filtered.reduce((s,l)=>s+l.pal,0);
-  document.getElementById('pool-total-pal').textContent=totalFree;
-  document.getElementById('pool-assigned-info').textContent=`${free.length} αδέσμευτες από ${filtered.length}`;
-  document.getElementById('pcnt').textContent=filtered.length;
-  document.getElementById('scnt').textContent=`${free.length} αδέσμευτες · ${totalFree} PAL ελεύθερες`;
-}
 
 function applyFilter(){
   const from=document.getElementById('fFrom').value;
-  const to=document.getElementById('fTo').value;
-  const st=document.getElementById('fStatus').value;
-
+  const to  =document.getElementById('fTo').value;
+  const dir =document.getElementById('fDir').value;
   filtered=lines.filter(l=>{
-    if(st==='free'&&inTruck(l.id)) return false;
-    if(from&&l.loadDate&&l.loadDate.substring(0,10)<from) return false;
-    if(to&&l.loadDate&&l.loadDate.substring(0,10)>to) return false;
+    if(inTruck(l.id)) return false;
+    if(from&&l.loadDate&&l.loadDate.slice(0,10)<from) return false;
+    if(to  &&l.loadDate&&l.loadDate.slice(0,10)>to)   return false;
+    if(dir &&l.dir!==dir) return false;
     return true;
   });
-
+  const pal=filtered.reduce((s,l)=>s+l.pal,0);
+  document.getElementById('poolCount').innerHTML=pal+' <span>PAL · '+filtered.length+' γραμμές</span>';
   renderPool();
-  updateSummary();
+  renderTrucks();
 }
 
-function lineCardHTML(l, src){
-  const inT=inTruck(l.id);
-  const ds=l.loadDate?fmtDate(l.loadDate):null;
-  const isSplit=l.splitFrom!=null;
+function clearFilters(){
+  const d=new Date();
+  const f=new Date(d); f.setDate(f.getDate()-14);
+  const t=new Date(d); t.setDate(t.getDate()+14);
+  document.getElementById('fFrom').value=f.toISOString().split('T')[0];
+  document.getElementById('fTo').value=t.toISOString().split('T')[0];
+  document.getElementById('fDir').value='';
+  applyFilter();
+}
+
+/* ═══ CARD HTML ════════════════════════════════════════ */
+function fmtDate(iso){
+  if(!iso||iso==='—') return null;
+  const p=iso.slice(0,10).split('-');
+  return p[2]+'/'+p[1];
+}
+
+function cardHTML(l, src){
   const ci=orderColorMap[l.noId]??0;
-  const colors=['#2D7FF9','#E040FB','#FF6D00','#00BFA5','#F9A825','#E53935','#43A047','#00ACC1','#8D6E63','#546E7A'];
-  const col=colors[ci];
-  return `<div class="lcard${inT?' in-truck':''} oc-${ci}" data-id="${l.id}" data-src="${src}" draggable="true">
-    <div class="lcard-left">
-      <div class="lcard-supplier"><span class="oc-dot" style="background:${col}"></span>${l.supplier}${isSplit?` <span class="split-tag">τμήμα</span>`:''}</div>
-      <div class="lcard-meta">
-        <span class="lcard-arrow">→</span>
-        <span class="lcard-dest">${l.delivery}</span>
-      </div>
-      ${ds?`<span class="lcard-date">${ds}</span>`:''}
+  const ds=fmtDate(l.loadDate);
+  const isSplit=!!l.splitFrom;
+  const tags=[
+    l.dir?`<span class="bdg bg">${l.dir}</span>`:'',
+    isSplit?`<span class="bdg by">τμήμα</span>`:'',
+    ds?`<span class="bdg bg">${ds}</span>`:''
+  ].filter(Boolean).join('');
+  return `<div class="lcard${isSplit?' split-child':''}" data-id="${l.id}" data-src="${src}" draggable="true">
+    <div class="lcard-strip c${ci}"></div>
+    <div class="lcard-body">
+      <div class="lcard-sup">${l.supplier}</div>
+      <div class="lcard-dst">→ ${l.delivery}</div>
+      ${tags?`<div class="lcard-tags">${tags}</div>`:''}
     </div>
-    <div class="lcard-right" style="display:flex;align-items:center;gap:8px;">
-      <div style="text-align:right">
-        <div class="lcard-pal">${l.pal}</div>
-        <div class="lcard-pallabel">PAL</div>
-      </div>
-      <button class="split-btn" onclick="startSplit('${l.id}',${l.pal},event)" title="Διαχωρισμός">÷</button>
+    <div class="lcard-r">
+      <div><div class="lcard-pal">${l.pal}</div><div class="lcard-plbl">PAL</div></div>
+      <div class="lcard-spl"><button class="btn-ico" style="width:22px;height:22px;font-size:12px;" onclick="startSplit('${l.id}',${l.pal},event)" title="Διαχωρισμός">÷</button></div>
     </div>
   </div>`;
 }
 
-function bindCards(container, src){
-  container.querySelectorAll('.lcard').forEach(c=>{
+function bindCards(el, src){
+  el.querySelectorAll('.lcard').forEach(c=>{
     c.addEventListener('dragstart',e=>{
       dragId=c.dataset.id; dragFrom=c.dataset.src;
       c.classList.add('dragging'); e.dataTransfer.effectAllowed='move';
@@ -506,360 +483,217 @@ function bindCards(container, src){
   });
 }
 
-function fmtDate(iso){
-  // iso = "2026-03-09" → "09/03"
-  if(!iso||iso==='—') return '—';
-  const parts=iso.substring(0,10).split('-');
-  return parts[2]+'/'+parts[1];
-}
-
+/* ═══ RENDER POOL ══════════════════════════════════════ */
 function renderPool(){
-  const inner=document.getElementById('poolInner');
-
+  const el=document.getElementById('poolInner');
   if(!filtered.length){
-    inner.innerHTML='<div class="empty">Δεν βρέθηκαν εντολές groupage.<br>Ελέγξτε ότι έχει τσεκαριστεί<br><strong>National Groupage</strong> στις εντολές.</div>';
+    el.innerHTML='<div class="pool-empty">Δεν βρέθηκαν εντολές groupage.<br>Ελέγξτε ότι έχει τσεκαριστεί<br><strong>National Groupage</strong> στις εντολές.</div>';
     return;
   }
-
-  // Group by date, sorted
   const groups={};
-  filtered.forEach(l=>{
-    const d=l.loadDate?l.loadDate.substring(0,10):'—';
-    if(!groups[d]) groups[d]=[];
-    groups[d].push(l);
-  });
-  const dates=Object.keys(groups).sort();
-
-  // Render: continuous scroll with dividers between dates
+  filtered.forEach(l=>{const d=l.loadDate?l.loadDate.slice(0,10):'—';(groups[d]=groups[d]||[]).push(l);});
   let html='';
-  dates.forEach((d,idx)=>{
-    const label=fmtDate(d);
-    const cnt=groups[d].length;
-    const totalPal=groups[d].reduce((s,l)=>s+l.pal,0);
-    html+=`<div class="date-divider">
-      <span class="date-divider-label">${label}</span>
-      <div class="date-divider-line"></div>
-      <span class="date-divider-cnt">${cnt} γρ · ${totalPal} PAL</span>
-    </div>`;
-    html+=groups[d].map(l=>lineCardHTML(l,'pool')).join('');
+  Object.keys(groups).sort().forEach(d=>{
+    const g=groups[d], pal=g.reduce((s,l)=>s+l.pal,0), lbl=fmtDate(d)||d;
+    html+=`<div class="ddiv"><span class="ddiv-lbl">${lbl}</span><div class="ddiv-line"></div><span class="ddiv-cnt">${g.length} γρ · ${pal} PAL</span></div>`;
+    html+=g.map(l=>cardHTML(l,'pool')).join('');
   });
-
-  inner.innerHTML=html;
-  bindCards(inner,'pool');
+  el.innerHTML=html;
+  bindCards(el,'pool');
 }
 
-// Return to pool on drop
-['poolList','poolInner'].forEach(pid=>{
-  const el=document.getElementById(pid);
-  if(!el) return;
-  el.addEventListener('dragover',e=>e.preventDefault());
-  el.addEventListener('drop',e=>{
-    e.preventDefault();
-    if(dragFrom&&dragFrom!=='pool'){
-      const t=trucks.find(t=>t.id===dragFrom);
-      if(t){
-        t.lines=t.lines.filter(l=>l.id!==dragId);
-        toast('↩ Επιστράφηκε στη λίστα');
-        dragId=null; dragFrom=null;
-        renderTrucks(); applyFilter();
-      }
+function onPoolDrop(e){
+  e.preventDefault();
+  document.getElementById('poolInner').classList.remove('dactive');
+  if(dragFrom&&dragFrom!=='pool'){
+    const t=trucks.find(t=>t.id===dragFrom);
+    if(t){
+      t.lines=t.lines.filter(l=>l.id!==dragId);
+      toast('↩ Επιστράφηκε στη λίστα');
+      dragId=null; dragFrom=null;
+      renderTrucks(); applyFilter();
     }
-  });
-});
-
-// --- TRUCKS ---
-function addTruck(){
-  trucks.push({id:'t'+Date.now(), name:'ΦΟΡΤΗΓΟ '+tc++, lines:[]});
-  renderTrucks();
+  }
 }
+
+/* ═══ TRUCKS ═══════════════════════════════════════════ */
+function addTruck(){trucks.push({id:'t'+Date.now(),name:'ΦΟΡΤΗΓΟ '+tc++,lines:[]});renderTrucks();}
 
 function delTruck(id){
   const t=trucks.find(x=>x.id===id);
   if(t?.lines.length&&!confirm(`Το φορτηγό έχει ${t.lines.length} γραμμές. Σίγουρα;`)) return;
-  trucks=trucks.filter(x=>x.id!==id);
-  applyFilter(); renderTrucks();
+  trucks=trucks.filter(x=>x.id!==id); applyFilter();
 }
 
 function clearAll(){
   if(!trucks.length) return;
-  if(!confirm('Καθαρισμός όλων;')) return;
-  trucks=[]; tc=1; applyFilter(); renderTrucks();
+  if(!confirm('Καθαρισμός όλων των φορτηγών;')) return;
+  trucks=[]; tc=1; applyFilter();
 }
 
 function renameTruck(id,v){const t=trucks.find(x=>x.id===id);if(t)t.name=v;}
 
 function renderTrucks(){
   const area=document.getElementById('trucksArea');
-  const btn=area.querySelector('.add-truck-col');
+  const add=area.querySelector('.add-col');
   area.querySelectorAll('.tcol').forEach(el=>el.remove());
 
   trucks.forEach(truck=>{
     const total=truck.lines.reduce((s,l)=>s+l.pal,0);
     const pct=Math.min((total/33)*100,100);
-    const barC=pct<60?'var(--green)':pct<90?'var(--orange)':'var(--red)';
-
+    const bc=pct<60?'var(--success)':pct<90?'var(--warning)':'var(--danger)';
     const col=document.createElement('div');
     col.className='tcol';
     col.innerHTML=`
-      <div class="thead">
-        <div class="tnr">
-          <input class="tni" value="${truck.name}"
-            onchange="renameTruck('${truck.id}',this.value)"
-            onclick="this.select()"/>
-          <button class="btn-kill" onclick="delTruck('${truck.id}')">✕</button>
+      <div class="tcol-hd">
+        <div class="tcol-nrow">
+          <input class="tcol-name" value="${truck.name}"
+            onchange="renameTruck('${truck.id}',this.value)" onclick="this.select()">
+          <button class="btn-ico" style="width:24px;height:24px;font-size:11px;" onclick="delTruck('${truck.id}')">✕</button>
         </div>
-        <div class="tcap-row">
-          <div>
-            <div class="tpal-label">ΠΑΛΕΤΕΣ</div>
-            <div class="tpal-num" style="color:${barC}">${total}</div>
-          </div>
-          <div class="tpal-right">
-            <div class="tpal-meta">
-              <span>${truck.lines.length} γραμμές</span>
-              <span style="font-weight:800;color:${barC}">${total} / 33</span>
-            </div>
-            <div class="tbar-bg"><div class="tbar" style="width:${pct}%;background:${barC}"></div></div>
-          </div>
+        <div class="tcol-stats">
+          <div class="tcol-pal" style="color:${bc}">${total}</div>
+          <div class="tcol-of">/ 33 PAL</div>
+          <div class="tcol-bw"><div class="tcol-bar" style="width:${pct}%;background:${bc}"></div></div>
         </div>
       </div>
-      <div class="tscroll">
+      <div class="tcol-body">
         ${truck.lines.length===0
-          ?`<div class="dzone">Σύρτε γραμμές φόρτωσης εδώ</div>`
-          :truck.lines.map(l=>lineCardHTML(l,truck.id)).join('')}
+          ?'<div class="dzone">Σύρτε γραμμές φόρτωσης εδώ</div>'
+          :truck.lines.map(l=>cardHTML(l,truck.id)).join('')}
       </div>`;
+    area.insertBefore(col,add);
 
-    area.insertBefore(col,btn);
-
-    // Drag/drop on entire column — avoids dragleave firing on child cards
-    col.addEventListener('dragover',e=>{
-      e.preventDefault();
-      e.dataTransfer.dropEffect='move';
-      col.classList.add('drop-active');
-    });
-    col.addEventListener('dragleave',e=>{
-      // Only remove if leaving the column entirely (not entering a child)
-      if(!col.contains(e.relatedTarget)){
-        col.classList.remove('drop-active');
-      }
-    });
-    col.addEventListener('drop',e=>{
-      e.preventDefault();
-      col.classList.remove('drop-active');
-      handleDrop(truck.id);
-    });
-    const sc=col.querySelector('.tscroll');
-    bindCards(sc,truck.id);
+    col.addEventListener('dragover',e=>{e.preventDefault();e.dataTransfer.dropEffect='move';col.classList.add('dactive');});
+    col.addEventListener('dragleave',e=>{if(!col.contains(e.relatedTarget))col.classList.remove('dactive');});
+    col.addEventListener('drop',e=>{e.preventDefault();col.classList.remove('dactive');handleDrop(truck.id);});
+    bindCards(col.querySelector('.tcol-body'),truck.id);
   });
-
-  applyFilter();
 }
 
 function handleDrop(tid){
   if(!dragId) return;
   const line=lines.find(l=>l.id===dragId);
   if(!line) return;
-
-  // Remove from source truck
   if(dragFrom&&dragFrom!=='pool'){
     const src=trucks.find(t=>t.id===dragFrom);
     if(src) src.lines=src.lines.filter(l=>l.id!==dragId);
   }
-  // Add to target
   const tgt=trucks.find(t=>t.id===tid);
   if(tgt&&!tgt.lines.find(l=>l.id===dragId)){
     tgt.lines.push(line);
-    toast(`✓ ${line.supplier} ${line.pal} PAL → ${tgt.name}`);
+    toast(`✓ ${line.supplier} — ${line.pal} PAL → ${tgt.name}`);
   }
   dragId=null; dragFrom=null;
   renderTrucks(); applyFilter();
 }
 
-function setStatus(t,m){
-  document.getElementById('sdot').className='dot '+(t==='load'?'dot-load':t==='ok'?'dot-ok':'dot-err');
-  document.getElementById('stxt').textContent=m;
-}
-function toast(m){
-  const el=document.getElementById('toast');
-  el.textContent=m; el.classList.add('on');
-  setTimeout(()=>el.classList.remove('on'),2200);
-}
-
-// SPLIT
-let splitTarget=null;
-
+/* ═══ SPLIT ════════════════════════════════════════════ */
 function startSplit(lineId, maxPal, evt){
   evt.stopPropagation(); evt.preventDefault();
   const l=lines.find(x=>x.id===lineId);
   if(!l) return;
   splitTarget=l;
-
   document.getElementById('splitSupplier').textContent=l.supplier;
   document.getElementById('splitMax').textContent=maxPal+' PAL συνολικά';
   document.getElementById('splitA').value=Math.floor(maxPal/2);
   document.getElementById('splitB').value=maxPal-Math.floor(maxPal/2);
   updateSplitCalc();
   document.getElementById('splitOverlay').classList.add('show');
-  document.getElementById('splitA').focus();
-  document.getElementById('splitA').select();
+  document.getElementById('splitA').focus(); document.getElementById('splitA').select();
 }
-
-function updateSplitCalc(){
-  if(!splitTarget) return;
-  const a=parseInt(document.getElementById('splitA').value)||0;
-  const b=parseInt(document.getElementById('splitB').value)||0;
-  const total=splitTarget.pal;
-  const sum=a+b;
-  const el=document.getElementById('splitCalc');
-  el.textContent=`${a} + ${b} = ${sum}`;
-  el.className='split-total '+(sum===total?'ok':'err');
-  document.getElementById('splitConfirm').disabled=(sum!==total||a<=0||b<=0);
-}
-
 function syncSplitB(){
   if(!splitTarget) return;
   const a=parseInt(document.getElementById('splitA').value)||0;
   document.getElementById('splitB').value=Math.max(0,splitTarget.pal-a);
   updateSplitCalc();
 }
-
+function updateSplitCalc(){
+  if(!splitTarget) return;
+  const a=parseInt(document.getElementById('splitA').value)||0;
+  const b=parseInt(document.getElementById('splitB').value)||0;
+  const sum=a+b, el=document.getElementById('splitCalc');
+  el.textContent=`${a} + ${b} = ${sum}`;
+  el.className='stot '+(sum===splitTarget.pal?'ok':'err');
+  document.getElementById('splitConfirm').disabled=(sum!==splitTarget.pal||a<=0||b<=0);
+}
 function confirmSplit(){
   if(!splitTarget) return;
   const a=parseInt(document.getElementById('splitA').value)||0;
   const b=parseInt(document.getElementById('splitB').value)||0;
   if(a+b!==splitTarget.pal||a<=0||b<=0) return;
-
   const base={...splitTarget};
-  const idA=splitTarget.id+'_sa';
-  const idB=splitTarget.id+'_sb';
-
-  // Remove original from lines
+  const idA=splitTarget.id+'_sa', idB=splitTarget.id+'_sb';
   const idx=lines.findIndex(x=>x.id===splitTarget.id);
-  if(idx>-1) lines.splice(idx,1,...[
-    {...base, id:idA, pal:a, splitFrom:splitTarget.id},
-    {...base, id:idB, pal:b, splitFrom:splitTarget.id}
-  ]);
-
-  // Also remove from any truck that had the original
-  trucks.forEach(t=>{
-    const ti=t.lines.findIndex(x=>x.id===splitTarget.id);
-    if(ti>-1) t.lines.splice(ti,1);
-  });
-
-  closeSplit();
-  renderTrucks(); applyFilter();
+  if(idx>-1) lines.splice(idx,1,
+    {...base,id:idA,pal:a,splitFrom:splitTarget.id},
+    {...base,id:idB,pal:b,splitFrom:splitTarget.id}
+  );
+  trucks.forEach(t=>{const ti=t.lines.findIndex(x=>x.id===splitTarget.id);if(ti>-1)t.lines.splice(ti,1);});
   toast(`÷ ${splitTarget.supplier}: ${a} + ${b} PAL`);
-  splitTarget=null;
+  const st=splitTarget; splitTarget=null;
+  closeSplit(); renderTrucks(); applyFilter();
 }
+function closeSplit(){document.getElementById('splitOverlay').classList.remove('show');splitTarget=null;}
 
-function closeSplit(){
-  document.getElementById('splitOverlay').classList.remove('show');
-  splitTarget=null;
-}
-
-// ── SAVE PLAN ───────────────────────────────────────────────────────
-const AT_BASE2   = 'appElT5CQV6JQvym8';
-const AT_TOKEN2  = 'patpPJXnFYnxdgoK3.a2162b09fbb214628114ff2ce68bb5a7b30aea2061b14f9562a1ab222585cf08';
-const T_CL_LOADS = 'tbl5XSLQjOnG6yLCW';
-
-async function atPatch2(table, id, fields){
-  const r = await fetch(`https://api.airtable.com/v0/${AT_BASE2}/${table}/${id}`, {
-    method: 'PATCH',
-    headers: {'Authorization':'Bearer '+AT_TOKEN2, 'Content-Type':'application/json'},
-    body: JSON.stringify({fields})
-  });
-  return r.json();
-}
-
-async function atCreate2(table, fields){
-  const r = await fetch(`https://api.airtable.com/v0/${AT_BASE2}/${table}`, {
-    method: 'POST',
-    headers: {'Authorization':'Bearer '+AT_TOKEN2, 'Content-Type':'application/json'},
-    body: JSON.stringify({fields})
-  });
-  return r.json();
-}
-
+/* ═══ SAVE PLAN → CONSOLIDATED LOADS ══════════════════ */
 async function savePlan(){
-  const activeTrucks = trucks.filter(t => t.lines.length > 0);
-  if(!activeTrucks.length){ toast('Δεν υπάρχουν φορτηγά με γραμμές'); return; }
-
-  const dateVal = document.getElementById('fFrom')?.value || new Date().toISOString().split('T')[0];
-  if(!confirm('Αποθήκευση ' + activeTrucks.length + ' φορτίου/ων στο CONSOLIDATED LOADS;\n\nΤα αντίστοιχα NATIONAL ORDERS θα πάρουν Status Assigned.')) return;
-
+  const active=trucks.filter(t=>t.lines.length>0);
+  if(!active.length){toast('Δεν υπάρχουν φορτηγά με γραμμές');return;}
+  const dateVal=document.getElementById('fFrom')?.value||new Date().toISOString().split('T')[0];
+  if(!confirm(`Αποθήκευση ${active.length} φορτίου/ων στο CONSOLIDATED LOADS;\n\nΤα αντίστοιχα NATIONAL ORDERS → Status: Assigned.`)) return;
   setStatus('load','Αποθήκευση πλάνου...');
   let saved=0, errors=0;
-
-  for(const truck of activeTrucks){
+  for(const truck of active){
     try{
-      const fields = {
-        'Name':          truck.name + ' — ' + dateVal,
-        'Status':        'Pending',
-        'Total Pallets': truck.lines.reduce((s,l)=>s+l.pal,0)
+      const fields={
+        'Name':truck.name+' — '+dateVal,
+        'Status':'Pending',
+        'Total Pallets':truck.lines.reduce((s,l)=>s+l.pal,0)
       };
-      if(dateVal) fields['Date'] = dateVal;
-      const dirLine = truck.lines.find(l=>l.dir);
-      if(dirLine) fields['Direction'] = dirLine.dir;
-
-      const srcIds = [...new Set(truck.lines.map(l=>l.noId).filter(Boolean))];
-      if(srcIds.length) fields['Source Orders'] = srcIds.map(id=>({id}));
-
+      if(dateVal) fields['Date']=dateVal;
+      const dirLine=truck.lines.find(l=>l.dir);
+      if(dirLine) fields['Direction']=dirLine.dir;
+      const srcIds=[...new Set(truck.lines.map(l=>l.noId).filter(Boolean))];
+      if(srcIds.length) fields['Source Orders']=srcIds.map(id=>({id}));
       truck.lines.slice(0,10).forEach((l,i)=>{
         const n=i+1;
-        if(l.locId) fields['Loading Location '+n] = [{id:l.locId}];
-        fields['Pallets '+n] = l.pal;
+        if(l.locId) fields[`Loading Location ${n}`]=[{id:l.locId}];
+        fields[`Pallets ${n}`]=l.pal;
       });
-
-      const res = await atCreate2(T_CL_LOADS, fields);
+      const res=await atCreate(T_LOADS,fields);
       if(res.id){
         saved++;
-        toast('OK: ' + truck.name + ' ' + fields['Total Pallets'] + ' PAL');
-        for(const noId of srcIds){
-          await atPatch2(T_NO, noId, {'Status':'Assigned'});
-        }
+        toast(`✓ ${truck.name} — ${fields['Total Pallets']} PAL αποθηκεύτηκε`);
+        for(const noId of srcIds) await atPatch(T_NO,noId,{Status:'Assigned'});
       } else {
-        console.error('Save error:', JSON.stringify(res));
-        errors++;
-        toast('Σφάλμα: ' + truck.name + ' — ' + (res.error?.message||'?'));
+        console.error('Save error:',res); errors++;
+        toast(`❌ Σφάλμα: ${truck.name} — ${res.error?.message||'?'}`);
       }
-    } catch(e){ console.error(e); errors++; }
+    }catch(e){console.error(e);errors++;}
   }
-
-  if(errors===0){
-    setStatus('ok', saved + ' φορτία αποθηκεύτηκαν στο CONSOLIDATED LOADS');
-    setTimeout(()=>loadLines(), 1500);
+  if(!errors){
+    setStatus('ok',`✅ ${saved} φορτί${saved===1?'ο':'α'} αποθηκεύτηκ${saved===1?'ε':'αν'} στο CONSOLIDATED LOADS`);
+    setTimeout(()=>loadLines(),1500);
   } else {
-    setStatus('err', saved + ' OK, ' + errors + ' σφάλματα — δες console');
+    setStatus('err',`${saved} OK, ${errors} σφάλματα — δες console`);
   }
 }
 
-// INIT
+/* ═══ UTILS ════════════════════════════════════════════ */
+function setStatus(type,msg){
+  document.getElementById('sdot').className='sdot '+(type==='load'?'load':type==='ok'?'ok':'err');
+  document.getElementById('stxt').textContent=msg;
+}
+function toast(msg){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.classList.add('on');
+  setTimeout(()=>el.classList.remove('on'),2400);
+}
+
+/* ═══ INIT ═════════════════════════════════════════════ */
 loadLines();
 addTruck(); addTruck(); addTruck();
 </script>
-<!-- SPLIT MODAL -->
-<div class="split-overlay" id="splitOverlay" onclick="if(event.target===this)closeSplit()">
-  <div class="split-modal">
-    <div class="split-title">Διαχωρισμός Παλετών</div>
-    <div class="split-sub" id="splitSupplier"></div>
-    <div style="font-size:11px;color:var(--muted);margin-bottom:12px;" id="splitMax"></div>
-    <div class="split-row">
-      <div>
-        <div style="font-size:9px;font-weight:700;color:var(--muted);letter-spacing:1.5px;margin-bottom:4px;">ΦΟΡΤΗΓΟ Α</div>
-        <input class="split-input" id="splitA" type="number" min="1" oninput="syncSplitB()">
-      </div>
-      <div class="split-eq">+</div>
-      <div>
-        <div style="font-size:9px;font-weight:700;color:var(--muted);letter-spacing:1.5px;margin-bottom:4px;">ΦΟΡΤΗΓΟ Β</div>
-        <input class="split-input" id="splitB" type="number" min="1" oninput="updateSplitCalc()">
-      </div>
-      <div class="split-eq">=</div>
-      <div class="split-total" id="splitCalc">0</div>
-    </div>
-    <div class="split-actions">
-      <button class="btn btn-primary" id="splitConfirm" onclick="confirmSplit()" style="flex:1">✓ Διαχωρισμός</button>
-      <button class="btn btn-outline" onclick="closeSplit()">Άκυρο</button>
-    </div>
-  </div>
-</div>
 </body>
 </html>
