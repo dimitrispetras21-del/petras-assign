@@ -434,7 +434,7 @@ function renderTrucks(){
   trucks.forEach(truck=>{
     const total=truck.lines.reduce((s,l)=>s+l.pal,0);
     const pct=Math.min((total/33)*100,100);
-    const bc=pct<60?'var(--success)':pct<90?'var(--warning)':'var(--danger)';
+    const bc=total<=33?'var(--success)':'var(--danger)';
     const col=document.createElement('div');
     col.className='tcol'; col.dataset.truckId=truck.id;
     col.innerHTML=`
