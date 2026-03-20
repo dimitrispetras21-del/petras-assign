@@ -103,7 +103,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);dis
 .trucks{flex:1;display:flex;align-items:flex-start;gap:10px;padding:12px;overflow-x:auto;overflow-y:hidden;background:var(--bg);}
 
 /* TRUCK COLUMN */
-.tcol{width:236px;flex-shrink:0;background:var(--bg-card);border:2px solid transparent;border-radius:10px;display:flex;flex-direction:column;height:calc(100vh - 52px - 46px - 28px - 24px);transition:border-color .15s;}
+.tcol{width:236px;flex-shrink:0;background:var(--bg-card);border:2px solid transparent;border-radius:10px;display:flex;flex-direction:column;height:calc(100vh - 52px - 46px - 28px - 24px);transition:border-color .15s;overflow:visible;}
 .tcol.drag-over{border-color:var(--accent);background:rgba(11,25,41,.02);}
 .tcol-hd{padding:12px 12px 8px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--navy-mid);border-radius:8px 8px 0 0;}
 .tcol-nrow{display:flex;align-items:center;gap:6px;margin-bottom:8px;}
@@ -456,7 +456,24 @@ function renderTrucks(){
       </div>
       ${truck.lines.length>0?`<div class="tcol-foot"><span>${truck.lines.length} γραμμές</span><strong>${total} PAL</strong></div>`:''}`;
     area.insertBefore(col,add);
-    // Bind dragstart on truck cards (for re-ordering / returning)
+
+    // Attach drag listeners directly on tcol-body — most reliable
+    const body=col.querySelector('.tcol-body');
+    body.addEventListener('dragover',e=>{
+      e.preventDefault();e.stopPropagation();
+      e.dataTransfer.dropEffect='move';
+      col.classList.add('drag-over');
+    });
+    body.addEventListener('dragleave',e=>{
+      if(!col.contains(e.relatedTarget))col.classList.remove('drag-over');
+    });
+    body.addEventListener('drop',e=>{
+      e.preventDefault();e.stopPropagation();
+      col.classList.remove('drag-over');
+      handleDrop(truck.id);
+    });
+
+    // Bind dragstart on truck cards
     col.querySelectorAll('.lcard').forEach(card=>{
       card.addEventListener('dragstart',e=>{
         dragId=card.dataset.id; dragFrom=truck.id;
@@ -469,48 +486,17 @@ function renderTrucks(){
   });
 }
 
-/* DRAG — ALL on trucksArea using event delegation */
-(function setupDrag(){
-  const area=document.getElementById('trucksArea');
-
-  // dragover: must call preventDefault to allow drop
-  area.addEventListener('dragover',function(e){
-    e.preventDefault();
-    e.dataTransfer.dropEffect='move';
-    const col=e.target.closest('.tcol');
-    area.querySelectorAll('.tcol').forEach(c=>c.classList.remove('drag-over'));
-    if(col)col.classList.add('drag-over');
-  });
-
-  area.addEventListener('dragleave',function(e){
-    // Only clear if leaving trucksArea entirely
-    if(!area.contains(e.relatedTarget)){
-      area.querySelectorAll('.tcol').forEach(c=>c.classList.remove('drag-over'));
-    }
-  });
-
-  area.addEventListener('drop',function(e){
-    e.preventDefault();
-    const col=e.target.closest('.tcol');
-    area.querySelectorAll('.tcol').forEach(c=>c.classList.remove('drag-over'));
-    if(col&&col.dataset.truckId&&dragId){
-      handleDrop(col.dataset.truckId);
-    }
-  });
-
-  // Pool: return cards on drop
+/* DRAG — pool drop */
+(function(){
   const pool=document.getElementById('poolBody');
-  pool.addEventListener('dragover',e=>e.preventDefault());
-  pool.addEventListener('dragleave',e=>{if(!pool.contains(e.relatedTarget))pool.classList.remove('drag-over');});
   pool.addEventListener('dragover',e=>{e.preventDefault();pool.classList.add('drag-over');});
+  pool.addEventListener('dragleave',e=>{if(!pool.contains(e.relatedTarget))pool.classList.remove('drag-over');});
   pool.addEventListener('drop',e=>{
-    e.preventDefault();
-    pool.classList.remove('drag-over');
+    e.preventDefault();pool.classList.remove('drag-over');
     if(dragFrom&&dragFrom!=='pool'){
       const t=trucks.find(t=>t.id===dragFrom);
       if(t){t.lines=t.lines.filter(l=>l.id!==dragId);toast('↩ Επιστράφηκε');}
-      dragId=null;dragFrom=null;
-      renderTrucks();renderPool();
+      dragId=null;dragFrom=null;renderTrucks();renderPool();
     }
   });
 })();
