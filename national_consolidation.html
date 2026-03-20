@@ -147,6 +147,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);dis
   display:flex;flex-direction:column;
   height:calc(100vh - 52px - 46px - 28px - 24px);
   overflow:hidden;transition:border-color .15s,box-shadow .15s;
+  position:relative;
 }
 .tcol.dactive{border-color:rgba(147,197,253,.5);box-shadow:0 0 0 3px rgba(30,58,138,.08);}
 
@@ -172,6 +173,18 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);dis
 
 .tcol-body{flex:1;overflow-y:auto;padding:8px;background:var(--bg);scrollbar-width:thin;scrollbar-color:#D1D5DB transparent;min-height:80px;}
 .dzone{height:60px;border:1.5px dashed var(--border-dark);border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--text-dim);font-size:11px;transition:border-color .15s,background .15s;pointer-events:none;}
+
+/* Drag overlay: covers entire tcol during drag so nothing blocks drop */
+.drag-overlay{
+  display:none;position:absolute;inset:0;z-index:50;
+  background:transparent;border-radius:10px;
+}
+body.is-dragging .drag-overlay{display:block;}
+body.is-dragging .drag-overlay.hover{
+  background:rgba(30,58,138,0.06);
+  outline:2px solid rgba(147,197,253,0.5);
+  outline-offset:-2px;
+}
 
 /* While dragging — ALL tcol children become transparent to pointer events */
 /* Only the .tcol itself catches dragover/drop */
@@ -614,6 +627,7 @@ function renderTrucks(){
     const col=document.createElement('div');
     col.className='tcol';
     col.innerHTML=`
+      <div class="drag-overlay" data-truck-id="${truck.id}"></div>
       <div class="tcol-hd">
         <div class="tcol-nrow">
           <input class="tcol-name" value="${truck.name}"
@@ -634,22 +648,7 @@ function renderTrucks(){
       ${truck.lines.length>0?`<div class="tcol-total"><span>${truck.lines.length} γραμμές</span><strong>${total} PAL</strong></div>`:''}`;
     area.insertBefore(col,add);
 
-    // Direct listeners on col — most reliable approach
-    const tid = truck.id;
-    col.addEventListener('dragover', e => {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = 'move';
-      col.classList.add('dactive');
-    });
-    col.addEventListener('dragleave', e => {
-      if (!col.contains(e.relatedTarget)) col.classList.remove('dactive');
-    });
-    col.addEventListener('drop', e => {
-      e.preventDefault();
-      col.classList.remove('dactive');
-      handleDrop(tid);
-    });
-    bindCards(col.querySelector('.tcol-body'), tid);
+    bindCards(col.querySelector('.tcol-body'), truck.id);
   });
 }
 
@@ -773,6 +772,35 @@ function toast(msg){
   el.textContent=msg; el.classList.add('on');
   setTimeout(()=>el.classList.remove('on'),2400);
 }
+
+/* ═══ DRAG VIA OVERLAYS ════════════════════════════════ */
+(function(){
+  const area = document.getElementById('trucksArea');
+
+  // Event delegation on overlays
+  area.addEventListener('dragover', e => {
+    const ov = e.target.closest('.drag-overlay');
+    if(!ov) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    // Highlight only this overlay
+    area.querySelectorAll('.drag-overlay').forEach(o => o.classList.remove('hover'));
+    ov.classList.add('hover');
+  });
+
+  area.addEventListener('dragleave', e => {
+    const ov = e.target.closest('.drag-overlay');
+    if(ov && !ov.contains(e.relatedTarget)) ov.classList.remove('hover');
+  });
+
+  area.addEventListener('drop', e => {
+    const ov = e.target.closest('.drag-overlay');
+    if(!ov) return;
+    e.preventDefault();
+    area.querySelectorAll('.drag-overlay').forEach(o => o.classList.remove('hover'));
+    handleDrop(ov.dataset.truckId);
+  });
+})();
 
 /* ═══ INIT ═════════════════════════════════════════════ */
 loadLines();
