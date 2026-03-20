@@ -122,17 +122,17 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);dis
 .c3{background:#EF4444;}.c4{background:#8B5CF6;}.c5{background:#EC4899;}
 .c6{background:#14B8A6;}.c7{background:#F97316;}.c8{background:#6366F1;}.c9{background:#84CC16;}
 
-.lcard-body{flex:1;min-width:0;}
+.lcard-body{flex:1;min-width:0;pointer-events:none;}
 .lcard-sup{font-size:11px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:1px;letter-spacing:.2px;}
 .lcard-dst{font-size:10px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px;}
 .lcard-tags{display:flex;gap:3px;flex-wrap:wrap;}
 .bdg{display:inline-flex;align-items:center;padding:1px 5px;border-radius:3px;font-size:9px;font-weight:600;letter-spacing:.3px;text-transform:uppercase;}
 .bg{background:rgba(156,163,175,.12);color:#6B7280;}
 .by{background:var(--warning-bg);color:var(--warning);}
-.lcard-r{flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;}
+.lcard-r{flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;pointer-events:none;}
 .lcard-pal{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:var(--text);letter-spacing:-1px;line-height:1;text-align:right;}
 .lcard-plbl{font-size:7px;font-weight:700;letter-spacing:1.5px;color:var(--text-dim);text-transform:uppercase;text-align:right;}
-.lcard-spl{opacity:0;transition:opacity .12s;}
+.lcard-spl{opacity:0;transition:opacity .12s;pointer-events:all;}
 .lcard:hover .lcard-spl{opacity:1;}
 .pool-empty{padding:32px 16px;text-align:center;font-size:12px;color:var(--text-dim);line-height:1.7;}
 .pool-empty strong{color:var(--text-mid);}
@@ -170,7 +170,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);dis
 .tcol-bw{flex:1;height:3px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden;}
 .tcol-bar{height:100%;border-radius:2px;transition:width .3s,background .3s;}
 
-.tcol-body{flex:1;overflow-y:auto;padding:8px;background:var(--bg);scrollbar-width:thin;scrollbar-color:#D1D5DB transparent;}
+.tcol-body{flex:1;overflow-y:auto;padding:8px;background:var(--bg);scrollbar-width:thin;scrollbar-color:#D1D5DB transparent;min-height:80px;}
 .dzone{height:60px;border:1.5px dashed var(--border-dark);border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--text-dim);font-size:11px;transition:border-color .15s,background .15s;pointer-events:none;}
 .tcol.dactive .dzone{border-color:rgba(147,197,253,.4);background:rgba(30,58,138,.04);color:var(--text-mid);}
 
@@ -624,8 +624,22 @@ function renderTrucks(){
       ${truck.lines.length>0?`<div class="tcol-total"><span>${truck.lines.length} γραμμές</span><strong>${total} PAL</strong></div>`:''}`;
     area.insertBefore(col,add);
 
-    col.dataset.truckId = truck.id;
-    bindCards(col.querySelector('.tcol-body'),truck.id);
+    // Direct listeners on col — most reliable approach
+    const tid = truck.id;
+    col.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      col.classList.add('dactive');
+    });
+    col.addEventListener('dragleave', e => {
+      if (!col.contains(e.relatedTarget)) col.classList.remove('dactive');
+    });
+    col.addEventListener('drop', e => {
+      e.preventDefault();
+      col.classList.remove('dactive');
+      handleDrop(tid);
+    });
+    bindCards(col.querySelector('.tcol-body'), tid);
   });
 }
 
@@ -748,36 +762,6 @@ function toast(msg){
   el.textContent=msg; el.classList.add('on');
   setTimeout(()=>el.classList.remove('on'),2400);
 }
-
-/* ═══ DELEGATED DRAG ON TRUCKS AREA ══════════════════ */
-(function(){
-  const area = document.getElementById('trucksArea');
-
-  area.addEventListener('dragover', e => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    // Find which tcol we're over
-    const col = e.target.closest('.tcol');
-    // Remove active from all others
-    area.querySelectorAll('.tcol').forEach(c => c.classList.remove('dactive'));
-    if (col) col.classList.add('dactive');
-  });
-
-  area.addEventListener('dragleave', e => {
-    if (!area.contains(e.relatedTarget)) {
-      area.querySelectorAll('.tcol').forEach(c => c.classList.remove('dactive'));
-    }
-  });
-
-  area.addEventListener('drop', e => {
-    e.preventDefault();
-    const col = e.target.closest('.tcol');
-    area.querySelectorAll('.tcol').forEach(c => c.classList.remove('dactive'));
-    if (col && col.dataset.truckId) {
-      handleDrop(col.dataset.truckId);
-    }
-  });
-})();
 
 /* ═══ INIT ═════════════════════════════════════════════ */
 loadLines();
