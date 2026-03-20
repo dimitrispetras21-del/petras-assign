@@ -758,29 +758,33 @@ function toast(msg){
   setTimeout(()=>el.classList.remove('on'),2400);
 }
 
-/* ═══ DOCUMENT-LEVEL DRAG SYSTEM ══════════════════════ */
-// dragover fires on document → find which .tcol the cursor is over
-// This bypasses ALL child element blocking issues
-document.addEventListener('dragover', function(e){
+/* ═══ DRAG SYSTEM: dragenter tracking ══════════════════ */
+let hoveredTruckId = null;
+
+// Use dragenter on trucksArea to track which truck we're over
+// dragenter fires on the EXACT element under cursor — reliable
+document.getElementById('trucksArea').addEventListener('dragenter', function(e){
+  const tcol = e.target.closest('.tcol');
+  document.querySelectorAll('.tcol').forEach(t => t.classList.remove('dactive'));
+  if(tcol && tcol.dataset.truckId){
+    tcol.classList.add('dactive');
+    hoveredTruckId = tcol.dataset.truckId;
+  } else {
+    hoveredTruckId = null;
+  }
+}, true); // capture phase — fires before any child handlers
+
+document.getElementById('trucksArea').addEventListener('dragover', function(e){
   e.preventDefault();
   e.dataTransfer.dropEffect = 'move';
-
-  // Find the tcol under cursor
-  const els = document.elementsFromPoint(e.clientX, e.clientY);
-  const tcol = els.find(el => el.classList && el.classList.contains('tcol'));
-
-  // Update highlight
-  document.querySelectorAll('.tcol').forEach(t => t.classList.remove('dactive'));
-  if(tcol) tcol.classList.add('dactive');
 });
 
-document.addEventListener('drop', function(e){
+document.getElementById('trucksArea').addEventListener('drop', function(e){
   e.preventDefault();
-  const els = document.elementsFromPoint(e.clientX, e.clientY);
-  const tcol = els.find(el => el.classList && el.classList.contains('tcol'));
   document.querySelectorAll('.tcol').forEach(t => t.classList.remove('dactive'));
-  if(tcol && tcol.dataset.truckId) {
-    handleDrop(tcol.dataset.truckId);
+  if(hoveredTruckId){
+    handleDrop(hoveredTruckId);
+    hoveredTruckId = null;
   }
 });
 
