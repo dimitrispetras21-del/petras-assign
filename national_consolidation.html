@@ -624,8 +624,10 @@ function closeSplit(){document.getElementById('splitOverlay').classList.remove('
 
 /* SAVE PER TRUCK */
 async function saveTruck(truckId){
+  console.log('saveTruck called', truckId);
   const truck=trucks.find(t=>t.id===truckId);
   if(!truck||!truck.lines.length){toast('Το φορτηγό είναι άδειο');return;}
+  console.log('truck lines:', truck.lines.map(l=>({noId:l.noId, locId:l.locId, pal:l.pal})));
 
   const dateVal=document.getElementById('fFrom')?.value||new Date().toISOString().split('T')[0];
   setStatus('load',`Αποθήκευση ${truck.name}...`);
