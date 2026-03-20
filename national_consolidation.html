@@ -60,21 +60,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);dis
 .pool-stat{font-family:'Syne',sans-serif;font-size:26px;font-weight:800;color:#E2E8F0;letter-spacing:-1.5px;line-height:1;}
 .pool-stat span{font-family:'DM Sans',sans-serif;font-size:11px;font-weight:400;color:var(--silver-dim);letter-spacing:0;}
 .pool-body{flex:1;overflow-y:auto;padding:8px;background:var(--bg);}
-.saved-hd{background:var(--navy-mid);flex-shrink:0;}
-.saved-list{overflow-y:auto;max-height:220px;background:var(--navy-mid);padding:0 8px 8px;flex-shrink:0;}
-.saved-item{
-  display:flex;align-items:center;justify-content:space-between;
-  padding:8px 10px;margin-bottom:4px;
-  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);
-  border-radius:6px;cursor:pointer;transition:background .12s;
-  gap:8px;
-}
-.saved-item:hover{background:rgba(255,255,255,.1);}
-.saved-item-name{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;color:var(--silver-light);letter-spacing:.5px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.saved-item-pal{font-family:'Syne',sans-serif;font-size:13px;font-weight:800;color:var(--success);letter-spacing:-1px;flex-shrink:0;}
-.saved-item-del{width:18px;height:18px;display:flex;align-items:center;justify-content:center;border-radius:3px;color:rgba(196,207,219,.3);font-size:11px;cursor:pointer;flex-shrink:0;transition:color .12s;}
-.saved-item-del:hover{color:#FCA5A5;}
-.saved-item.over-limit .saved-item-pal{color:var(--danger);}
+
 .pool-body.drag-over{background:var(--success-bg);}
 
 /* DATE DIVIDER */
@@ -137,6 +123,15 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);dis
 .dzone{flex:1;min-height:80px;border:1.5px dashed var(--border-dark);border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--text-dim);font-size:11px;pointer-events:none;}
 .tcol-foot{padding:6px 10px;border-top:1px solid var(--border);background:var(--bg-card);flex-shrink:0;display:flex;justify-content:space-between;font-size:11px;color:var(--text-dim);border-radius:0 0 8px 8px;}
 .tcol-foot strong{font-family:'Syne',sans-serif;font-size:12px;font-weight:800;color:var(--text);}
+
+/* SAVED (LOCKED) TRUCK COLUMN */
+.tcol.saved{opacity:.75;border:2px solid rgba(5,150,105,.3);}
+.tcol.saved .tcol-hd{background:#065F46;}
+.tcol.saved .tcol-name{color:#A7F3D0;letter-spacing:.5px;}
+.tcol.saved .tcol-body{pointer-events:none;}
+.tcol-restore{width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:4px;background:rgba(52,211,153,.15);border:1px solid rgba(52,211,153,.3);color:#34D399;cursor:pointer;font-size:12px;transition:all .12s;}
+.tcol-restore:hover{background:rgba(52,211,153,.25);}
+.tcol-saved-badge{font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#34D399;padding:2px 6px;background:rgba(52,211,153,.15);border-radius:3px;flex-shrink:0;}
 
 /* ADD TRUCK */
 .add-col{width:90px;flex-shrink:0;align-self:stretch;border:1.5px dashed var(--border-dark);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;cursor:pointer;color:var(--text-dim);font-size:11.5px;transition:all .15s;text-align:center;}
@@ -214,10 +209,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);dis
       <div class="pool-stat" id="poolCount">— <span>PAL</span></div>
     </div>
     <div class="pool-body" id="poolBody"></div>
-    <div class="saved-hd" id="savedHd" style="display:none">
-      <div class="pool-ttl" style="color:rgba(196,207,219,.5);padding:10px 16px 4px;">Αποθηκευμένα φορτία</div>
-    </div>
-    <div class="saved-list" id="savedList"></div>
+
   </div>
   <div class="trucks" id="trucksArea">
     <div class="add-col" onclick="addTruck()">
@@ -492,6 +484,11 @@ function renderTrucks(){
   });
 }
 
+function renderAll(){
+  renderTrucks();
+  renderSavedList();
+}
+
 /* DRAG SYSTEM — coordinate-based, immune to DOM hierarchy */
 (function(){
   // Track which truck column the cursor is over using coordinates
@@ -647,7 +644,8 @@ async function saveTruck(truckId){
     if(srcIds.length)fields['Source Orders']=srcIds.map(id=>({id}));
     truck.lines.slice(0,10).forEach((l,i)=>{
       const n=i+1;
-      if(l.locId)fields[`Loading Location ${n}`]=[{id:l.locId}];
+      const lid=typeof l.locId==='string'?l.locId:(l.locId?.id||null);
+      if(lid) fields[`Loading Location ${n}`]=[{id:lid}];
       fields[`Pallets ${n}`]=l.pal;
     });
 
@@ -671,8 +669,7 @@ async function saveTruck(truckId){
 
     setStatus('ok',`✅ ${truck.name} αποθηκεύτηκε`);
     toast(`✅ ${truck.name} — ${total} PAL αποθηκεύτηκε`);
-    renderSavedList();
-    renderTrucks();
+    renderAll();
     renderPool();
   }catch(e){
     setStatus('err','Σφάλμα: '+e.message);
@@ -682,16 +679,48 @@ async function saveTruck(truckId){
 }
 
 function renderSavedList(){
-  const list=document.getElementById('savedList');
-  const hd=document.getElementById('savedHd');
-  if(!savedPlans.length){list.innerHTML='';hd.style.display='none';return;}
-  hd.style.display='block';
-  list.innerHTML=savedPlans.map((p,i)=>`
-    <div class="saved-item${p.total>33?' over-limit':''}" onclick="restorePlan(${i})">
-      <div class="saved-item-name">${p.name}</div>
-      <div class="saved-item-pal">${p.total} PAL</div>
-      <div class="saved-item-del" onclick="event.stopPropagation();deleteSaved(${i})" title="Διαγραφή">✕</div>
-    </div>`).join('');
+  // Now renders as locked columns in trucksArea
+  const area=document.getElementById('trucksArea');
+  area.querySelectorAll('.tcol.saved').forEach(el=>el.remove());
+  const add=area.querySelector('.add-col');
+
+  savedPlans.forEach((p,i)=>{
+    const col=document.createElement('div');
+    col.className='tcol saved';
+    const bc=p.total<=33?'var(--success)':'var(--danger)';
+    col.innerHTML=`
+      <div class="tcol-hd">
+        <div class="tcol-nrow">
+          <span class="tcol-name">${p.name}</span>
+          <span class="tcol-saved-badge">✓ SAVED</span>
+          <button class="tcol-restore" onclick="restorePlan(${i})" title="Επαναφορά για επεξεργασία">↩</button>
+          <button class="tcol-del" onclick="deleteSaved(${i})">✕</button>
+        </div>
+        <div class="tcol-stats">
+          <div class="tcol-pal" style="color:${bc}">${p.total}</div>
+          <div class="tcol-of">/ 33 PAL</div>
+          <div class="tcol-bw"><div class="tcol-bar" style="width:${Math.min(p.total/33*100,100)}%;background:${bc}"></div></div>
+        </div>
+      </div>
+      <div class="tcol-body">
+        ${p.lines.map(l=>{
+          const ci=colorMap[l.noId]??0;
+          const isSplit=!!l.splitFrom;
+          return `<div class="lcard in-truck${isSplit?' split-child':''}">
+            <div class="lcard-strip c${ci}"></div>
+            <div class="lcard-body">
+              <div class="lcard-sup">${l.supplier}</div>
+              <div class="lcard-dst">→ ${l.delivery}</div>
+            </div>
+            <div class="lcard-r">
+              <div><div class="lcard-pal">${l.pal}</div><div class="lcard-plbl">PAL</div></div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+      <div class="tcol-foot"><span>${p.lines.length} γραμμές</span><strong>${p.total} PAL</strong></div>`;
+    area.insertBefore(col, add);
+  });
 }
 
 function restorePlan(i){
@@ -702,8 +731,7 @@ function restorePlan(i){
   const newId='t'+tc;
   trucks.push({id:newId,name:p.name,lines:[...p.lines]});tc++;
   savedPlans.splice(i,1);
-  renderSavedList();
-  renderTrucks();
+  renderAll();
   renderPool();
   toast(`↩ ${p.name} επαναφέρθηκε`);
 }
@@ -713,7 +741,7 @@ function deleteSaved(i){
   if(!confirm(`Διαγραφή "${p.name}" από τη λίστα;
 (Το Airtable record παραμένει)`))return;
   savedPlans.splice(i,1);
-  renderSavedList();
+  renderAll();
   toast(`🗑 ${p.name} αφαιρέθηκε από τη λίστα`);
 }
 
