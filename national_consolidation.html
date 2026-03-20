@@ -498,7 +498,7 @@ function renderTrucks(){
         </div>
         <div class="tcol-date-row">
           <input type="date" class="tcol-date" value="${truck.date||''}"
-            onchange="setTruckDate('${truck.id}',this.value)">
+            oninput="setTruckDate('${truck.id}',this.value)" onchange="setTruckDate('${truck.id}',this.value)">
         </div>
         <div class="tcol-stats">
           <div class="tcol-pal" style="color:${bc}">${total}</div>
