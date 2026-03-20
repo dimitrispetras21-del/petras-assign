@@ -353,7 +353,7 @@ async function loadLines(){
       ['Name','Client','Pickup Location 1','Pickup Location 2','Pickup Location 3',
        'Delivery Location 1','Loading DateTime','Delivery DateTime',
        'Temperature °C','Goods','Status','Direction','Linked Order'],
-      {filterByFormula:'{National Groupage}=1'}
+      {filterByFormula:"AND({National Groupage}=1,{Status}!='Groupage Assigned')"}
     );
     if(!noRecs.length){lines=[];setStatus('ok','0 εντολές');renderPool();return;}
 
