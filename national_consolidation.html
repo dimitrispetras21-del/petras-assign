@@ -457,22 +457,6 @@ function renderTrucks(){
       ${truck.lines.length>0?`<div class="tcol-foot"><span>${truck.lines.length} γραμμές</span><strong>${total} PAL</strong></div>`:''}`;
     area.insertBefore(col,add);
 
-    // Attach drag listeners directly on tcol-body — most reliable
-    const body=col.querySelector('.tcol-body');
-    body.addEventListener('dragover',e=>{
-      e.preventDefault();
-      e.dataTransfer.dropEffect='move';
-      col.classList.add('drag-over');
-    });
-    body.addEventListener('dragleave',e=>{
-      if(!col.contains(e.relatedTarget))col.classList.remove('drag-over');
-    });
-    body.addEventListener('drop',e=>{
-      e.preventDefault();
-      col.classList.remove('drag-over');
-      handleDrop(truck.id);
-    });
-
     // Bind dragstart on truck cards
     col.querySelectorAll('.lcard').forEach(card=>{
       card.addEventListener('dragstart',e=>{
@@ -486,19 +470,80 @@ function renderTrucks(){
   });
 }
 
-/* DRAG — pool drop */
+/* DRAG SYSTEM — coordinate-based, immune to DOM hierarchy */
 (function(){
-  const pool=document.getElementById('poolBody');
-  pool.addEventListener('dragover',e=>{e.preventDefault();pool.classList.add('drag-over');});
-  pool.addEventListener('dragleave',e=>{if(!pool.contains(e.relatedTarget))pool.classList.remove('drag-over');});
-  pool.addEventListener('drop',e=>{
-    e.preventDefault();pool.classList.remove('drag-over');
-    if(dragFrom&&dragFrom!=='pool'){
-      const t=trucks.find(t=>t.id===dragFrom);
-      if(t){t.lines=t.lines.filter(l=>l.id!==dragId);toast('↩ Επιστράφηκε');}
-      dragId=null;dragFrom=null;renderTrucks();renderPool();
+  // Track which truck column the cursor is over using coordinates
+  let overTruckId = null;
+
+  function getTcolAtPoint(x, y){
+    const cols = document.querySelectorAll('.tcol');
+    for(const col of cols){
+      const r = col.getBoundingClientRect();
+      if(x >= r.left && x <= r.right && y >= r.top && y <= r.bottom)
+        return col;
+    }
+    return null;
+  }
+
+  // DEBUG: log all tcol positions on dragstart
+  document.addEventListener('dragstart', function(){
+    const cols = document.querySelectorAll('.tcol');
+    console.log('=== TCOL POSITIONS ===');
+    cols.forEach((col,i)=>{
+      const r = col.getBoundingClientRect();
+      console.log(`Truck ${i+1} (${col.dataset.truckId}): left=${Math.round(r.left)} right=${Math.round(r.right)} top=${Math.round(r.top)} bottom=${Math.round(r.bottom)}`);
+    });
+  });
+
+  // Single document-level dragover
+  document.addEventListener('dragover', function(e){
+    if(!dragId) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+
+    const col = getTcolAtPoint(e.clientX, e.clientY);
+    document.querySelectorAll('.tcol').forEach(c => c.classList.remove('drag-over'));
+    if(col){
+      col.classList.add('drag-over');
+      overTruckId = col.dataset.truckId || null;
+    } else {
+      overTruckId = null;
     }
   });
+
+  // Single document-level drop
+  document.addEventListener('drop', function(e){
+    if(!dragId) return;
+    e.preventDefault();
+
+    console.log('DROP at', Math.round(e.clientX), Math.round(e.clientY));
+    const col = getTcolAtPoint(e.clientX, e.clientY);
+    console.log('Col found:', col ? col.dataset.truckId : 'NONE');
+    document.querySelectorAll('.tcol').forEach(c => c.classList.remove('drag-over'));
+
+    if(col && col.dataset.truckId){
+      handleDrop(col.dataset.truckId);
+      return;
+    }
+
+    // Check if dropped on pool
+    const pool = document.getElementById('poolBody');
+    const pr = pool.getBoundingClientRect();
+    if(e.clientX >= pr.left && e.clientX <= pr.right && e.clientY >= pr.top && e.clientY <= pr.bottom){
+      if(dragFrom && dragFrom !== 'pool'){
+        const t = trucks.find(t => t.id === dragFrom);
+        if(t){ t.lines = t.lines.filter(l => l.id !== dragId); toast('↩ Επιστράφηκε'); }
+        dragId = null; dragFrom = null;
+        renderTrucks(); renderPool();
+      }
+    }
+  });
+
+  // Highlight pool on dragover
+  const pool = document.getElementById('poolBody');
+  pool.addEventListener('dragover', e => { e.preventDefault(); pool.classList.add('drag-over'); });
+  pool.addEventListener('dragleave', e => { if(!pool.contains(e.relatedTarget)) pool.classList.remove('drag-over'); });
+  pool.addEventListener('drop', e => { pool.classList.remove('drag-over'); });
 })();
 
 function handleDrop(tid){
