@@ -459,7 +459,7 @@ async function loadLines(){
     if(orderIds.size){
       const formula=`OR(${[...orderIds].map(id=>`RECORD_ID()="${id}"`).join(',')})`;
       const recs=await atFetch(T_ORDERS,
-        ['Loading Location 1','Loading Location 2','Loading Location 3',
+        ['Order Number','Loading Location 1','Loading Location 2','Loading Location 3',
          'Loading Pallets 1','Loading Pallets 2','Loading Pallets 3'],
         {filterByFormula:formula}
       );
@@ -482,16 +482,19 @@ async function loadLines(){
     noRecs.forEach(no=>{
       const nf=no.fields;
       const delivery=(nf['Delivery Location 1']||[]).map(id=>lN[id]||id).join(', ')||'—';
-      const base={noId:no.id,delivery,loadDate:nf['Loading DateTime']||'',dir:nf.Direction||'',ref:nf['Groupage ID']||'',notes:nf['Notes']||''};
+      const base={noId:no.id,delivery,loadDate:nf['Loading DateTime']||'',dir:nf.Direction||'',ref:'',notes:nf['Notes']||''};
       const linkedId=(nf['Linked Order']||[])[0];
       const of=linkedId?orderMap[linkedId]:null;
       let added=0;
       if(of){
+        // Extract ref code: last 4 chars of Order Number after final '-'
+        const orderNum=of['Order Number']||'';
+        const refCode=orderNum.includes('-')?'-'+orderNum.split('-').pop().trim():'';
         [1,2,3].forEach(i=>{
           const locIds=of[`Loading Location ${i}`];
           const pal=of[`Loading Pallets ${i}`];
           if(locIds?.length&&pal){
-            lines.push({...base,id:no.id+'_'+i,supplier:locIds.map(id=>lN[id]||id).join(', '),pal,locId:locIds[0]});
+            lines.push({...base,id:no.id+'_'+i,supplier:locIds.map(id=>lN[id]||id).join(', '),pal,locId:locIds[0],ref:refCode});
             added++;
           }
         });
