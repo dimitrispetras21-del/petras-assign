@@ -394,14 +394,14 @@ const T_GL='tblxUAaIsUMEDl3qQ';
 
 /* STATE */
 let lines=[], trucks=[], tc=1, savedPlans=[];
-let colorMap={};
+let colorMap={};  // persistent — never reset, hash-based
 let dragId=null, dragFrom=null, splitTarget=null;
 
 /* DATE DEFAULTS */
 (function(){
   const d=new Date();
-  const f=new Date(d); f.setDate(f.getDate()-14);
-  const t=new Date(d); t.setDate(t.getDate()+14);
+  const f=new Date(d); f.setDate(f.getDate()-30);  // 30 days back
+  const t=new Date(d); t.setDate(t.getDate()+60);  // 60 days forward
   document.getElementById('fFrom').value=f.toISOString().split('T')[0];
   document.getElementById('fTo').value=t.toISOString().split('T')[0];
 })();
