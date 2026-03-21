@@ -500,8 +500,14 @@ async function loadLines(){
       });
     });
 
-    colorMap={};
-    [...new Set(lines.map(l=>l.noId))].forEach((id,i)=>{colorMap[id]=i%10;});
+    // Stable color from noId hash — never changes across refreshes
+    lines.forEach(l=>{
+      if(l.noId && !(l.noId in colorMap)){
+        // Hash last 4 chars of recId to 0-9
+        const h=l.noId.slice(-4).split('').reduce((a,c)=>a+c.charCodeAt(0),0);
+        colorMap[l.noId]=h%10;
+      }
+    });
     setStatus('ok',`${lines.length} γραμμές από ${glRecs.length} records`);
     renderPool();
   }catch(e){setStatus('err','Σφάλμα: '+e.message);console.error(e);}
@@ -974,9 +980,12 @@ async function restorePlan(i){
     if(!lines.find(x=>x.id===l.id)) lines.push(l);
   });
 
-  // Ensure colorMap has all noIds
+  // Stable color on restore
   p.lines.forEach(l=>{
-    if(l.noId && !(l.noId in colorMap)) colorMap[l.noId]=Object.keys(colorMap).length%10;
+    if(l.noId && !(l.noId in colorMap)){
+      const h=l.noId.slice(-4).split('').reduce((a,c)=>a+c.charCodeAt(0),0);
+      colorMap[l.noId]=h%10;
+    }
   });
   // Restore truck for re-editing
   const newId='t'+tc;
@@ -1171,19 +1180,23 @@ async function loadSavedPlans(){
           delivery:'',dir:f.Direction||'',loadDate:f.Date||'',ref
         });
       }
+      // Strip date suffix from name (format: "ΦΟΡΤΗΓΟ X — YYYY-MM-DD")
+      const rawName=f.Name||'—';
+      const cleanName=rawName.includes(' — ')?rawName.split(' — ')[0]:rawName;
       return {
         atId:r.id,
-        name:f.Name||'—',
+        name:cleanName,
         date:f.Date||'',
         total:f['Total Pallets']||lines.reduce((s,l)=>s+l.pal,0),
         lines
       };
     });
 
-    // Ensure colorMap includes all noIds from saved plans
+    // Stable color for saved plan noIds
     savedPlans.forEach(p=>p.lines.forEach(l=>{
       if(l.noId && !(l.noId in colorMap)){
-        colorMap[l.noId]=Object.keys(colorMap).length%10;
+        const h=l.noId.slice(-4).split('').reduce((a,c)=>a+c.charCodeAt(0),0);
+        colorMap[l.noId]=h%10;
       }
     }));
     renderSavedList();
