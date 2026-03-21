@@ -342,7 +342,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);dis
   </div>
 
   <!-- SAVED PANEL -->
-  <div class="saved-panel" id="savedPanel" style="display:none">
+  <div class="saved-panel" id="savedPanel">
     <div class="saved-panel-hd">
       <div class="saved-panel-ttl">Αποθηκευμένα φορτία</div>
       <div class="saved-panel-summary">
@@ -926,12 +926,12 @@ function renderSavedList(){
   const body  = document.getElementById('savedPanelBody');
   const count = document.getElementById('savedCount');
 
-  if(!savedPlans.length){
-    panel.style.display='none';
-    return;
-  }
   panel.style.display='flex';
   count.textContent=savedPlans.length;
+  if(!savedPlans.length){
+    body.innerHTML='<div style="padding:20px 12px;text-align:center;color:rgba(196,207,219,.3);font-size:11px;line-height:1.8;">Δεν υπάρχουν<br>αποθηκευμένα φορτία</div>';
+    return;
+  }
 
   body.innerHTML=savedPlans.map((p,i)=>{
     const bc=p.total<=33?'#34D399':'#F87171';
