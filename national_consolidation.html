@@ -860,9 +860,22 @@ async function saveTruck(truckId){
     if(srcIds.length) fields['Source Orders']=srcIds;
 
     // GL record ids — for marking Assigned
-    const glIds=truck.lines
-      .map(l=>String(l.glId||l.id||''))
-      .filter(id=>/^rec[a-zA-Z0-9]{14}$/.test(id));
+    // Handle split lines: id may be 'recXXX_sa' or 'recXXX_sb' → real GL id is splitFrom
+    const glIds=[];
+    const splitUpdates=[];  // {glId, newPal} for split originals
+    for(const l of truck.lines){
+      const rawId=String(l.glId||l.id||'');
+      if(l.splitFrom){
+        // This is a split line — real GL id is splitFrom
+        const origId=String(l.splitFrom||'');
+        if(/^rec[a-zA-Z0-9]{14}$/.test(origId)){
+          glIds.push(origId);
+          splitUpdates.push({glId:origId, newPal:l.pal, splitLine:l});
+        }
+      } else if(/^rec[a-zA-Z0-9]{14}$/.test(rawId)){
+        glIds.push(rawId);
+      }
+    }
 
     // STEP 3: Loading Locations
     truck.lines.slice(0,10).forEach((l,i)=>{
@@ -883,6 +896,52 @@ async function saveTruck(truckId){
           body:JSON.stringify({records:batch.map(id=>({id,fields:{Status:'Assigned'}}))})
         });
       }catch(e){console.warn('GL patch',e);}
+    }
+
+    // Handle split lines: update original GL pallet count + create remainder GL record
+    for(const su of splitUpdates){
+      try{
+        // Update original GL with saved pallet count
+        await fetch(`https://api.airtable.com/v0/${BASE}/${T_GL}/${su.glId}`,{
+          method:'PATCH',
+          headers:{Authorization:`Bearer ${AT}`,'Content-Type':'application/json'},
+          body:JSON.stringify({fields:{Pallets:su.newPal}})
+        });
+
+        // Check if the other split half is still in the pool (not saved)
+        const otherHalves=lines.filter(l=>l.splitFrom===su.glId && l.id!==su.splitLine.id);
+        if(otherHalves.length>0){
+          // Create new GL record for the remainder
+          const oh=otherHalves[0];
+          const origRec=await fetch(`https://api.airtable.com/v0/${BASE}/${T_GL}/${su.glId}`,{
+            headers:{Authorization:`Bearer ${AT}`}
+          }).then(r=>r.json());
+          const origFields=origRec.fields||{};
+          const newGlFields={
+            'Name':    origFields.Name||'',
+            'Reference': origFields.Reference||'',
+            'Pallets': oh.pal,
+            'Direction': origFields.Direction||'',
+            'Status':  'Unassigned',
+            'Goods':   origFields.Goods||'',
+            'Loading Date':   origFields['Loading Date']||null,
+            'Delivery Date':  origFields['Delivery Date']||null,
+            'Linked National Order': origFields['Linked National Order']||[],
+          };
+          if(origFields['Loading Location']?.length)  newGlFields['Loading Location']  = origFields['Loading Location'];
+          if(origFields['Delivery Location']?.length) newGlFields['Delivery Location'] = origFields['Delivery Location'];
+          const createRes=await fetch(`https://api.airtable.com/v0/${BASE}/${T_GL}`,{
+            method:'POST',
+            headers:{Authorization:`Bearer ${AT}`,'Content-Type':'application/json'},
+            body:JSON.stringify({fields:newGlFields})
+          }).then(r=>r.json());
+          if(createRes.id){
+            // Update the pool line to use the new GL id
+            const poolLine=lines.find(l=>l.id===oh.id);
+            if(poolLine){ poolLine.id=createRes.id; poolLine.glId=createRes.id; poolLine.splitFrom=null; }
+          }
+        }
+      }catch(e){ console.warn('Split GL update',e); }
     }
 
     // Mark NATIONAL ORDERS: Groupage Assigned only if ALL their GL lines are now Assigned
