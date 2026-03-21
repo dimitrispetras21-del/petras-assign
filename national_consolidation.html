@@ -508,6 +508,37 @@ async function loadLines(){
 
     colorMap={};
     [...new Set(lines.map(l=>l.noId))].forEach((id,i)=>{colorMap[id]=i%10;});
+
+    // Remove lines already in CONSOLIDATED LOADS (partial or full assignments)
+    try{
+      const from=document.getElementById('fFrom').value;
+      const to=document.getElementById('fTo').value;
+      let clFormula=`{Status}='Pending'`;
+      if(from) clFormula=`AND(${clFormula},{Date}>='${from}')`;
+      if(to)   clFormula=`AND(${clFormula},{Date}<='${to}')`;
+      const clRecs=await atFetch(T_LOADS,['Source Orders'],{filterByFormula:clFormula});
+      const savedNoIds=new Set(clRecs.flatMap(r=>(r.fields['Source Orders']||[])));
+      if(savedNoIds.size){
+        // For NOs with partial saves: keep in pool BUT remove lines matching saved locIds
+        // Fetch which loading locations are saved per NO
+        const savedLocMap={};
+        for(const cl of clRecs){
+          const noId=(cl.fields['Source Orders']||[])[0];
+          if(!noId) continue;
+          savedLocMap[noId]=savedLocMap[noId]||new Set();
+          for(let i=1;i<=10;i++){
+            const locArr=cl.fields[`Loading Location ${i}`];
+            if(locArr?.length) savedLocMap[noId].add(locArr[0]);
+          }
+        }
+        // Remove pool lines whose locId is already saved
+        lines=lines.filter(l=>{
+          if(!l.noId||!savedLocMap[l.noId]) return true;
+          return !savedLocMap[l.noId].has(l.locId);
+        });
+      }
+    }catch(e){ console.warn('CL filter',e); }
+
     setStatus('ok',`${lines.length} γραμμές από ${noRecs.length} εντολές`);
     renderPool();
   }catch(e){setStatus('err','Σφάλμα: '+e.message);console.error(e);}
@@ -845,8 +876,24 @@ async function saveTruck(truckId){
     const res=await atCreate(T_LOADS, fields);
     if(!res.id) throw new Error(res.error?.message||JSON.stringify(res).slice(0,300));
 
-    // Mark NATIONAL ORDERS as Assigned
-    for(const id of srcIds) await atPatch(T_NO, id, {Status:'Groupage Assigned'});
+    // Mark NATIONAL ORDERS as Groupage Assigned ONLY if ALL their pallets are now saved
+    for(const id of srcIds){
+      // Get total pallets of this NO
+      try{
+        const noRec=await fetch(`https://api.airtable.com/v0/${BASE}/${T_NO}/${id}?fields%5B%5D=Pallets`,
+          {headers:{Authorization:`Bearer ${AT}`}});
+        const noData=await noRec.json();
+        const totalPal=noData.fields?.Pallets||0;
+        // Sum pallets already saved for this NO across all CONSOLIDATED LOADS
+        const clRecs=await atFetch(T_LOADS,['Total Pallets','Source Orders'],
+          {filterByFormula:`FIND("${id}",ARRAYJOIN({Source Orders},","))>0`});
+        const savedPal=clRecs.reduce((s,r)=>s+(r.fields['Total Pallets']||0),0);
+        if(savedPal>=totalPal && totalPal>0){
+          await atPatch(T_NO, id, {Status:'Groupage Assigned'});
+        }
+        // else: partial assignment — leave Status as Pending so remaining lines show in pool
+      }catch(e){ console.warn('Status check failed',e); }
+    }
 
     // Add to local savedPlans list
     savedPlans.push({
