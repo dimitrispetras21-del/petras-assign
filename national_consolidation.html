@@ -1028,15 +1028,34 @@ function renderSavedList(){
 
 async function _undoPlan(p){
   setStatus('load','Αναίρεση...');
+
   // 1. Delete CONSOLIDATED LOADS record
   if(p.atId){
     try{ await atDelete(T_LOADS, p.atId); }
     catch(e){ console.warn('CL delete',e); }
   }
-  // 2. Revert GL lines → Unassigned
-  const glIds=p.lines.map(l=>String(l.glId||l.id||'')).filter(id=>id.startsWith('rec'));
-  for(let i=0;i<glIds.length;i+=10){
-    const batch=glIds.slice(i,i+10);
+
+  // 2. Find split GL records: lines that share same original GL (splitFrom)
+  //    Group by original GL id to merge them back
+  const splitGroups={};  // origGlId → [lines]
+  const normalGlIds=[];
+  for(const l of p.lines){
+    const rawId=String(l.glId||l.id||'');
+    if(l.splitFrom){
+      const orig=String(l.splitFrom);
+      (splitGroups[orig]=splitGroups[orig]||[]).push(l);
+    } else if(/^rec[a-zA-Z0-9]{14}$/.test(rawId)){
+      normalGlIds.push(rawId);
+    }
+  }
+
+  // 3. Revert normal GL lines → Unassigned
+  const allGlIds=[...normalGlIds];
+  Object.keys(splitGroups).forEach(id=>allGlIds.push(id));
+  const validGlIds=allGlIds.filter(id=>/^rec[a-zA-Z0-9]{14}$/.test(id));
+
+  for(let i=0;i<validGlIds.length;i+=10){
+    const batch=validGlIds.slice(i,i+10);
     try{
       await fetch(`https://api.airtable.com/v0/${BASE}/${T_GL}`,{
         method:'PATCH',
@@ -1045,7 +1064,54 @@ async function _undoPlan(p){
       });
     }catch(e){console.warn('GL revert',e);}
   }
-  // 3. Revert NATIONAL ORDERS → Pending
+
+  // 4. Merge split GL records back to original totals
+  for(const [origGlId, splitLines] of Object.entries(splitGroups)){
+    try{
+      // Sum all pallets (saved part + any remainder GL records)
+      const totalPal=splitLines.reduce((s,l)=>s+l.pal,0);
+
+      // Find remainder GL records (created at save time, not original)
+      // These are GL records linked to same NO + same Loading Location but different id
+      const origLine=splitLines[0];
+      const remainderGls=await atFetch(T_GL,
+        ['Status','Pallets','Linked National Order','Loading Location'],
+        `AND(FIND("${origLine.noId}",ARRAYJOIN({Linked National Order},","))>0,{Status}='Unassigned')`
+      );
+      // Delete remainder GL records that are NOT the original
+      let mergedPal=totalPal;
+      for(const rg of remainderGls){
+        const rgId=rg.id;
+        if(rgId!==origGlId && /^rec[a-zA-Z0-9]{14}$/.test(rgId)){
+          mergedPal+=rg.fields.Pallets||0;
+          try{ await atDelete(T_GL,rgId); }
+          catch(e){ console.warn('Delete remainder GL',e); }
+        }
+      }
+
+      // Restore original GL to merged total
+      await fetch(`https://api.airtable.com/v0/${BASE}/${T_GL}/${origGlId}`,{
+        method:'PATCH',
+        headers:{Authorization:`Bearer ${AT}`,'Content-Type':'application/json'},
+        body:JSON.stringify({fields:{Pallets:mergedPal,Status:'Unassigned'}})
+      });
+
+      // Update pool line to merged state
+      const poolLine=lines.find(l=>l.splitFrom===origGlId||l.id===origGlId);
+      if(poolLine){
+        poolLine.pal=mergedPal;
+        poolLine.splitFrom=null;
+        poolLine.id=origGlId;
+        poolLine.glId=origGlId;
+      } else {
+        // Re-add to lines if not present
+        const baseLine=splitLines[0];
+        lines.push({...baseLine,id:origGlId,glId:origGlId,pal:mergedPal,splitFrom:null});
+      }
+    }catch(e){ console.warn('Merge split',e); }
+  }
+
+  // 5. Revert NATIONAL ORDERS → Pending
   const srcIds=[...new Set(p.lines.map(l=>String(l.noId||'')).filter(id=>id.startsWith('rec')))];
   for(const id of srcIds){
     try{ await atPatch(T_NO, id, {Status:'Pending'}); }
