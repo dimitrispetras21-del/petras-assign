@@ -858,7 +858,7 @@ async function saveTruck(truckId){
 
     // Direction from lines
     const dirLine=truck.lines.find(l=>l.dir);
-    const dirVal=dirLine?.dir||'South→North';
+    const dirVal='ΑΝΟΔΟΣ';
 
     const fields={
       'Name':             truck.name+' — '+dateVal,
