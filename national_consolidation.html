@@ -390,6 +390,7 @@ const T_CL='tblFWKAQVUzAM8mCE';
 const T_LO='tblxu8DRfTQOFRCzS';
 const T_ORDERS='tblgHlNmLBH3JTdIM';
 const T_LOADS='tbl5XSLQjOnG6yLCW';
+const T_GL='tblxUAaIsUMEDl3qQ';
 
 /* STATE */
 let lines=[], trucks=[], tc=1, savedPlans=[];
@@ -445,97 +446,63 @@ async function atCreate(tbl,fields){
 async function loadLines(){
   setStatus('load','Φόρτωση...');
   try{
-    const noRecs=await atFetch(T_NO,
-      ['Name','Client','Pickup Location 1','Pickup Location 2','Pickup Location 3',
-       'Delivery Location 1','Loading DateTime','Delivery DateTime',
-       'Temperature °C','Goods','Status','Direction','Linked Order','Groupage ID','Notes','Reference'],
-      {filterByFormula:"AND({National Groupage}=1,{Status}!='Groupage Assigned')"}
-    );
-    if(!noRecs.length){lines=[];setStatus('ok','0 εντολές');renderPool();return;}
+    const from=document.getElementById('fFrom').value;
+    const to=document.getElementById('fTo').value;
+    const dir=document.getElementById('fDir').value;
 
-    const orderIds=new Set();
-    noRecs.forEach(r=>(r.fields['Linked Order']||[]).forEach(id=>orderIds.add(id)));
-    let orderMap={};
-    if(orderIds.size){
-      const formula=`OR(${[...orderIds].map(id=>`RECORD_ID()="${id}"`).join(',')})`;
-      const recs=await atFetch(T_ORDERS,
-        ['Order Number','Reference','Loading Location 1','Loading Location 2','Loading Location 3',
-         'Loading Pallets 1','Loading Pallets 2','Loading Pallets 3'],
-        {filterByFormula:formula}
-      );
-      recs.forEach(r=>{orderMap[r.id]=r.fields;});
+    // Build filter
+    let parts=["AND({Status}='Unassigned',{National Groupage NO}=1)"];
+    // Note: we filter by Loading Date range
+    let formula=`AND({Status}='Unassigned')`;
+    if(from||to||dir){
+      const parts2=[];
+      if(from) parts2.push(`{Loading Date}>='${from}'`);
+      if(to)   parts2.push(`{Loading Date}<='${to}'`);
+      if(dir)  parts2.push(`{Direction}='${dir}'`);
+      formula=`AND({Status}='Unassigned'${parts2.length?','+parts2.join(','):''})`;
     }
 
-    const lIds=new Set(),cIds=new Set();
-    noRecs.forEach(r=>{
-      (r.fields.Client||[]).forEach(id=>cIds.add(id));
-      (r.fields['Delivery Location 1']||[]).forEach(id=>lIds.add(id));
-      ['Pickup Location 1','Pickup Location 2','Pickup Location 3'].forEach(f=>(r.fields[f]||[]).forEach(id=>lIds.add(id)));
-    });
-    Object.values(orderMap).forEach(f=>{
-      [1,2,3].forEach(i=>(f[`Loading Location ${i}`]||[]).forEach(id=>lIds.add(id)));
-    });
+    const glRecs=await atFetch(T_GL,
+      ['Name','Reference','Pallets','Loading Date','Delivery Date',
+       'Direction','Status','Goods','Loading Location','Delivery Location',
+       'Linked National Order','Temperature C'],
+      {filterByFormula:formula}
+    );
 
-    const[cN,lN]=await Promise.all([resolveIds(T_CL,[...cIds]),resolveIds(T_LO,[...lIds])]);
+    // Resolve location names
+    const locIds=new Set();
+    glRecs.forEach(r=>{
+      (r.fields['Loading Location']||[]).forEach(id=>locIds.add(id));
+      (r.fields['Delivery Location']||[]).forEach(id=>locIds.add(id));
+    });
+    const lN=locIds.size?await resolveIds(T_LO,[...locIds]):{};
 
     lines=[];
-    noRecs.forEach(no=>{
-      const nf=no.fields;
-      const delivery=(nf['Delivery Location 1']||[]).map(id=>lN[id]||id).join(', ')||'—';
-      const base={noId:no.id,delivery,loadDate:nf['Loading DateTime']||'',dir:nf.Direction||'',ref:nf['Reference']?'('+nf['Reference']+')':'',notes:nf['Notes']||''};
-      const linkedId=(nf['Linked Order']||[])[0];
-      const of=linkedId?orderMap[linkedId]:null;
-      let added=0;
-      if(of){
-        // Extract ref code: last 4 chars of Order Number after final '-'
-        const refCode=of['Reference']?'('+of['Reference']+')':'';
-        [1,2,3].forEach(i=>{
-          const locIds=of[`Loading Location ${i}`];
-          const pal=of[`Loading Pallets ${i}`];
-          if(locIds?.length&&pal){
-            const lid=no.id+'_'+i;
-            if(!lines.find(l=>l.id===lid))
-              lines.push({...base,id:lid,supplier:locIds.map(id=>lN[id]||id).join(', '),pal,locId:locIds[0],ref:refCode});
-            added++;
-          }
-        });
-      }
-      if(!added){
-        const pu=(nf['Pickup Location 1']||[]).map(id=>lN[id]||id).join(', ')||'—';
-        lines.push({...base,id:no.id+'_1',supplier:pu,pal:nf.Pallets||0,locId:(nf['Pickup Location 1']||[])[0]||null});
-      }
+    glRecs.forEach(r=>{
+      const f=r.fields;
+      const noId=(f['Linked National Order']||[])[0]||null;
+      const locId=(f['Loading Location']||[])[0]||null;
+      const supplier=locId?(lN[locId]||locId):'—';
+      const delivery=(f['Delivery Location']||[]).map(id=>lN[id]||id).join(', ')||'—';
+      const ref=f['Reference']?`(${f['Reference']})`:'';
+      lines.push({
+        id:r.id,          // GL record ID is the line ID
+        glId:r.id,        // keep explicit too
+        noId,
+        supplier,
+        delivery,
+        locId,
+        pal:f['Pallets']||0,
+        loadDate:f['Loading Date']||'',
+        dir:f['Direction']||'',
+        ref,
+        goods:f['Goods']||'',
+      });
     });
 
     colorMap={};
     [...new Set(lines.map(l=>l.noId))].forEach((id,i)=>{colorMap[id]=i%10;});
-
-    // Remove lines already in CONSOLIDATED LOADS (partial or full assignments)
-    try{
-      const from=document.getElementById('fFrom').value;
-      const to=document.getElementById('fTo').value;
-      let clFormula=`{Status}='Pending'`;
-      if(from) clFormula=`AND(${clFormula},{Date}>='${from}')`;
-      if(to)   clFormula=`AND(${clFormula},{Date}<='${to}')`;
-      const clFields=['Source Orders'];
-      for(let i=1;i<=10;i++) clFields.push(`Loading Location ${i}`);
-      const clRecs=await atFetch(T_LOADS,clFields,{filterByFormula:clFormula});
-      if(clRecs.length){
-        // Build set of all saved locIds across all CL records
-        const savedLocIds=new Set();
-        for(const cl of clRecs){
-          for(let i=1;i<=10;i++){
-            const locArr=cl.fields[`Loading Location ${i}`];
-            if(locArr?.length) savedLocIds.add(locArr[0]);
-          }
-        }
-        // Remove pool lines whose locId is already in a CL
-        if(savedLocIds.size){
-          lines=lines.filter(l=>!l.locId||!savedLocIds.has(l.locId));
-        }
-      }
-    }catch(e){ console.warn('CL filter',e); }
-
-    setStatus('ok',`${lines.length} γραμμές από ${noRecs.length} εντολές`);
+    setStatus('ok',`${lines.length} γραμμές από ${glRecs.length} records`);
     renderPool();
   }catch(e){setStatus('err','Σφάλμα: '+e.message);console.error(e);}
 }
@@ -853,55 +820,45 @@ async function saveTruck(truckId){
       if(l.pal>0) fields[`Pallets ${i+1}`]=Number(l.pal);
     });
 
-    // STEP 2: Source Orders — validate each ID strictly
-    const srcIds=[];
-    for(const l of truck.lines){
-      const raw=l.noId;
-      const id=typeof raw==='string'?raw:null;
-      if(id && /^rec[a-zA-Z0-9]{14}$/.test(id) && !srcIds.includes(id)) srcIds.push(id);
-    }
+    // STEP 2: Source Orders (NO ids) — unique
+    const srcIds=[...new Set(truck.lines
+      .map(l=>String(l.noId||''))
+      .filter(id=>/^rec[a-zA-Z0-9]{14}$/.test(id)))];
     if(srcIds.length) fields['Source Orders']=srcIds;
 
-    // STEP 3: Loading Locations — validate each ID strictly
+    // GL record ids — for marking Assigned
+    const glIds=truck.lines
+      .map(l=>String(l.glId||l.id||''))
+      .filter(id=>/^rec[a-zA-Z0-9]{14}$/.test(id));
+
+    // STEP 3: Loading Locations
     truck.lines.slice(0,10).forEach((l,i)=>{
-      const raw=l.locId;
-      const id=typeof raw==='string'?raw:null;
-      if(id && /^rec[a-zA-Z0-9]{14}$/.test(id)) fields[`Loading Location ${i+1}`]=[id];
+      const id=String(l.locId||'');
+      if(/^rec[a-zA-Z0-9]{14}$/.test(id)) fields[`Loading Location ${i+1}`]=[id];
     });
 
     const res=await atCreate(T_LOADS, fields);
     if(!res.id) throw new Error(res.error?.message||JSON.stringify(res).slice(0,300));
 
-    // Mark NATIONAL ORDERS: compare their Pickup Locations vs what's now in ALL CL records
-    for(const id of srcIds){
+    // Mark GL lines as Assigned (simple + reliable)
+    for(let i=0;i<glIds.length;i+=10){
+      const batch=glIds.slice(i,i+10);
       try{
-        // Get all pickup locIds for this NO
-        const noR=await fetch(
-          `https://api.airtable.com/v0/${BASE}/${T_NO}/${id}?`+
-          [1,2,3,4,5].map(i=>`fields%5B%5D=Pickup+Location+${i}`).join('&'),
-          {headers:{Authorization:`Bearer ${AT}`}});
-        const noData=await noR.json();
-        const noLocs=[];
-        for(let i=1;i<=5;i++){
-          const arr=noData.fields?.[`Pickup Location ${i}`];
-          if(arr?.length) noLocs.push(arr[0]);
-        }
-        if(!noLocs.length){
-          // No pickup locs → use pallet count fallback
-          await atPatch(T_NO, id, {Status:'Groupage Assigned'});
-          continue;
-        }
-        // Get all saved locIds for this NO across all CL records
-        const clR=await atFetch(T_LOADS,
-          [1,2,3,4,5].map(i=>`Loading Location ${i}`),
-          {filterByFormula:`FIND("${id}",ARRAYJOIN({Source Orders},","))>0`});
-        const savedLocs=new Set();
-        clR.forEach(r=>{for(let i=1;i<=5;i++){const a=r.fields?.[`Loading Location ${i}`];if(a?.[0])savedLocs.add(a[0]);}});
-        // Only Groupage Assigned if ALL pickup locs are saved
-        const allSaved=noLocs.every(lid=>savedLocs.has(lid));
-        if(allSaved) await atPatch(T_NO, id, {Status:'Groupage Assigned'});
-        // else: partial — leave Pending so remaining lines appear in pool
-      }catch(e){ console.warn('Status check',e); }
+        await fetch(`https://api.airtable.com/v0/${BASE}/${T_GL}`,{
+          method:'PATCH',
+          headers:{Authorization:`Bearer ${AT}`,'Content-Type':'application/json'},
+          body:JSON.stringify({records:batch.map(id=>({id,fields:{Status:'Assigned'}}))})
+        });
+      }catch(e){console.warn('GL patch',e);}
+    }
+
+    // Mark NATIONAL ORDERS: Groupage Assigned only if ALL their GL lines are now Assigned
+    for(const noId of srcIds){
+      try{
+        const remaining=await atFetch(T_GL,['Status'],
+          {filterByFormula:`AND(FIND("${noId}",ARRAYJOIN({Linked National Order},","))>0,{Status}='Unassigned')`});
+        if(!remaining.length) await atPatch(T_NO, noId, {Status:'Groupage Assigned'});
+      }catch(e){console.warn('NO status',e);}
     }
 
     // Add to local savedPlans list
@@ -982,13 +939,25 @@ async function _undoPlan(p){
   // 1. Delete CONSOLIDATED LOADS record
   if(p.atId){
     try{ await atDelete(T_LOADS, p.atId); }
-    catch(e){ console.warn('CL delete failed',e); }
+    catch(e){ console.warn('CL delete',e); }
   }
-  // 2. Revert NATIONAL ORDERS → Pending + remove National Groupage Assigned
+  // 2. Revert GL lines → Unassigned
+  const glIds=p.lines.map(l=>String(l.glId||l.id||'')).filter(id=>id.startsWith('rec'));
+  for(let i=0;i<glIds.length;i+=10){
+    const batch=glIds.slice(i,i+10);
+    try{
+      await fetch(`https://api.airtable.com/v0/${BASE}/${T_GL}`,{
+        method:'PATCH',
+        headers:{Authorization:`Bearer ${AT}`,'Content-Type':'application/json'},
+        body:JSON.stringify({records:batch.map(id=>({id,fields:{Status:'Unassigned'}}))})
+      });
+    }catch(e){console.warn('GL revert',e);}
+  }
+  // 3. Revert NATIONAL ORDERS → Pending
   const srcIds=[...new Set(p.lines.map(l=>String(l.noId||'')).filter(id=>id.startsWith('rec')))];
   for(const id of srcIds){
     try{ await atPatch(T_NO, id, {Status:'Pending'}); }
-    catch(e){ console.warn('revert status',e); }
+    catch(e){ console.warn('NO revert',e);}
   }
   setStatus('ok','Αναίρεση ολοκληρώθηκε');
 }
