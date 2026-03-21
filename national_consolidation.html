@@ -1237,7 +1237,8 @@ async function loadSavedPlans(){
 
 /* INIT */
 restoreTrucks();
-if(!trucks.length){ addTruck();addTruck();addTruck(); }
+// Always maintain at least 3 trucks
+while(trucks.length < 3){ addTruck(); }
 Promise.all([loadLines(), loadSavedPlans()]);
 </script>
 </body>
