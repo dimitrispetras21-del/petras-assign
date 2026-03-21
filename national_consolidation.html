@@ -674,7 +674,7 @@ function renderTrucks(){
 
 function renderAll(){
   // Always maintain at least 3 trucks
-  while(trucks.length < 3){ trucks.push({id:'t'+tc,name:'ΦΟΡΤΗΓΟ '+tc++,lines:[],date:''}); }
+  while(trucks.length < 3){ addTruck(); }
   renderTrucks();
   renderPool();
   renderSavedList();
@@ -770,7 +770,14 @@ function delTruck(id){
   if(t?.lines.length&&!confirm(`Φορτηγό με ${t.lines.length} γραμμές. Σίγουρα;`))return;
   trucks=trucks.filter(x=>x.id!==id);renderTrucks();renderPool();persistTrucks();
 }
-function clearAll(){if(!trucks.length)return;if(!confirm('Καθαρισμός;'))return;trucks=[];tc=1;renderTrucks();renderPool();}
+function clearAll(){
+  if(!confirm('Καθαρισμός;'))return;
+  trucks=[];tc=1;
+  addTruck();addTruck();addTruck();
+  clearPersistedTrucks();
+  renderPool();
+  toast('Καθαρίστηκε');
+}
 function renameTruck(id,v){const t=trucks.find(x=>x.id===id);if(t)t.name=v;}
 function setTruckDate(id,v){
   const t=trucks.find(x=>x.id===id);
