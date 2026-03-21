@@ -558,13 +558,40 @@ function renderPool(){
   document.getElementById('poolCount').innerHTML=pal+' <span>PAL · '+filtered.length+' γραμμές</span>';
   const el=document.getElementById('poolBody');
   if(!filtered.length){el.innerHTML='<div class="pool-empty">Δεν βρέθηκαν εντολές.<br>Τσεκάρε <strong>National Groupage</strong>.</div>';return;}
+
+  // Group by date
   const groups={};
-  filtered.forEach(l=>{const d=l.loadDate?l.loadDate.slice(0,10):'—';(groups[d]=groups[d]||[]).push(l);});
+  filtered.forEach(l=>{
+    const d=l.loadDate?l.loadDate.slice(0,10):'—';
+    (groups[d]=groups[d]||[]).push(l);
+  });
+
   let html='';
   Object.keys(groups).sort().forEach(d=>{
-    const g=groups[d],p=g.reduce((s,l)=>s+l.pal,0),lbl=fmtDate(d)||d;
-    html+=`<div class="ddiv"><span class="ddiv-lbl">${lbl}</span><div class="ddiv-line"></div><span class="ddiv-cnt">${g.length} γρ · ${p} PAL</span></div>`;
-    html+=g.map(l=>cardHTML(l)).join('');
+    // Within each date: sort by ref (numeric), then supplier name
+    const g=[...groups[d]].sort((a,b)=>{
+      const ra=parseInt(a.ref.replace(/\D/g,''))||0;
+      const rb=parseInt(b.ref.replace(/\D/g,''))||0;
+      if(ra!==rb) return ra-rb;
+      return a.supplier.localeCompare(b.supplier,'el');
+    });
+    const p=g.reduce((s,l)=>s+l.pal,0);
+    const lbl=fmtDate(d)||d;
+    // Count unique refs in this group
+    const refs=[...new Set(g.map(l=>l.ref).filter(Boolean))];
+    const refLabel=refs.length?` · ${refs.length} ref`:'';
+    html+=`<div class="ddiv"><span class="ddiv-lbl">${lbl}</span><div class="ddiv-line"></div><span class="ddiv-cnt">${g.length} γρ · ${p} PAL${refLabel}</span></div>`;
+
+    // Sub-group by ref within date
+    const byRef={};
+    g.forEach(l=>{const r=l.ref||'—';(byRef[r]=byRef[r]||[]).push(l);});
+    Object.keys(byRef).sort((a,b)=>{
+      const na=parseInt(a.replace(/\D/g,''))||0;
+      const nb=parseInt(b.replace(/\D/g,''))||0;
+      return na-nb;
+    }).forEach(ref=>{
+      html+=byRef[ref].map(l=>cardHTML(l)).join('');
+    });
   });
   el.innerHTML=html;
   // Bind dragstart to pool cards
