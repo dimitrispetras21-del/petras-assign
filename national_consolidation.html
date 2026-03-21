@@ -849,15 +849,26 @@ async function saveTruck(truckId){
     const total=truck.lines.reduce((s,l)=>s+l.pal,0);
 
     // STEP 1: Only plain scalar fields — guaranteed safe
-    const fields={
-      'Name':          truck.name+' — '+dateVal,
-      'Status':        'Pending',
-      'Total Pallets': total
-    };
-    if(dateVal) fields['Date']=dateVal;
-    // Direction stored in Notes for now (singleSelect choices need UI update)
+    // Delivery DateTime = Loading Date + 1 day
+    let deliveryDateVal='';
+    if(dateVal){
+      const d=new Date(dateVal); d.setDate(d.getDate()+1);
+      deliveryDateVal=d.toISOString().split('T')[0];
+    }
+
+    // Direction from lines
     const dirLine=truck.lines.find(l=>l.dir);
-    // Skip Direction field until Airtable choices are updated manually
+    const dirVal=dirLine?.dir||'South→North';
+
+    const fields={
+      'Name':             truck.name+' — '+dateVal,
+      'Status':           'Pending',
+      'Total Pallets':    total,
+      'Direction':        dirVal,
+    };
+    if(dateVal)        fields['Date']              = dateVal;
+    if(dateVal)        fields['Loading DateTime']  = dateVal;
+    if(deliveryDateVal) fields['Delivery DateTime'] = deliveryDateVal;
     truck.lines.slice(0,10).forEach((l,i)=>{
       if(l.pal>0) fields[`Pallets ${i+1}`]=Number(l.pal);
     });
