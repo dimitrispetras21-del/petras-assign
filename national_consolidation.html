@@ -1049,14 +1049,36 @@ async function loadSavedPlans(){
     });
     const lN=locIds.size?await resolveIds('tblxu8DRfTQOFRCzS',[...locIds]):{};
 
-    // Fetch References from Source Orders (NATIONAL ORDERS)
+    // Fetch References: CL → NATIONAL ORDERS → ORDERS (3-step chain)
     const noIds=new Set();
     recs.forEach(r=>(r.fields['Source Orders']||[]).forEach(id=>noIds.add(id)));
-    let noRefMap={};
+    let noRefMap={};  // noId → ref string
     if(noIds.size){
-      const formula2=`OR(${[...noIds].map(id=>`RECORD_ID()="${id}"`).join(',')})`;
-      const noRecs=await atFetch(T_NO,['Reference','Pickup Location 1'],{filterByFormula:formula2});
-      noRecs.forEach(r=>{noRefMap[r.id]=r.fields.Reference||'';});
+      // Step 1: get NATIONAL ORDERS to find their Linked Order IDs
+      const f2=`OR(${[...noIds].map(id=>`RECORD_ID()="${id}"`).join(',')})`;
+      const noRecs=await atFetch(T_NO,['Reference','Linked Order'],{filterByFormula:f2});
+      
+      // Step 2: collect ORDERS record IDs
+      const ordIds=new Set();
+      const noToOrd={};  // noId → orderId
+      noRecs.forEach(r=>{
+        const ref=r.fields['Reference']||'';
+        const ordId=(r.fields['Linked Order']||[])[0]||null;
+        if(ref){ noRefMap[r.id]=ref; }  // already has ref
+        else if(ordId){ noToOrd[r.id]=ordId; ordIds.add(ordId); }
+      });
+      
+      // Step 3: fetch References from ORDERS
+      if(ordIds.size){
+        const f3=`OR(${[...ordIds].map(id=>`RECORD_ID()="${id}"`).join(',')})`;
+        const ordRecs=await atFetch(T_ORDERS,['Reference'],{filterByFormula:f3});
+        const ordRefMap={};
+        ordRecs.forEach(r=>{ ordRefMap[r.id]=r.fields['Reference']||''; });
+        // Map back to NO ids
+        Object.entries(noToOrd).forEach(([noId,ordId])=>{
+          if(ordRefMap[ordId]) noRefMap[noId]=ordRefMap[ordId];
+        });
+      }
     }
 
     savedPlans=recs.map(r=>{
