@@ -872,23 +872,36 @@ async function saveTruck(truckId){
     const res=await atCreate(T_LOADS, fields);
     if(!res.id) throw new Error(res.error?.message||JSON.stringify(res).slice(0,300));
 
-    // Mark NATIONAL ORDERS as Groupage Assigned ONLY if ALL their pallets are now saved
+    // Mark NATIONAL ORDERS: compare their Pickup Locations vs what's now in ALL CL records
     for(const id of srcIds){
-      // Get total pallets of this NO
       try{
-        const noRec=await fetch(`https://api.airtable.com/v0/${BASE}/${T_NO}/${id}?fields%5B%5D=Pallets`,
+        // Get all pickup locIds for this NO
+        const noR=await fetch(
+          `https://api.airtable.com/v0/${BASE}/${T_NO}/${id}?`+
+          [1,2,3,4,5].map(i=>`fields%5B%5D=Pickup+Location+${i}`).join('&'),
           {headers:{Authorization:`Bearer ${AT}`}});
-        const noData=await noRec.json();
-        const totalPal=noData.fields?.Pallets||0;
-        // Sum pallets already saved for this NO across all CONSOLIDATED LOADS
-        const clRecs=await atFetch(T_LOADS,['Total Pallets','Source Orders'],
-          {filterByFormula:`FIND("${id}",ARRAYJOIN({Source Orders},","))>0`});
-        const savedPal=clRecs.reduce((s,r)=>s+(r.fields['Total Pallets']||0),0);
-        if(savedPal>=totalPal && totalPal>0){
-          await atPatch(T_NO, id, {Status:'Groupage Assigned'});
+        const noData=await noR.json();
+        const noLocs=[];
+        for(let i=1;i<=5;i++){
+          const arr=noData.fields?.[`Pickup Location ${i}`];
+          if(arr?.length) noLocs.push(arr[0]);
         }
-        // else: partial assignment — leave Status as Pending so remaining lines show in pool
-      }catch(e){ console.warn('Status check failed',e); }
+        if(!noLocs.length){
+          // No pickup locs → use pallet count fallback
+          await atPatch(T_NO, id, {Status:'Groupage Assigned'});
+          continue;
+        }
+        // Get all saved locIds for this NO across all CL records
+        const clR=await atFetch(T_LOADS,
+          [1,2,3,4,5].map(i=>`Loading Location ${i}`),
+          {filterByFormula:`FIND("${id}",ARRAYJOIN({Source Orders},","))>0`});
+        const savedLocs=new Set();
+        clR.forEach(r=>{for(let i=1;i<=5;i++){const a=r.fields?.[`Loading Location ${i}`];if(a?.[0])savedLocs.add(a[0]);}});
+        // Only Groupage Assigned if ALL pickup locs are saved
+        const allSaved=noLocs.every(lid=>savedLocs.has(lid));
+        if(allSaved) await atPatch(T_NO, id, {Status:'Groupage Assigned'});
+        // else: partial — leave Pending so remaining lines appear in pool
+      }catch(e){ console.warn('Status check',e); }
     }
 
     // Add to local savedPlans list
@@ -992,6 +1005,10 @@ async function restorePlan(i){
     if(!lines.find(x=>x.id===l.id)) lines.push(l);
   });
 
+  // Ensure colorMap has all noIds
+  p.lines.forEach(l=>{
+    if(l.noId && !(l.noId in colorMap)) colorMap[l.noId]=Object.keys(colorMap).length%10;
+  });
   // Restore truck for re-editing
   const newId='t'+tc;
   trucks.push({id:newId, name:p.name, lines:[...p.lines], date:p.date||''});
@@ -1194,6 +1211,12 @@ async function loadSavedPlans(){
       };
     });
 
+    // Ensure colorMap includes all noIds from saved plans
+    savedPlans.forEach(p=>p.lines.forEach(l=>{
+      if(l.noId && !(l.noId in colorMap)){
+        colorMap[l.noId]=Object.keys(colorMap).length%10;
+      }
+    }));
     renderSavedList();
     setStatus('ok',`${savedPlans.length} αποθηκευμένα φορτία`);
   }catch(e){
