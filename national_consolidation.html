@@ -493,7 +493,9 @@ async function loadLines(){
           const locIds=of[`Loading Location ${i}`];
           const pal=of[`Loading Pallets ${i}`];
           if(locIds?.length&&pal){
-            lines.push({...base,id:no.id+'_'+i,supplier:locIds.map(id=>lN[id]||id).join(', '),pal,locId:locIds[0],ref:refCode});
+            const lid=no.id+'_'+i;
+            if(!lines.find(l=>l.id===lid))
+              lines.push({...base,id:lid,supplier:locIds.map(id=>lN[id]||id).join(', '),pal,locId:locIds[0],ref:refCode});
             added++;
           }
         });
