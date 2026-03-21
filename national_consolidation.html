@@ -516,26 +516,22 @@ async function loadLines(){
       let clFormula=`{Status}='Pending'`;
       if(from) clFormula=`AND(${clFormula},{Date}>='${from}')`;
       if(to)   clFormula=`AND(${clFormula},{Date}<='${to}')`;
-      const clRecs=await atFetch(T_LOADS,['Source Orders'],{filterByFormula:clFormula});
-      const savedNoIds=new Set(clRecs.flatMap(r=>(r.fields['Source Orders']||[])));
-      if(savedNoIds.size){
-        // For NOs with partial saves: keep in pool BUT remove lines matching saved locIds
-        // Fetch which loading locations are saved per NO
-        const savedLocMap={};
+      const clFields=['Source Orders'];
+      for(let i=1;i<=10;i++) clFields.push(`Loading Location ${i}`);
+      const clRecs=await atFetch(T_LOADS,clFields,{filterByFormula:clFormula});
+      if(clRecs.length){
+        // Build set of all saved locIds across all CL records
+        const savedLocIds=new Set();
         for(const cl of clRecs){
-          const noId=(cl.fields['Source Orders']||[])[0];
-          if(!noId) continue;
-          savedLocMap[noId]=savedLocMap[noId]||new Set();
           for(let i=1;i<=10;i++){
             const locArr=cl.fields[`Loading Location ${i}`];
-            if(locArr?.length) savedLocMap[noId].add(locArr[0]);
+            if(locArr?.length) savedLocIds.add(locArr[0]);
           }
         }
-        // Remove pool lines whose locId is already saved
-        lines=lines.filter(l=>{
-          if(!l.noId||!savedLocMap[l.noId]) return true;
-          return !savedLocMap[l.noId].has(l.locId);
-        });
+        // Remove pool lines whose locId is already in a CL
+        if(savedLocIds.size){
+          lines=lines.filter(l=>!l.locId||!savedLocIds.has(l.locId));
+        }
       }
     }catch(e){ console.warn('CL filter',e); }
 
@@ -1128,10 +1124,50 @@ async function loadSavedPlans(){
       }
     }
 
+    // Build locId → {noId, ref} map from NO pickup locations
+    const locToNo={};
+    // Collect all NO ids from all CL records
+    const allNoIds=new Set(recs.flatMap(r=>r.fields['Source Orders']||[]));
+    if(allNoIds.size){
+      const f4=`OR(${[...allNoIds].map(id=>`RECORD_ID()="${id}"`).join(',')})`;
+      const noFull=await atFetch(T_NO,
+        ['Reference','Linked Order','Pickup Location 1','Pickup Location 2','Pickup Location 3',
+         'Pickup Location 4','Pickup Location 5','Pickup Location 6','Pickup Location 7',
+         'Pickup Location 8','Pickup Location 9','Pickup Location 10'],
+        {filterByFormula:f4});
+      // Also fetch ref from linked ORDERS for NOs without direct ref
+      const ordIds2=new Set();
+      const noToOrd2={};
+      noFull.forEach(r=>{
+        const ref=r.fields['Reference']||noRefMap[r.id]||'';
+        const ordId=(r.fields['Linked Order']||[])[0]||null;
+        if(!ref && ordId){ noToOrd2[r.id]=ordId; ordIds2.add(ordId); }
+        // Map each pickup loc → this NO's ref
+        for(let i=1;i<=10;i++){
+          const lids=r.fields[`Pickup Location ${i}`];
+          if(lids?.length) locToNo[lids[0]]={noId:r.id,ref:ref?`(${ref})`:''};
+        }
+      });
+      if(ordIds2.size){
+        const f5=`OR(${[...ordIds2].map(id=>`RECORD_ID()="${id}"`).join(',')})`;
+        const ords2=await atFetch(T_ORDERS,['Reference'],{filterByFormula:f5});
+        const om={};ords2.forEach(r=>om[r.id]=r.fields['Reference']||'');
+        // Update locToNo with fetched refs
+        noFull.forEach(r=>{
+          if(noToOrd2[r.id]&&om[noToOrd2[r.id]]){
+            const ref=om[noToOrd2[r.id]];
+            for(let i=1;i<=10;i++){
+              const lids=r.fields[`Pickup Location ${i}`];
+              if(lids?.length) locToNo[lids[0]]={noId:r.id,ref:`(${ref})`};
+            }
+          }
+        });
+      }
+    }
+
     savedPlans=recs.map(r=>{
       const f=r.fields;
-      const srcNO=(f['Source Orders']||[])[0]||null;
-      const ref=srcNO&&noRefMap[srcNO]?`(${noRefMap[srcNO]})`:'';
+      const srcNOs=f['Source Orders']||[];
       const lines=[];
       for(let i=1;i<=10;i++){
         const pal=f[`Pallets ${i}`];
@@ -1139,10 +1175,13 @@ async function loadSavedPlans(){
         if(!pal&&!locArr?.length) break;
         const locId=locArr?.[0]||null;
         const supplier=locId?(lN[locId]||locId):'—';
+        // Get ref from locId→NO map
+        const noInfo=locId?locToNo[locId]:null;
+        const noId=noInfo?.noId||srcNOs[0]||null;
+        const ref=noInfo?.ref||'';
         lines.push({
           id:`${r.id}_${i}`,
-          noId:srcNO,
-          supplier,locId,pal:pal||0,
+          noId,supplier,locId,pal:pal||0,
           delivery:'',dir:f.Direction||'',loadDate:f.Date||'',ref
         });
       }
