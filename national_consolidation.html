@@ -1354,6 +1354,26 @@ async function loadSavedPlans(){
         colorMap[l.noId]=h%10;
       }
     }));
+    // Fetch GL record IDs for saved plan lines (needed for undo)
+    // Map: noId+locId → glId
+    const allNoIds2=[...new Set(savedPlans.flatMap(p=>p.lines.map(l=>l.noId).filter(Boolean)))];
+    if(allNoIds2.length){
+      try{
+        const f5=`OR(${allNoIds2.map(id=>`FIND("${id}",ARRAYJOIN({Linked National Order},","))>0`).join(',')})`;
+        const glRecs=await atFetch(T_GL,['Linked National Order','Loading Location'],{filterByFormula:f5});
+        const glMap={};
+        glRecs.forEach(g=>{
+          const nid=(g.fields['Linked National Order']||[])[0];
+          const lid=(g.fields['Loading Location']||[])[0];
+          if(nid&&lid) glMap[nid+'|'+lid]=g.id;
+        });
+        savedPlans.forEach(p=>p.lines.forEach(l=>{
+          const key=(l.noId||'')+'|'+(l.locId||'');
+          if(glMap[key]) l.glId=glMap[key];
+        }));
+      }catch(e){ console.warn('GL id fetch',e); }
+    }
+
     renderSavedList();
     setStatus('ok',`${savedPlans.length} αποθηκευμένα φορτία`);
   }catch(e){
