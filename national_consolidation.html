@@ -673,6 +673,8 @@ function renderTrucks(){
 }
 
 function renderAll(){
+  // Always maintain at least 3 trucks
+  while(trucks.length < 3){ trucks.push({id:'t'+tc,name:'ΦΟΡΤΗΓΟ '+tc++,lines:[],date:''}); }
   renderTrucks();
   renderPool();
   renderSavedList();
@@ -967,11 +969,10 @@ async function saveTruck(truckId){
     lines=lines.filter(l=>!savedLineIds.has(l.id));
     // Remove truck from active trucks
     trucks=trucks.filter(t=>t.id!==truckId);
-    persistTrucks();
-
     setStatus('ok',`✅ ${truck.name} αποθηκεύτηκε`);
     toast(`✅ ${truck.name} — ${total} PAL αποθηκεύτηκε`);
-    renderAll();
+    renderAll();  // adds trucks back to 3 before persist
+    persistTrucks();
   }catch(e){
     setStatus('err','Σφάλμα: '+e.message);
     toast('❌ Σφάλμα: '+e.message);
