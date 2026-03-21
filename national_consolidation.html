@@ -1093,10 +1093,11 @@ async function loadSavedPlans(){
     const from=document.getElementById('fFrom').value;
     const to=document.getElementById('fTo').value;
 
-    // Filter by Date range + Status = Pending (not yet assigned to a trip)
-    let formula=`{Status}='Pending'`;
-    if(from) formula=`AND(${formula},{Date}>='${from}')`;
-    if(to)   formula=`AND(${formula},{Date}<='${to}')`;
+    // Show ALL CL records in date range regardless of status
+    const parts=[];
+    if(from) parts.push(`{Date}>='${from}'`);
+    if(to)   parts.push(`{Date}<='${to}'`);
+    const formula=parts.length===0?'':parts.length===1?parts[0]:`AND(${parts.join(',')})`;
 
     const fields=['Name','Date','Total Pallets','Direction','Source Orders',
       'Pallets 1','Pallets 2','Pallets 3','Pallets 4','Pallets 5',
@@ -1104,7 +1105,7 @@ async function loadSavedPlans(){
       'Loading Location 1','Loading Location 2','Loading Location 3',
       'Loading Location 4','Loading Location 5'];
 
-    const recs=await atFetch(T_LOADS, fields, {filterByFormula:formula});
+    const recs=await atFetch(T_LOADS, fields, formula?{filterByFormula:formula}:{});
     if(!recs.length){ savedPlans=[]; renderSavedList(); return; }
 
     // Resolve location names
@@ -1214,6 +1215,7 @@ async function loadSavedPlans(){
         atId:r.id,
         name:cleanName,
         date:f.Date||'',
+        status:f.Status||'Pending',
         total:f['Total Pallets']||lines.reduce((s,l)=>s+l.pal,0),
         lines
       };
