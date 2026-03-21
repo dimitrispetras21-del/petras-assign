@@ -731,14 +731,15 @@ function handleDrop(tid){
   }
   dragId=null;dragFrom=null;
   renderTrucks();renderPool();
+  persistTrucks();
 }
 
 /* TRUCKS MGMT */
-function addTruck(){trucks.push({id:'t'+tc,name:'ΦΟΡΤΗΓΟ '+tc++,lines:[],date:''});renderTrucks();}
+function addTruck(){trucks.push({id:'t'+tc,name:'ΦΟΡΤΗΓΟ '+tc++,lines:[],date:''});renderTrucks();persistTrucks();}
 function delTruck(id){
   const t=trucks.find(x=>x.id===id);
   if(t?.lines.length&&!confirm(`Φορτηγό με ${t.lines.length} γραμμές. Σίγουρα;`))return;
-  trucks=trucks.filter(x=>x.id!==id);renderTrucks();renderPool();
+  trucks=trucks.filter(x=>x.id!==id);renderTrucks();renderPool();persistTrucks();
 }
 function clearAll(){if(!trucks.length)return;if(!confirm('Καθαρισμός;'))return;trucks=[];tc=1;renderTrucks();renderPool();}
 function renameTruck(id,v){const t=trucks.find(x=>x.id===id);if(t)t.name=v;}
@@ -861,6 +862,7 @@ async function saveTruck(truckId){
     lines=lines.filter(l=>!savedLineIds.has(l.id));
     // Remove truck from active trucks
     trucks=trucks.filter(t=>t.id!==truckId);
+    persistTrucks();
 
     setStatus('ok',`✅ ${truck.name} αποθηκεύτηκε`);
     toast(`✅ ${truck.name} — ${total} PAL αποθηκεύτηκε`);
@@ -953,6 +955,7 @@ async function restorePlan(i){
   tc++;
   savedPlans.splice(i,1);
   renderAll();
+  persistTrucks();
   toast(`↩ ${p.name} επαναφέρθηκε`);
 }
 
@@ -972,6 +975,43 @@ async function savePlan(){
   const active=trucks.filter(t=>t.lines.length>0);
   if(!active.length){toast('Δεν υπάρχουν φορτηγά με γραμμές');return;}
   for(const truck of active) await saveTruck(truck.id);
+}
+
+/* PERSIST ACTIVE TRUCKS — localStorage */
+function persistTrucks(){
+  try{
+    const data=trucks.map(t=>({
+      id:t.id, name:t.name, date:t.date||'',
+      lines:t.lines.map(l=>({
+        id:l.id,noId:l.noId,supplier:l.supplier,
+        delivery:l.delivery,pal:l.pal,locId:l.locId,
+        dir:l.dir,loadDate:l.loadDate,ref:l.ref||'',
+        splitFrom:l.splitFrom||null
+      }))
+    }));
+    localStorage.setItem('pg_trucks',JSON.stringify(data));
+    localStorage.setItem('pg_tc',String(tc));
+  }catch(e){ console.warn('persist trucks',e); }
+}
+
+function restoreTrucks(){
+  try{
+    const raw=localStorage.getItem('pg_trucks');
+    if(!raw) return;
+    const data=JSON.parse(raw);
+    if(!Array.isArray(data)||!data.length) return;
+    trucks=data;
+    tc=parseInt(localStorage.getItem('pg_tc')||'1')||1;
+    // Rebuild colorMap for restored lines
+    const noIds=[...new Set(data.flatMap(t=>t.lines.map(l=>l.noId).filter(Boolean)))];
+    noIds.forEach((id,i)=>{ if(!(id in colorMap)) colorMap[id]=Object.keys(colorMap).length%10; });
+    console.log(`Restored ${trucks.length} trucks from localStorage`);
+  }catch(e){ console.warn('restore trucks',e); }
+}
+
+function clearPersistedTrucks(){
+  localStorage.removeItem('pg_trucks');
+  localStorage.removeItem('pg_tc');
 }
 
 /* UTILS */
@@ -1000,6 +1040,7 @@ async function loadSavedPlans(){
       'Loading Location 4','Loading Location 5'];
 
     const recs=await atFetch(T_LOADS, fields, {filterByFormula:formula});
+    if(!recs.length){ savedPlans=[]; renderSavedList(); return; }
 
     // Resolve location names
     const locIds=new Set();
@@ -1008,9 +1049,20 @@ async function loadSavedPlans(){
     });
     const lN=locIds.size?await resolveIds('tblxu8DRfTQOFRCzS',[...locIds]):{};
 
+    // Fetch References from Source Orders (NATIONAL ORDERS)
+    const noIds=new Set();
+    recs.forEach(r=>(r.fields['Source Orders']||[]).forEach(id=>noIds.add(id)));
+    let noRefMap={};
+    if(noIds.size){
+      const formula2=`OR(${[...noIds].map(id=>`RECORD_ID()="${id}"`).join(',')})`;
+      const noRecs=await atFetch(T_NO,['Reference','Pickup Location 1'],{filterByFormula:formula2});
+      noRecs.forEach(r=>{noRefMap[r.id]=r.fields.Reference||'';});
+    }
+
     savedPlans=recs.map(r=>{
       const f=r.fields;
-      // Rebuild lines from flat Pallets/Loading Location fields
+      const srcNO=(f['Source Orders']||[])[0]||null;
+      const ref=srcNO&&noRefMap[srcNO]?`(${noRefMap[srcNO]})`:'';
       const lines=[];
       for(let i=1;i<=10;i++){
         const pal=f[`Pallets ${i}`];
@@ -1020,9 +1072,9 @@ async function loadSavedPlans(){
         const supplier=locId?(lN[locId]||locId):'—';
         lines.push({
           id:`${r.id}_${i}`,
-          noId:(f['Source Orders']||[])[0]||null,
+          noId:srcNO,
           supplier,locId,pal:pal||0,
-          delivery:'',dir:f.Direction||'',loadDate:f.Date||'',ref:''
+          delivery:'',dir:f.Direction||'',loadDate:f.Date||'',ref
         });
       }
       return {
@@ -1042,8 +1094,9 @@ async function loadSavedPlans(){
 }
 
 /* INIT */
+restoreTrucks();
+if(!trucks.length){ addTruck();addTruck();addTruck(); }
 Promise.all([loadLines(), loadSavedPlans()]);
-addTruck();addTruck();addTruck();
 </script>
 </body>
 </html>
