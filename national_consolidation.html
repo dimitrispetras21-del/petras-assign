@@ -818,13 +818,49 @@ function updateSplitCalc(){
   el.className='stot '+(sum===splitTarget.pal?'ok':'err');
   document.getElementById('splitConfirm').disabled=(sum!==splitTarget.pal||a<=0||b<=0);
 }
-function confirmSplit(){
+async function confirmSplit(){
   if(!splitTarget)return;
   const a=parseInt(document.getElementById('splitA').value)||0,b=parseInt(document.getElementById('splitB').value)||0;
   if(a+b!==splitTarget.pal||a<=0||b<=0)return;
-  const base={...splitTarget},idA=splitTarget.id+'_sa',idB=splitTarget.id+'_sb';
+
+  const origId=String(splitTarget.glId||splitTarget.id||'');
+  const base={...splitTarget};
+
+  // Create a new GL record for Part B (remainder) — same fields, different pals
+  let idB=origId+'_sb';  // fallback virtual id
+  try{
+    const origRec=await fetch(`https://api.airtable.com/v0/${BASE}/${T_GL}/${origId}`,{
+      headers:{Authorization:`Bearer ${AT}`}
+    }).then(r=>r.json());
+    const of=origRec.fields||{};
+    const newFields={
+      'Name':    of.Name||base.supplier||'',
+      'Reference': of.Reference||base.ref?.replace(/[()]/g,'')||'',
+      'Pallets': b,
+      'Direction': of.Direction||base.dir||'',
+      'Status':  'Unassigned',
+      'Goods':   of.Goods||base.goods||'',
+    };
+    if(of['Loading Date'])    newFields['Loading Date']    = of['Loading Date'];
+    if(of['Delivery Date'])   newFields['Delivery Date']   = of['Delivery Date'];
+    if(of['Loading Location']?.length)   newFields['Loading Location']   = of['Loading Location'];
+    if(of['Delivery Location']?.length)  newFields['Delivery Location']  = of['Delivery Location'];
+    if(of['Linked National Order']?.length) newFields['Linked National Order'] = of['Linked National Order'];
+    const res=await fetch(`https://api.airtable.com/v0/${BASE}/${T_GL}`,{
+      method:'POST',
+      headers:{Authorization:`Bearer ${AT}`,'Content-Type':'application/json'},
+      body:JSON.stringify({fields:newFields})
+    }).then(r=>r.json());
+    if(res.id) idB=res.id;
+  }catch(e){ console.warn('Split GL create',e); }
+
+  // Part A keeps original GL id + splitFrom marker for pals update
+  const lineA={...base, id:origId+'_sa', glId:origId, pal:a, splitFrom:origId};
+  // Part B gets new GL id (or virtual fallback)
+  const lineB={...base, id:idB, glId:idB===''+origId+'_sb'?null:idB, pal:b, splitFrom:origId};
+
   const idx=lines.findIndex(x=>x.id===splitTarget.id);
-  if(idx>-1)lines.splice(idx,1,{...base,id:idA,pal:a,splitFrom:splitTarget.id},{...base,id:idB,pal:b,splitFrom:splitTarget.id});
+  if(idx>-1) lines.splice(idx,1,lineA,lineB);
   trucks.forEach(t=>{const ti=t.lines.findIndex(x=>x.id===splitTarget.id);if(ti>-1)t.lines.splice(ti,1);});
   toast(`÷ ${splitTarget.supplier}: ${a}+${b} PAL`);
   splitTarget=null;closeSplit();renderTrucks();renderPool();
@@ -956,47 +992,34 @@ async function saveTruck(truckId){
       }catch(e){console.warn('GL patch',e);}
     }
 
-    // Handle split lines: update original GL pallet count + create remainder GL record
+    // Handle split lines: update original GL pallet count
+    // NOTE: GL records are NEVER deleted. Split just changes pallet counts.
+    // The original GL gets the saved pals, the remainder stays in pool with original pals.
+    // On restore: both GL records are set to Unassigned, original gets full pals back.
     for(const su of splitUpdates){
       try{
-        // Update original GL with saved pallet count
+        // Update original GL: set to saved pal count + Assigned
         await fetch(`https://api.airtable.com/v0/${BASE}/${T_GL}/${su.glId}`,{
           method:'PATCH',
           headers:{Authorization:`Bearer ${AT}`,'Content-Type':'application/json'},
           body:JSON.stringify({fields:{Pallets:su.newPal}})
         });
 
-        // Check if the other split half is still in the pool (not saved)
+        // Remainder line: keep its current pal count as Unassigned GL
+        // It already has a valid glId (its own GL record from confirmSplit)
         const otherHalves=lines.filter(l=>l.splitFrom===su.glId && l.id!==su.splitLine.id);
-        if(otherHalves.length>0){
-          // Create new GL record for the remainder
-          const oh=otherHalves[0];
-          const origRec=await fetch(`https://api.airtable.com/v0/${BASE}/${T_GL}/${su.glId}`,{
-            headers:{Authorization:`Bearer ${AT}`}
-          }).then(r=>r.json());
-          const origFields=origRec.fields||{};
-          const newGlFields={
-            'Name':    origFields.Name||'',
-            'Reference': origFields.Reference||'',
-            'Pallets': oh.pal,
-            'Direction': origFields.Direction||'',
-            'Status':  'Unassigned',
-            'Goods':   origFields.Goods||'',
-            'Loading Date':   origFields['Loading Date']||null,
-            'Delivery Date':  origFields['Delivery Date']||null,
-            'Linked National Order': origFields['Linked National Order']||[],
-          };
-          if(origFields['Loading Location']?.length)  newGlFields['Loading Location']  = origFields['Loading Location'];
-          if(origFields['Delivery Location']?.length) newGlFields['Delivery Location'] = origFields['Delivery Location'];
-          const createRes=await fetch(`https://api.airtable.com/v0/${BASE}/${T_GL}`,{
-            method:'POST',
-            headers:{Authorization:`Bearer ${AT}`,'Content-Type':'application/json'},
-            body:JSON.stringify({fields:newGlFields})
-          }).then(r=>r.json());
-          if(createRes.id){
-            // Update the pool line to use the new GL id
-            const poolLine=lines.find(l=>l.id===oh.id);
-            if(poolLine){ poolLine.id=createRes.id; poolLine.glId=createRes.id; poolLine.splitFrom=null; }
+        for(const oh of otherHalves){
+          const ohId=String(oh.glId||oh.id||'');
+          if(/^rec[a-zA-Z0-9]{14}$/.test(ohId) && ohId!==su.glId){
+            // Update remainder GL pal count, ensure Unassigned
+            await fetch(`https://api.airtable.com/v0/${BASE}/${T_GL}/${ohId}`,{
+              method:'PATCH',
+              headers:{Authorization:`Bearer ${AT}`,'Content-Type':'application/json'},
+              body:JSON.stringify({fields:{Pallets:oh.pal,Status:'Unassigned'}})
+            });
+            // Fix pool line id
+            const poolLine=lines.find(l=>l.id===oh.id||l.glId===ohId);
+            if(poolLine){ poolLine.id=ohId; poolLine.glId=ohId; poolLine.splitFrom=null; }
           }
         }
       }catch(e){ console.warn('Split GL update',e); }
@@ -1086,96 +1109,67 @@ function renderSavedList(){
 async function _undoPlan(p){
   setStatus('load','Αναίρεση...');
 
-  // 1. Delete CONSOLIDATED LOADS record
+  // 1. Delete CONSOLIDATED LOADS record only
   if(p.atId){
     try{ await atDelete(T_LOADS, p.atId); }
     catch(e){ console.warn('CL delete',e); }
   }
 
-  // 2. Find split GL records: lines that share same original GL (splitFrom)
-  //    Group by original GL id to merge them back
-  const splitGroups={};  // origGlId → [lines]
-  const normalGlIds=[];
+  // 2. Collect all GL ids from the plan lines
+  const glIds=[];
+  const splitOriginals={};  // origGlId → total pals to restore
+
   for(const l of p.lines){
     const rawId=String(l.glId||l.id||'');
+    if(!(/^rec[a-zA-Z0-9]{14}$/.test(rawId))) continue;
+
     if(l.splitFrom){
+      // Split line: accumulate pals back onto the original GL
       const orig=String(l.splitFrom);
-      (splitGroups[orig]=splitGroups[orig]||[]).push(l);
-    } else if(/^rec[a-zA-Z0-9]{14}$/.test(rawId)){
-      normalGlIds.push(rawId);
+      if(/^rec[a-zA-Z0-9]{14}$/.test(orig)){
+        splitOriginals[orig]=(splitOriginals[orig]||0)+l.pal;
+        if(!glIds.includes(orig)) glIds.push(orig);
+      }
+      // The remainder GL (rawId != orig) — mark Unassigned, restore pals
+      if(rawId!==orig && !glIds.includes(rawId)) glIds.push(rawId);
+    } else {
+      if(!glIds.includes(rawId)) glIds.push(rawId);
     }
   }
 
-  // 3. Revert normal GL lines → Unassigned
-  const allGlIds=[...normalGlIds];
-  Object.keys(splitGroups).forEach(id=>allGlIds.push(id));
-  const validGlIds=allGlIds.filter(id=>/^rec[a-zA-Z0-9]{14}$/.test(id));
-
-  for(let i=0;i<validGlIds.length;i+=10){
-    const batch=validGlIds.slice(i,i+10);
+  // 3. Mark all GL → Unassigned in batches
+  for(let i=0;i<glIds.length;i+=10){
+    const batch=glIds.slice(i,i+10);
     try{
       await fetch(`https://api.airtable.com/v0/${BASE}/${T_GL}`,{
         method:'PATCH',
         headers:{Authorization:`Bearer ${AT}`,'Content-Type':'application/json'},
         body:JSON.stringify({records:batch.map(id=>({id,fields:{Status:'Unassigned'}}))})
       });
-    }catch(e){console.warn('GL revert',e);}
+    }catch(e){console.warn('GL revert batch',e);}
   }
 
-  // 4. Merge split GL records back to original totals
-  for(const [origGlId, splitLines] of Object.entries(splitGroups)){
+  // 4. Restore split original GL to correct pals
+  for(const [origId, pals] of Object.entries(splitOriginals)){
     try{
-      // Sum all pallets (saved part + any remainder GL records)
-      const totalPal=splitLines.reduce((s,l)=>s+l.pal,0);
-
-      // Find remainder GL records (created at save time, not original)
-      // These are GL records linked to same NO + same Loading Location but different id
-      const origLine=splitLines[0];
-      const remainderGls=await atFetch(T_GL,
-        ['Status','Pallets','Linked National Order','Loading Location'],
-        `AND(FIND("${origLine.noId}",ARRAYJOIN({Linked National Order},","))>0,{Status}='Unassigned')`
-      );
-      // Delete remainder GL records that are NOT the original
-      let mergedPal=totalPal;
-      for(const rg of remainderGls){
-        const rgId=rg.id;
-        if(rgId!==origGlId && /^rec[a-zA-Z0-9]{14}$/.test(rgId)){
-          mergedPal+=rg.fields.Pallets||0;
-          try{ await atDelete(T_GL,rgId); }
-          catch(e){ console.warn('Delete remainder GL',e); }
-        }
-      }
-
-      // Restore original GL to merged total
-      await fetch(`https://api.airtable.com/v0/${BASE}/${T_GL}/${origGlId}`,{
+      await fetch(`https://api.airtable.com/v0/${BASE}/${T_GL}/${origId}`,{
         method:'PATCH',
         headers:{Authorization:`Bearer ${AT}`,'Content-Type':'application/json'},
-        body:JSON.stringify({fields:{Pallets:mergedPal,Status:'Unassigned'}})
+        body:JSON.stringify({fields:{Pallets:pals}})
       });
-
-      // Update pool line to merged state
-      const poolLine=lines.find(l=>l.splitFrom===origGlId||l.id===origGlId);
-      if(poolLine){
-        poolLine.pal=mergedPal;
-        poolLine.splitFrom=null;
-        poolLine.id=origGlId;
-        poolLine.glId=origGlId;
-      } else {
-        // Re-add to lines if not present
-        const baseLine=splitLines[0];
-        lines.push({...baseLine,id:origGlId,glId:origGlId,pal:mergedPal,splitFrom:null});
-      }
-    }catch(e){ console.warn('Merge split',e); }
+    }catch(e){console.warn('split restore pals',e);}
   }
 
-  // 5. Revert NATIONAL ORDERS → Pending
-  const srcIds=[...new Set(p.lines.map(l=>String(l.noId||'')).filter(id=>id.startsWith('rec')))];
+  // 5. Mark NATIONAL ORDERS → Pending
+  const srcIds=[...new Set(p.lines.map(l=>String(l.noId||'')).filter(id=>/^rec[a-zA-Z0-9]{14}$/.test(id)))];
   for(const id of srcIds){
     try{ await atPatch(T_NO, id, {Status:'Pending'}); }
-    catch(e){ console.warn('NO revert',e);}
+    catch(e){console.warn('NO revert',e);}
   }
+
   setStatus('ok','Αναίρεση ολοκληρώθηκε');
 }
+
 
 async function restorePlan(i){
   const p=savedPlans[i];
