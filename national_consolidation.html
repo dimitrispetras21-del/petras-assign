@@ -1184,9 +1184,13 @@ async function restorePlan(i){
 
   await _undoPlan(p);
 
-  // Add lines back to pool
+  // Add lines back to pool — only valid GL rec ids
   p.lines.forEach(l=>{
-    if(!lines.find(x=>x.id===l.id)) lines.push(l);
+    const lid = l.glId||l.id||'';
+    if(/^rec[a-zA-Z0-9]{14}$/.test(lid)){
+      const lineToAdd = {...l, id:lid, glId:lid};
+      if(!lines.find(x=>x.id===lid)) lines.push(lineToAdd);
+    }
   });
 
   // Stable color on restore
@@ -1209,12 +1213,24 @@ async function restorePlan(i){
 async function deleteSaved(i){
   const p=savedPlans[i];
   if(!confirm(`Διαγραφή "${p.name}";
-Θα διαγραφεί και από το Consolidated Loads.`))return;
+Θα διαγραφεί το Consolidated Loads record.
+Οι γραμμές επιστρέφουν στο pool.`))return;
 
+  // Delete CL + revert GL to Unassigned + add back to pool
   await _undoPlan(p);
+
+  // Add lines back to pool (same as restore but no truck)
+  if(p.lines){
+    p.lines.forEach(l=>{
+      if(l.id && /^rec[a-zA-Z0-9]{14}$/.test(l.id) && !lines.find(x=>x.id===l.id)){
+        lines.push(l);
+      }
+    });
+  }
+
   savedPlans.splice(i,1);
   renderAll();
-  toast(`🗑 ${p.name} διαγράφηκε`);
+  toast(`🗑 ${p.name} διαγράφηκε — γραμμές επέστρεψαν στο pool`);
 }
 
 /* GLOBAL SAVE (topbar button — saves all active trucks) */
@@ -1384,8 +1400,10 @@ async function loadSavedPlans(){
         const noInfo=locId?locToNo[locId]:null;
         const noId=noInfo?.noId||srcNOs[0]||null;
         const ref=noInfo?.ref||'';
+        // Use glId if available (fetched after loadSavedPlans), else CL-based id
         lines.push({
-          id:`${r.id}_${i}`,
+          id:`${r.id}_${i}`,   // temporary — replaced by glId fetch below
+          glId:null,            // filled by GL id fetch below
           noId,supplier,locId,pal:pal||0,
           delivery:'',dir:f.Direction||'',loadDate:f.Date||'',ref
         });
@@ -1425,7 +1443,10 @@ async function loadSavedPlans(){
         });
         savedPlans.forEach(p=>p.lines.forEach(l=>{
           const key=(l.noId||'')+'|'+(l.locId||'');
-          if(glMap[key]) l.glId=glMap[key];
+          if(glMap[key]){
+            l.glId=glMap[key];
+            l.id=glMap[key];  // use GL id as the primary line id
+          }
         }));
       }catch(e){ console.warn('GL id fetch',e); }
     }
