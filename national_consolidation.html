@@ -869,6 +869,44 @@ async function saveTruck(truckId){
     if(dateVal)        fields['Date']              = dateVal;
     if(dateVal)        fields['Loading DateTime']  = dateVal;
     if(deliveryDateVal) fields['Delivery DateTime'] = deliveryDateVal;
+
+    // Auto-populate Goods, Temperature, Client from GL lines + Source Orders
+    try{
+      // 1. Goods: collect unique Goods strings from GL lines
+      const glGoods=[...new Set(truck.lines
+        .map(l=>l.goods||'').filter(Boolean))];
+      if(glGoods.length) fields['Goods']=glGoods.join(' / ');
+
+      // 2. Fetch Source NOs for Temperature + Client
+      const noIds=[...new Set(truck.lines
+        .map(l=>String(l.noId||'')).filter(id=>/^rec[a-zA-Z0-9]{14}$/.test(id)))];
+
+      if(noIds.length){
+        const f2=`OR(${noIds.map(id=>`RECORD_ID()="${id}"`).join(',')})`;
+        const noRecs=await atFetch(T_NO,
+          ['Temperature °C','Client','Goods'],
+          {filterByFormula:f2});
+
+        // Temperature: use min (coldest) across all NOs
+        const temps=noRecs
+          .map(r=>r.fields['Temperature °C'])
+          .filter(t=>t!=null&&t!==undefined);
+        if(temps.length) fields['Temperature C']=Math.min(...temps);
+
+        // Client: collect unique client IDs
+        const clientIds=[...new Set(noRecs
+          .flatMap(r=>r.fields['Client']||[])
+          .filter(Boolean))];
+        if(clientIds.length) fields['Client']=clientIds;
+
+        // Goods fallback: if not from GL lines, use NOs
+        if(!fields['Goods']){
+          const noGoods=[...new Set(noRecs
+            .map(r=>r.fields['Goods']||'').filter(Boolean))];
+          if(noGoods.length) fields['Goods']=noGoods.join(' / ');
+        }
+      }
+    }catch(e){ console.warn('CL enrichment',e); }
     truck.lines.slice(0,10).forEach((l,i)=>{
       if(l.pal>0) fields[`Pallets ${i+1}`]=Number(l.pal);
     });
