@@ -503,6 +503,7 @@ async function loadLines(){
       const supplier=locId?(lN[locId]||locId):'—';
       const delivery=(f['Delivery Location']||[]).map(id=>lN[id]||id).join(', ')||'—';
       const ref=f['Reference']?`(${f['Reference']})`:'';
+      const delivLocId=(f['Delivery Location']||[])[0]||null;
       lines.push({
         id:r.id,          // GL record ID is the line ID
         glId:r.id,        // keep explicit too
@@ -510,6 +511,7 @@ async function loadLines(){
         supplier,
         delivery,
         locId,
+        delivLocId,       // raw delivery location record ID
         pal:f['Pallets']||0,
         loadDate:f['Loading Date']||'',
         dir:f['Direction']||'',
@@ -994,6 +996,12 @@ async function saveTruck(truckId){
       const id=String(l.locId||'');
       if(/^rec[a-zA-Z0-9]{14}$/.test(id)) fields[`Loading Location ${i+1}`]=[id];
     });
+
+    // STEP 3b: Delivery Location — use first unique delivLocId from lines
+    const delivLocIds=[...new Set(truck.lines
+      .map(l=>String(l.delivLocId||''))
+      .filter(id=>/^rec[a-zA-Z0-9]{14}$/.test(id)))];
+    if(delivLocIds.length) fields['Delivery Location 1']=[delivLocIds[0]];
 
     const res=await atCreate(T_LOADS, fields);
     if(!res.id) throw new Error(res.error?.message||JSON.stringify(res).slice(0,300));
