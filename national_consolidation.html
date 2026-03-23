@@ -1141,29 +1141,31 @@ async function _undoPlan(p){
     catch(e){ console.warn('CL delete',e); }
   }
 
-  // 2. Collect all GL ids from the plan lines
-  const glIds=[];
+  // 2. Collect GL ids — separate originals from split remainders
+  const glIds=[];           // GL records to mark Unassigned
   const splitOriginals={};  // origGlId → total pals to restore
+  const splitRemainderIds=[];  // Part B GL records to DELETE (created during split)
 
   for(const l of p.lines){
     const rawId=String(l.glId||l.id||'');
     if(!(/^rec[a-zA-Z0-9]{14}$/.test(rawId))) continue;
 
     if(l.splitFrom){
-      // Split line: accumulate pals back onto the original GL
       const orig=String(l.splitFrom);
       if(/^rec[a-zA-Z0-9]{14}$/.test(orig)){
         splitOriginals[orig]=(splitOriginals[orig]||0)+l.pal;
         if(!glIds.includes(orig)) glIds.push(orig);
       }
-      // The remainder GL (rawId != orig) — mark Unassigned, restore pals
-      if(rawId!==orig && !glIds.includes(rawId)) glIds.push(rawId);
+      // Part B remainder GL (created during split) — must be DELETED, not just Unassigned
+      if(rawId!==orig){
+        splitRemainderIds.push(rawId);
+      }
     } else {
       if(!glIds.includes(rawId)) glIds.push(rawId);
     }
   }
 
-  // 3. Mark all GL → Unassigned in batches
+  // 3. Mark original GL records → Unassigned in batches
   for(let i=0;i<glIds.length;i+=10){
     const batch=glIds.slice(i,i+10);
     try{
@@ -1175,7 +1177,7 @@ async function _undoPlan(p){
     }catch(e){console.warn('GL revert batch',e);}
   }
 
-  // 4. Restore split original GL to correct pals
+  // 4. Restore split original GL to correct pals (a+b = original total)
   for(const [origId, pals] of Object.entries(splitOriginals)){
     try{
       await fetch(`https://api.airtable.com/v0/${BASE}/${T_GL}/${origId}`,{
@@ -1184,6 +1186,16 @@ async function _undoPlan(p){
         body:JSON.stringify({fields:{Pallets:pals}})
       });
     }catch(e){console.warn('split restore pals',e);}
+  }
+
+  // 5. DELETE split remainder GL records (Part B — created during split, not original data)
+  for(const remId of splitRemainderIds){
+    try{
+      await fetch(`https://api.airtable.com/v0/${BASE}/${T_GL}/${remId}`,{
+        method:'DELETE',
+        headers:{Authorization:`Bearer ${AT}`}
+      });
+    }catch(e){console.warn('split remainder delete',e);}
   }
 
   // 5. Mark NATIONAL ORDERS → Pending
@@ -1204,12 +1216,28 @@ async function restorePlan(i){
 
   await _undoPlan(p);
 
-  // Add lines back to pool — only valid GL rec ids
+  // Add lines back to pool — merge split parts back to original
+  const splitMerged = {};  // origId → total pals
   p.lines.forEach(l=>{
-    const lid = l.glId||l.id||'';
-    if(/^rec[a-zA-Z0-9]{14}$/.test(lid)){
-      const lineToAdd = {...l, id:lid, glId:lid};
-      if(!lines.find(x=>x.id===lid)) lines.push(lineToAdd);
+    if(l.splitFrom){
+      const orig = String(l.splitFrom);
+      splitMerged[orig] = (splitMerged[orig]||0) + l.pal;
+    }
+  });
+  p.lines.forEach(l=>{
+    if(l.splitFrom){
+      const orig = String(l.splitFrom);
+      // Only add the original GL once (skip remainder Part B)
+      if((l.glId||l.id) !== orig) return;
+      const fullPal = splitMerged[orig] || l.pal;
+      const lineToAdd = {...l, id:orig, glId:orig, pal:fullPal, splitFrom:null};
+      if(!lines.find(x=>x.id===orig)) lines.push(lineToAdd);
+    } else {
+      const lid = l.glId||l.id||'';
+      if(/^rec[a-zA-Z0-9]{14}$/.test(lid)){
+        const lineToAdd = {...l, id:lid, glId:lid};
+        if(!lines.find(x=>x.id===lid)) lines.push(lineToAdd);
+      }
     }
   });
 
@@ -1220,9 +1248,23 @@ async function restorePlan(i){
       colorMap[l.noId]=h%10;
     }
   });
-  // Restore truck for re-editing
+  // Restore truck for re-editing — merge split parts back to original
+  const restoredLines = [];
+  const sMerged = {};
+  p.lines.forEach(l=>{
+    if(l.splitFrom) sMerged[String(l.splitFrom)] = (sMerged[String(l.splitFrom)]||0) + l.pal;
+  });
+  p.lines.forEach(l=>{
+    if(l.splitFrom){
+      const orig = String(l.splitFrom);
+      if((l.glId||l.id) !== orig) return;
+      restoredLines.push({...l, id:orig, glId:orig, pal:sMerged[orig]||l.pal, splitFrom:null});
+    } else {
+      restoredLines.push({...l});
+    }
+  });
   const newId='t'+tc;
-  trucks.push({id:newId, name:p.name, lines:[...p.lines], date:p.date||''});
+  trucks.push({id:newId, name:p.name, lines:restoredLines, date:p.date||''});
   tc++;
   savedPlans.splice(i,1);
   renderAll();
@@ -1239,11 +1281,28 @@ async function deleteSaved(i){
   // Delete CL + revert GL to Unassigned + add back to pool
   await _undoPlan(p);
 
-  // Add lines back to pool (same as restore but no truck)
+  // Add lines back to pool — merge split parts back to original
   if(p.lines){
+    const splitMerged = {};
     p.lines.forEach(l=>{
-      if(l.id && /^rec[a-zA-Z0-9]{14}$/.test(l.id) && !lines.find(x=>x.id===l.id)){
-        lines.push(l);
+      if(l.splitFrom){
+        const orig = String(l.splitFrom);
+        splitMerged[orig] = (splitMerged[orig]||0) + l.pal;
+      }
+    });
+    p.lines.forEach(l=>{
+      if(l.splitFrom){
+        const orig = String(l.splitFrom);
+        if((l.glId||l.id) !== orig) return; // skip Part B remainder
+        const fullPal = splitMerged[orig] || l.pal;
+        if(!lines.find(x=>x.id===orig)){
+          lines.push({...l, id:orig, glId:orig, pal:fullPal, splitFrom:null});
+        }
+      } else {
+        const lid = l.glId||l.id||'';
+        if(/^rec[a-zA-Z0-9]{14}$/.test(lid) && !lines.find(x=>x.id===lid)){
+          lines.push({...l, id:lid, glId:lid});
+        }
       }
     });
   }
