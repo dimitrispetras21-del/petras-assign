@@ -1060,6 +1060,43 @@ async function saveTruck(truckId){
       }catch(e){console.warn('NO status',e);}
     }
 
+    // ── Sync NATIONAL LOADS — create NL record for this CL ──
+    try {
+      const T_NL='tblVW42cZnfC47gTb';
+      // Resolve client names
+      let clientNames='';
+      try{
+        const cIds=Array.isArray(fields['Client'])?fields['Client']:[];
+        if(cIds.length){
+          const cF=`OR(${cIds.slice(0,5).map(id=>`RECORD_ID()="${id}"`).join(',')})`;
+          const cRecs=await atFetch('tblFWKAQVUzAM8mCE',['Company Name'],{filterByFormula:cF});
+          clientNames=cRecs.map(r=>r.fields['Company Name']||'').filter(Boolean).join(' / ');
+        }
+      }catch(e){}
+      const nlFields={
+        'Name': `CL: ${truck.name} — ${dateVal}`,
+        'Direction': 'ΑΝΟΔΟΣ',
+        'Source Type': 'Groupage',
+        'Source Record': res.id,
+        'Source Orders': srcIds.join(', '),
+        'Client': clientNames,
+        'Goods': fields['Goods']||'',
+        'Total Pallets': total,
+        'Temperature C': fields['Temperature C']??null,
+        'Loading DateTime': fields['Loading DateTime']||null,
+        'Delivery DateTime': fields['Delivery DateTime']||null,
+        'Status': 'Pending',
+      };
+      // Copy locations
+      for(let i=1;i<=10;i++){
+        if(fields[`Loading Location ${i}`]) nlFields[`Pickup Location ${i}`]=fields[`Loading Location ${i}`];
+      }
+      if(fields['Delivery Location 1']) nlFields['Delivery Location 1']=fields['Delivery Location 1'];
+      await atCreate(T_NL, nlFields);
+      console.log('NL created for CL:', res.id);
+    }catch(e){ console.warn('NL sync err:', e); }
+    // ──────────────────────────────────────────────────────────
+
     // Add to local savedPlans list
     savedPlans.push({
       atId: res.id,
@@ -1139,6 +1176,13 @@ async function _undoPlan(p){
   if(p.atId){
     try{ await atDelete(T_LOADS, p.atId); }
     catch(e){ console.warn('CL delete',e); }
+    // Also delete corresponding NATIONAL LOADS record
+    try{
+      const T_NL='tblVW42cZnfC47gTb';
+      const nlRecs=await atFetch(T_NL,['Name'],{filterByFormula:`{Source Record}="${p.atId}"`});
+      for(const r of nlRecs){ await atDelete(T_NL, r.id); }
+      if(nlRecs.length) console.log('NL deleted for CL:', p.atId);
+    }catch(e){ console.warn('NL delete',e); }
   }
 
   // 2. Collect GL ids — separate originals from split remainders
