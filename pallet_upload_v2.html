@@ -226,11 +226,11 @@ textarea{resize:vertical;min-height:60px}
 
     <div class="field-row">
       <div class="field">
-        <label>Παλέτες OUT <span class="req">*</span></label>
+        <label id="mOutLabel">Pallets OUT <span class="req">*</span></label>
         <input type="number" id="mOut" min="0" oninput="updateModalBalance()" />
       </div>
       <div class="field">
-        <label>Παλέτες IN</label>
+        <label id="mInLabel">Pallets IN</label>
         <input type="number" id="mIn" min="0" value="0" oninput="updateModalBalance()" />
       </div>
     </div>
@@ -477,15 +477,23 @@ function openConfirmModal(data){
   confEl.textContent=conf;
   confEl.style.color=conf==="HIGH"?"var(--green)":conf==="MEDIUM"?"var(--warn)":"var(--red)";
 
-  // At Loading Stop: truck TOOK pallets from supplier = we owe them = IN
-  // At Unloading/Crossdock: truck GAVE pallets to client = they owe us = OUT
+  // Sheet 1 (Loading): We visit supplier. We TAKE full pallets (IN), we LEAVE empties (OUT)
+  //   OUT = empties left at supplier, IN = full pallets taken
+  //   Balance: OUT - IN > 0 → supplier owes us (we left more than took)
+  // Sheet 2 (Crossdock): WE are the loader (Vermion Fresh). We GIVE full pallets to Partner (OUT), Partner RETURNS empties (IN)
+  //   OUT = full pallets loaded onto partner truck, IN = empties returned by partner
+  //   Balance: OUT - IN > 0 → Partner owes us
   const stopType = MODE==="free" ? "free" : (selectedSheet===1 ? "Loading" : "Crossdock");
   if(stopType==="Loading"){
-    document.getElementById("mOut").value=inn; // empty pallets left at supplier
+    document.getElementById("mOut").value=inn; // empties left at supplier
     document.getElementById("mIn").value=out;  // full pallets taken from supplier
+    document.getElementById("mOutLabel").innerHTML='Pallets OUT (left at supplier) <span class="req">*</span>';
+    document.getElementById("mInLabel").textContent='Pallets IN (taken from supplier)';
   } else {
-    document.getElementById("mOut").value=out;
-    document.getElementById("mIn").value=inn;
+    document.getElementById("mOut").value=out;  // full pallets loaded to partner
+    document.getElementById("mIn").value=inn;   // empties returned by partner
+    document.getElementById("mOutLabel").innerHTML='Pallets OUT (loaded to partner) <span class="req">*</span>';
+    document.getElementById("mInLabel").textContent='Pallets IN (empties returned)';
   }
   if(data.date) document.getElementById("mDate").value=data.date;
   if(data.transport_number) document.getElementById("mTransport").value=data.transport_number;
@@ -516,11 +524,20 @@ function openConfirmModal(data){
       document.getElementById("mSupplier").innerHTML=opts;
     }
   }
-  // Show "Charge Partner" for order mode loading sheets
+  // Sheet 1: optional "Charge Partner" toggle; Sheet 2: Partner required (always visible)
+  const isCrossdockSheet = MODE==="order" && selectedSheet!==1;
   const chargeField = document.getElementById("mPartnerChargeField");
-  chargeField.style.display = (MODE==="order" && selectedSheet>=1) ? "block" : "none";
-  document.getElementById("mPartnerCharge").checked = false;
-  document.getElementById("mPartnerSelectField").style.display = "none";
+  const partnerField = document.getElementById("mPartnerSelectField");
+  if(isCrossdockSheet){
+    // Crossdock: partner required, hide toggle, show dropdown
+    chargeField.style.display = "none";
+    partnerField.style.display = "block";
+  } else {
+    // Loading: optional charge
+    chargeField.style.display = (MODE==="order") ? "block" : "none";
+    document.getElementById("mPartnerCharge").checked = false;
+    partnerField.style.display = "none";
+  }
   // Pre-load partners dropdown
   if(MODE==="order" && !partnersCache.length){
     getAllRecords("PARTNERS",["Company Name"]).then(ps=>{
@@ -553,11 +570,13 @@ function updateModalBalance(){
   document.getElementById("sumOut").textContent=out;
   document.getElementById("sumIn").textContent=inn;
   const bel=document.getElementById("modalBalance");
-  bel.textContent=bal===0?"ΙΣΟΦΑΡΙΣΜΟΣ":bal>0?`+${bal}`:String(bal);
+  bel.textContent=bal===0?"0":bal>0?`+${bal}`:String(bal);
   bel.className="balance-number "+(bal>0?"owe":bal<0?"neutral":"ok");
+  const isCrossdock = MODE==="order" && selectedSheet!==1;
+  const who = isCrossdock ? "Partner" : "Supplier";
   document.getElementById("modalBalanceDesc").textContent=
-    bal>0?`Χρωστούν ${bal} παλέτες σε εμάς`:
-    bal<0?`Εμείς χρωστάμε ${Math.abs(bal)} παλέτες`:"Ισόφαρο";
+    bal>0?`${who} owes us ${bal} pallets`:
+    bal<0?`We owe ${who} ${Math.abs(bal)} pallets`:"Balanced";
 }
 
 async function saveToAirtable(){
@@ -573,9 +592,17 @@ async function saveToAirtable(){
   const notes=document.getElementById("mNotes").value;
   const issuer=document.getElementById("mIssuer").value;
   const stopType=MODE==="free"?"No Order":(selectedSheet===1?"Loading":"Crossdock");
-  const counterparty=MODE==="free"
-    ?document.getElementById("freeCounterType").value
-    :document.getElementById("mCounterparty").value;
+  const isCrossdock = MODE==="order" && selectedSheet!==1;
+  // Crossdock: always Partner. Loading: use dropdown. Free: use free mode selector.
+  const counterparty = isCrossdock ? "Partner"
+    : MODE==="free" ? document.getElementById("freeCounterType").value
+    : document.getElementById("mCounterparty").value;
+  // For crossdock, partner is required
+  const crossdockPartnerId = isCrossdock ? document.getElementById("mPartnerSelect").value : null;
+  if(isCrossdock && !crossdockPartnerId){
+    ss.className="status error";ss.innerHTML="Select a Partner for Crossdock";
+    btn.disabled=false;btn.textContent="💾 ΚΑΤΑΧΩΡΗΣΗ";return;
+  }
 
   if(MODE==="free"&&!counterparty){
     ss.className="status error";ss.innerHTML="Επίλεξε Counterparty Type";
@@ -588,6 +615,8 @@ async function saveToAirtable(){
       "Stop Type":stopType,"Counterparty Type":counterparty,
       "AI Extracted":true,"Verified":false
     };
+    // For crossdock, always link Partner Account
+    if(isCrossdock && crossdockPartnerId) f["Partner Account"]=[crossdockPartnerId];
     const useDate=MODE==="free"?document.getElementById("freeDate").value:date;
     if(useDate) f["Date"]=useDate;
     const noteParts=[transport?`Transport: ${transport}`:"",issuer?`Issuer: ${issuer}`:"",notes].filter(Boolean);
