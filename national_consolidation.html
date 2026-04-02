@@ -912,9 +912,9 @@ async function saveTruck(truckId){
       deliveryDateVal=d.toISOString().split('T')[0];
     }
 
-    // Direction from lines
+    // Direction from lines — use actual value from GL line, fallback South→North
     const dirLine=truck.lines.find(l=>l.dir);
-    const dirVal='ΑΝΟΔΟΣ';
+    const dirVal=dirLine?.dir||'South→North';
 
     const fields={
       'Name':             truck.name+' — '+dateVal,
@@ -1075,7 +1075,7 @@ async function saveTruck(truckId){
       }catch(e){}
       const nlFields={
         'Name': `CL: ${truck.name} — ${dateVal}`,
-        'Direction': 'ΑΝΟΔΟΣ',
+        'Direction': dirVal,
         'Source Type': 'Groupage',
         'Source Record': res.id,
         'Source Orders': srcIds.join(', '),
