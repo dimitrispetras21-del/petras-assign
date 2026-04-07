@@ -483,7 +483,7 @@ async function loadLines(){
     const glRecs=await atFetch(T_GL,
       ['Name','Reference','Pallets','Loading Date','Delivery Date',
        'Direction','Status','Goods','Loading Location','Delivery Location',
-       'Linked National Order','Temperature C'],
+       'Linked National Order','Linked International Order','Temperature C'],
       {filterByFormula:formula}
     );
 
@@ -499,6 +499,7 @@ async function loadLines(){
     glRecs.forEach(r=>{
       const f=r.fields;
       const noId=(f['Linked National Order']||[])[0]||null;
+      const intlOrderId=(f['Linked International Order']||[])[0]||null;
       const locId=(f['Loading Location']||[])[0]||null;
       const supplier=locId?(lN[locId]||locId):'—';
       const delivery=(f['Delivery Location']||[]).map(id=>lN[id]||id).join(', ')||'—';
@@ -508,6 +509,7 @@ async function loadLines(){
         id:r.id,          // GL record ID is the line ID
         glId:r.id,        // keep explicit too
         noId,
+        intlOrderId,
         supplier,
         delivery,
         locId,
@@ -520,12 +522,12 @@ async function loadLines(){
       });
     });
 
-    // Stable color from noId hash — never changes across refreshes
+    // Stable color from noId/intlOrderId hash — never changes across refreshes
     lines.forEach(l=>{
-      if(l.noId && !(l.noId in colorMap)){
-        // Hash last 4 chars of recId to 0-9
-        const h=l.noId.slice(-4).split('').reduce((a,c)=>a+c.charCodeAt(0),0);
-        colorMap[l.noId]=h%10;
+      const colorKey=l.noId||l.intlOrderId;
+      if(colorKey && !(colorKey in colorMap)){
+        const h=colorKey.slice(-4).split('').reduce((a,c)=>a+c.charCodeAt(0),0);
+        colorMap[colorKey]=h%10;
       }
     });
     setStatus('ok',`${lines.length} γραμμές από ${glRecs.length} records`);
@@ -551,7 +553,7 @@ function getFiltered(){
 
 /* CARD HTML */
 function cardHTML(l){
-  const ci=colorMap[l.noId]??0;
+  const ci=colorMap[l.noId||l.intlOrderId]??0;
   const ds=fmtDate(l.loadDate);
   const isSplit=!!l.splitFrom;
   const inT=inTruck(l.id);
@@ -866,6 +868,7 @@ async function confirmSplit(){
     if(of['Loading Location']?.length)   newFields['Loading Location']   = of['Loading Location'];
     if(of['Delivery Location']?.length)  newFields['Delivery Location']  = of['Delivery Location'];
     if(of['Linked National Order']?.length) newFields['Linked National Order'] = of['Linked National Order'];
+    if(of['Linked International Order']?.length) newFields['Linked International Order'] = of['Linked International Order'];
     const res=await fetch(`https://api.airtable.com/v0/${BASE}/${T_GL}`,{
       method:'POST',
       headers:{Authorization:`Bearer ${AT}`,'Content-Type':'application/json'},
@@ -933,7 +936,7 @@ async function saveTruck(truckId){
         .map(l=>l.goods||'').filter(Boolean))];
       if(glGoods.length) fields['Goods']=glGoods.join(' / ');
 
-      // 2. Fetch Source NOs for Temperature + Client
+      // 2a. Fetch Source NOs for Temperature + Client (natl-linked GL lines)
       const noIds=[...new Set(truck.lines
         .map(l=>String(l.noId||'')).filter(id=>/^rec[a-zA-Z0-9]{14}$/.test(id)))];
 
@@ -962,16 +965,52 @@ async function saveTruck(truckId){
           if(noGoods.length) fields['Goods']=noGoods.join(' / ');
         }
       }
+
+      // 2b. Fetch Source ORDERS for Temperature + Client (intl-linked GL lines)
+      const intlOrdIds=[...new Set(truck.lines
+        .map(l=>String(l.intlOrderId||'')).filter(id=>/^rec[a-zA-Z0-9]{14}$/.test(id)))];
+
+      if(intlOrdIds.length){
+        const fi=`OR(${intlOrdIds.map(id=>`RECORD_ID()="${id}"`).join(',')})`;
+        const ordRecs=await atFetch(T_ORDERS,
+          ['Temperature °C','Client','Goods'],
+          {filterByFormula:fi});
+
+        const temps2=ordRecs
+          .map(r=>r.fields['Temperature °C'])
+          .filter(t=>t!=null&&t!==undefined);
+        if(temps2.length){
+          const cur=fields['Temperature C']??Infinity;
+          fields['Temperature C']=Math.min(cur,...temps2);
+        }
+
+        const cIds2=[...new Set(ordRecs.flatMap(r=>r.fields['Client']||[]).filter(Boolean))];
+        if(cIds2.length){
+          const existing=fields['Client']||[];
+          fields['Client']=[...new Set([...existing,...cIds2])];
+        }
+
+        if(!fields['Goods']){
+          const oGoods=[...new Set(ordRecs.map(r=>r.fields['Goods']||'').filter(Boolean))];
+          if(oGoods.length) fields['Goods']=oGoods.join(' / ');
+        }
+      }
     }catch(e){ console.warn('CL enrichment',e); }
     truck.lines.slice(0,10).forEach((l,i)=>{
       if(l.pal>0) fields[`Pallets ${i+1}`]=Number(l.pal);
     });
 
-    // STEP 2: Source Orders (NO ids) — unique
+    // STEP 2: Source Orders (NAT_ORDER ids) — unique
     const srcIds=[...new Set(truck.lines
       .map(l=>String(l.noId||''))
       .filter(id=>/^rec[a-zA-Z0-9]{14}$/.test(id)))];
     if(srcIds.length) fields['Source Orders']=srcIds;
+
+    // Source Intl Orders (ORDERS ids for intl-linked GL lines) — unique
+    const srcIntlIds=[...new Set(truck.lines
+      .map(l=>String(l.intlOrderId||''))
+      .filter(id=>/^rec[a-zA-Z0-9]{14}$/.test(id)))];
+    if(srcIntlIds.length) fields['Source Intl Orders']=srcIntlIds;
 
     // GL record ids — for marking Assigned
     // Handle split lines: id may be 'recXXX_sa' or 'recXXX_sb' → real GL id is splitFrom
@@ -1140,7 +1179,7 @@ function renderSavedList(){
     const dateDisp=p.date?p.date.split('-').reverse().join('/'):'—';
     // Compact supplier lines
     const lineRows=p.lines.map(l=>{
-      const ci=colorMap[l.noId]??0;
+      const ci=colorMap[l.noId||l.intlOrderId]??0;
       const colors=['#3B82F6','#10B981','#F59E0B','#EF4444','#8B5CF6','#EC4899','#14B8A6','#F97316','#6366F1','#84CC16'];
       const col=colors[ci%10];
       const sup=l.supplier.length>18?l.supplier.slice(0,16)+'…':l.supplier;
@@ -1285,11 +1324,12 @@ async function restorePlan(i){
     }
   });
 
-  // Stable color on restore
+  // Stable color on restore (natl + intl)
   p.lines.forEach(l=>{
-    if(l.noId && !(l.noId in colorMap)){
-      const h=l.noId.slice(-4).split('').reduce((a,c)=>a+c.charCodeAt(0),0);
-      colorMap[l.noId]=h%10;
+    const colorKey=l.noId||l.intlOrderId;
+    if(colorKey && !(colorKey in colorMap)){
+      const h=colorKey.slice(-4).split('').reduce((a,c)=>a+c.charCodeAt(0),0);
+      colorMap[colorKey]=h%10;
     }
   });
   // Restore truck for re-editing — merge split parts back to original
@@ -1369,7 +1409,7 @@ function persistTrucks(){
     const data=trucks.map(t=>({
       id:t.id, name:t.name, date:t.date||'',
       lines:t.lines.map(l=>({
-        id:l.id,noId:l.noId,supplier:l.supplier,
+        id:l.id,noId:l.noId,intlOrderId:l.intlOrderId||null,supplier:l.supplier,
         delivery:l.delivery,pal:l.pal,locId:l.locId,
         dir:l.dir,loadDate:l.loadDate,ref:l.ref||'',
         splitFrom:l.splitFrom||null
@@ -1388,9 +1428,9 @@ function restoreTrucks(){
     if(!Array.isArray(data)||!data.length) return;
     trucks=data;
     tc=parseInt(localStorage.getItem('pg_tc')||'1')||1;
-    // Rebuild colorMap for restored lines
-    const noIds=[...new Set(data.flatMap(t=>t.lines.map(l=>l.noId).filter(Boolean)))];
-    noIds.forEach((id,i)=>{ if(!(id in colorMap)) colorMap[id]=Object.keys(colorMap).length%10; });
+    // Rebuild colorMap for restored lines (natl + intl)
+    const colorKeys=[...new Set(data.flatMap(t=>t.lines.map(l=>l.noId||l.intlOrderId).filter(Boolean)))];
+    colorKeys.forEach((id)=>{ if(!(id in colorMap)) colorMap[id]=Object.keys(colorMap).length%10; });
     console.log(`Restored ${trucks.length} trucks from localStorage`);
   }catch(e){ console.warn('restore trucks',e); }
 }
@@ -1420,7 +1460,7 @@ async function loadSavedPlans(){
     if(to)   parts.push(`{Date}<='${to}'`);
     const formula=parts.length===0?'':parts.length===1?parts[0]:`AND(${parts.join(',')})`;
 
-    const fields=['Name','Date','Total Pallets','Direction','Source Orders',
+    const fields=['Name','Date','Total Pallets','Direction','Source Orders','Source Intl Orders',
       'Pallets 1','Pallets 2','Pallets 3','Pallets 4','Pallets 5',
       'Pallets 6','Pallets 7','Pallets 8','Pallets 9','Pallets 10',
       'Loading Location 1','Loading Location 2','Loading Location 3',
@@ -1509,6 +1549,26 @@ async function loadSavedPlans(){
       }
     }
 
+    // Build locId → {intlOrderId, ref} map from ORDERS loading locations (intl-linked GL lines)
+    const locToIntl={};
+    const allIntlOrdIds=new Set(recs.flatMap(r=>r.fields['Source Intl Orders']||[]));
+    if(allIntlOrdIds.size){
+      const fi=`OR(${[...allIntlOrdIds].map(id=>`RECORD_ID()="${id}"`).join(',')})`;
+      const intlRecs=await atFetch(T_ORDERS,
+        ['Reference',
+         'Loading Location 1','Loading Location 2','Loading Location 3',
+         'Loading Location 4','Loading Location 5','Loading Location 6',
+         'Loading Location 7','Loading Location 8','Loading Location 9','Loading Location 10'],
+        {filterByFormula:fi});
+      intlRecs.forEach(r=>{
+        const ref=r.fields['Reference']||'';
+        for(let i=1;i<=10;i++){
+          const lids=r.fields[`Loading Location ${i}`];
+          if(lids?.length) locToIntl[lids[0]]={intlOrderId:r.id,ref:ref?`(${ref})`:''};
+        }
+      });
+    }
+
     savedPlans=recs.map(r=>{
       const f=r.fields;
       const srcNOs=f['Source Orders']||[];
@@ -1519,15 +1579,17 @@ async function loadSavedPlans(){
         if(!pal&&!locArr?.length) break;
         const locId=locArr?.[0]||null;
         const supplier=locId?(lN[locId]||locId):'—';
-        // Get ref from locId→NO map
+        // Get ref from locId→NO map (natl) or locId→intl map (intl)
         const noInfo=locId?locToNo[locId]:null;
+        const intlInfo=locId?locToIntl[locId]:null;
         const noId=noInfo?.noId||srcNOs[0]||null;
-        const ref=noInfo?.ref||'';
+        const intlOrderId=intlInfo?.intlOrderId||null;
+        const ref=noInfo?.ref||intlInfo?.ref||'';
         // Use glId if available (fetched after loadSavedPlans), else CL-based id
         lines.push({
           id:`${r.id}_${i}`,   // temporary — replaced by glId fetch below
           glId:null,            // filled by GL id fetch below
-          noId,supplier,locId,pal:pal||0,
+          noId,intlOrderId,supplier,locId,pal:pal||0,
           delivery:'',dir:f.Direction||'',loadDate:f.Date||'',ref
         });
       }
@@ -1544,15 +1606,16 @@ async function loadSavedPlans(){
       };
     });
 
-    // Stable color for saved plan noIds
+    // Stable color for saved plan noIds / intlOrderIds
     savedPlans.forEach(p=>p.lines.forEach(l=>{
-      if(l.noId && !(l.noId in colorMap)){
-        const h=l.noId.slice(-4).split('').reduce((a,c)=>a+c.charCodeAt(0),0);
-        colorMap[l.noId]=h%10;
+      const colorKey=l.noId||l.intlOrderId;
+      if(colorKey && !(colorKey in colorMap)){
+        const h=colorKey.slice(-4).split('').reduce((a,c)=>a+c.charCodeAt(0),0);
+        colorMap[colorKey]=h%10;
       }
     }));
     // Fetch GL record IDs for saved plan lines (needed for undo)
-    // Map: noId+locId → glId
+    // Map: noId+locId → glId (natl lines)
     const allNoIds2=[...new Set(savedPlans.flatMap(p=>p.lines.map(l=>l.noId).filter(Boolean)))];
     if(allNoIds2.length){
       try{
@@ -1571,7 +1634,41 @@ async function loadSavedPlans(){
             l.id=glMap[key];  // use GL id as the primary line id
           }
         }));
-      }catch(e){ console.warn('GL id fetch',e); }
+      }catch(e){ console.warn('GL id fetch (natl)',e); }
+    }
+    // Map: intlOrderId+locId → glId (intl lines)
+    // Fetch by Reference (text field, filterable) then JS-filter by Linked International Order
+    const allIntlOrdIds2=[...new Set(savedPlans.flatMap(p=>p.lines.map(l=>l.intlOrderId).filter(Boolean)))];
+    if(allIntlOrdIds2.length){
+      try{
+        // Get refs for those intl orders (already in locToIntl, extract from refs)
+        const intlRefs=[...new Set(
+          savedPlans.flatMap(p=>p.lines
+            .filter(l=>l.intlOrderId)
+            .map(l=>l.ref.replace(/^\(|\)$/g,''))
+            .filter(Boolean)
+          )
+        )];
+        if(intlRefs.length){
+          const rf=`OR(${intlRefs.map(r=>`{Reference}="${r}"`).join(',')})`;
+          const intlGLRecs=await atFetch(T_GL,
+            ['Linked International Order','Loading Location'],
+            {filterByFormula:rf});
+          const intlGLMap={};
+          intlGLRecs.forEach(g=>{
+            // Linked International Order in GET response = array of record IDs
+            const iId=(g.fields['Linked International Order']||[])[0];
+            const lid=(g.fields['Loading Location']||[])[0];
+            if(iId&&lid&&allIntlOrdIds2.includes(iId)) intlGLMap[iId+'|'+lid]=g.id;
+          });
+          savedPlans.forEach(p=>p.lines.forEach(l=>{
+            if(l.intlOrderId&&!l.glId){
+              const key=l.intlOrderId+'|'+(l.locId||'');
+              if(intlGLMap[key]){l.glId=intlGLMap[key];l.id=intlGLMap[key];}
+            }
+          }));
+        }
+      }catch(e){ console.warn('GL id fetch (intl)',e); }
     }
 
     renderSavedList();
