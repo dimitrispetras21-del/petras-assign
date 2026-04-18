@@ -273,9 +273,13 @@ textarea{resize:vertical;min-height:60px}
       <div id="unloadingStopsGrid"></div>
     </div>
 
-    <!-- Notes -->
+    <!-- Reference + Notes -->
     <div class="card">
-      <div class="card-title">Σημειώσεις</div>
+      <div class="card-title">Reference & Σημειώσεις</div>
+      <div class="field">
+        <label>Reference / Booking #</label>
+        <input type="text" id="reference" class="ai-filled" placeholder="PO-12345 / Auftrag-Nr / Φορτ.Νο">
+      </div>
       <div class="field">
         <textarea id="notes" rows="3" placeholder="Ειδικές οδηγίες..."></textarea>
       </div>
@@ -422,7 +426,8 @@ async function startAnalysis(){
     cb={type:'image',source:{type:'base64',media_type:fileType||'image/jpeg',data:fileB64}};
   }
 
-  const clientList=clients.slice(0,80).map(c=>c.name).join(', ');
+  const clientList=clients.slice(0,120).map(c=>c.name).join(', ');
+  const locationList=locations.slice(0,200).map(l=>l.name).join('; ');
 
   const prompt=`You are a transport order data extraction system for Petras Group, a Greek temperature-controlled road carrier (Greece ↔ Central/Eastern Europe).
 
@@ -521,12 +526,23 @@ RULES:
 5. NEVER merge two different addresses into one string
 6. Pallets per stop: use FORMAT A if available, FORMAT B if not (see above)
 
-LOCATION MATCHING HINTS — Our locations are named like:
-• "Lidl Wundschuh, AT" (company + city + country code)
-• "Nestle Bulgaria EAD, BG"
-• "Tesco Központi Raktár" (Hungarian DC)
-• "WELL Pack s.r.o - Sadska, CZ" ← use this exact format if not in list
-→ In block_address: write the name as close as possible to our list format for best matching
+LOCATION MATCHING HINTS — Our locations list (top 200 by name):
+${locationList}
+
+→ If the document's address matches one of OUR locations above (fuzzy match OK),
+  return block_address EXACTLY as it appears in our list.
+→ If NOT in our list, use format: "COMPANY - City, CountryCode" (e.g. "WELL Pack s.r.o - Sadska, CZ")
+→ JS does the fuzzy matching, so getting close to our list format improves accuracy.
+
+VEROIA SWITCH DETECTION (veroia_switch):
+→ If document mentions "Via Veroia", "Crossdock Vermion", "Cross-docking at Vermion",
+  "Μέσω Βέροιας", "Διαμετακομιστικός σταθμός Βέροια" → return true
+→ Default → false
+
+REFERENCE / BOOKING NUMBER (reference):
+→ Look for: "Order No", "PO", "Booking Ref", "Reference", "Auftrag-Nr", "Φορτ. Νο", "Reference No"
+→ Main identifier the client uses to track this order. e.g. "PO-123456", "ABC-7890"
+→ If multiple found, return the most prominent one (usually top of document)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 SECTION 4: OUTPUT FORMAT
@@ -548,6 +564,8 @@ Return ONLY valid JSON. No markdown. No explanation. No extra text.
   "pallet_exchange": true or false,
   "veroia_switch": false,
   "reefer_mode": "Continuous" or "Start-Stop" or "No temp" or null,
+  "reference": "string or null",
+  "confidence": "HIGH" or "MEDIUM" or "LOW",
   "stop_rows": [
     {
       "type": "loading" or "unloading",
@@ -558,18 +576,63 @@ Return ONLY valid JSON. No markdown. No explanation. No extra text.
   "notes": null
 }
 
+CONFIDENCE RULES:
+• HIGH: all key fields (client, direction, dates, stops, price) clearly visible
+• MEDIUM: some fields unclear, needs human review
+• LOW: document partially illegible or key data missing
+
 Match client_name from: ${clientList}`;
 
     try{
-    const resp=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':ANTH_KEY,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:4000,thinking:{type:'enabled',budget_tokens:2000},messages:[{role:'user',content:[cb,{type:'text',text:prompt}]}]})
-    });
-    if(!resp.ok){const e=await resp.json();throw new Error(e.error?.message||'API error');}
+    // Image compression for large photos (PDFs left alone)
+    if (cb.type === 'image' && fileB64.length > 2*1024*1024) {
+      try {
+        const img = new Image();
+        img.src = 'data:' + (fileType||'image/jpeg') + ';base64,' + fileB64;
+        await new Promise(r => { img.onload = r; img.onerror = r; });
+        if (img.width) {
+          const maxSide = 1800;
+          const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+          const w = Math.round(img.width*scale), h = Math.round(img.height*scale);
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          const compressed = canvas.toDataURL('image/jpeg', 0.85).split(',')[1];
+          cb = {type:'image', source:{type:'base64', media_type:'image/jpeg', data: compressed}};
+        }
+      } catch(compErr) { console.warn('compression skipped:', compErr); }
+    }
+
+    // Anthropic call with retry on 5xx
+    let resp, lastErr;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        resp = await fetch('https://api.anthropic.com/v1/messages',{
+          method:'POST',
+          headers:{'Content-Type':'application/json','x-api-key':ANTH_KEY,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+          body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:4000,thinking:{type:'enabled',budget_tokens:2000},messages:[{role:'user',content:[cb,{type:'text',text:prompt}]}]})
+        });
+        if (resp.ok) break;
+        if (resp.status >= 500 && attempt === 0) { await new Promise(r=>setTimeout(r,1500)); continue; }
+        const e = await resp.json().catch(()=>({}));
+        throw new Error(e.error?.message || 'API error '+resp.status);
+      } catch(err) {
+        lastErr = err;
+        if (attempt === 0) await new Promise(r=>setTimeout(r,1500));
+        else throw err;
+      }
+    }
+    if (!resp || !resp.ok) throw lastErr || new Error('AI call failed');
     const data=await resp.json();
     const raw=data.content.find(c=>c.type==='text'&&!c.thinking)?.text||data.content.find(c=>c.type==='text')?.text||'{}';
-    const extracted=JSON.parse(raw.replace(/```json|```/g,'').trim());
+    let extracted;
+    try {
+      extracted = JSON.parse(raw.replace(/```json|```/g,'').trim());
+    } catch(parseErr) {
+      const m = raw.match(/\{[\s\S]*\}/);
+      if (m) { try { extracted = JSON.parse(m[0]); } catch { throw new Error('AI returned invalid JSON'); } }
+      else throw new Error('AI returned no JSON: ' + raw.slice(0,150));
+    }
     // Show debug in UI
     const dp=document.getElementById('debugPanel');
     dp.textContent='=== AI RAW JSON ===\n'+raw+'\n\n=== PARSED ===\n'+JSON.stringify(extracted,null,2);
@@ -581,11 +644,45 @@ Match client_name from: ${clientList}`;
       if(OUR_NAMES.some(n=>low.includes(n))) extracted.client_name='';
     }
 
+    // Validation layer: warn on common extraction issues
+    const warnings = [];
+    if (extracted.confidence === 'LOW') warnings.push('AI confidence: LOW — review everything');
+    else if (extracted.confidence === 'MEDIUM') warnings.push('AI confidence: MEDIUM');
+    if (extracted.stop_rows) {
+      const loads = extracted.stop_rows.filter(s=>s.type==='loading');
+      const unloads = extracted.stop_rows.filter(s=>s.type==='unloading');
+      if (loads.length > 5) warnings.push(`${loads.length} loading stops — form max 5, will truncate!`);
+      if (unloads.length > 5) warnings.push(`${unloads.length} unloading stops — form max 5, will truncate!`);
+      const sumLoad = loads.reduce((s,r)=>s+(parseInt(r.pal)||0),0);
+      if (extracted.pallets_no && sumLoad && Math.abs(sumLoad - extracted.pallets_no) > 2) {
+        warnings.push(`Pallet mismatch: sum(loading stops)=${sumLoad} ≠ pallets_no=${extracted.pallets_no}`);
+      }
+      if (!loads.length) warnings.push('No loading stops extracted');
+      if (!unloads.length) warnings.push('No unloading stops extracted');
+    }
+    if (!extracted.client_name) warnings.push('Client not extracted');
+    if (!extracted.loading_datetime) warnings.push('Loading date missing');
+    if (!extracted.delivery_datetime) warnings.push('Delivery date missing');
+    if (!extracted.price_eur) warnings.push('Price missing');
+
+    if (warnings.length) {
+      const wdiv = document.getElementById('aiWarnings') || (() => {
+        const d = document.createElement('div');
+        d.id = 'aiWarnings';
+        d.style.cssText = 'margin-top:12px;padding:12px;background:#FEF3C7;border:1px solid #F59E0B;color:#92400E;border-radius:6px;font-size:12px;line-height:1.6';
+        st.parentElement.insertBefore(d, st.nextSibling);
+        return d;
+      })();
+      wdiv.innerHTML = '⚠️ <b>Warnings:</b><br>' + warnings.map(w=>'• '+w).join('<br>');
+    } else {
+      document.getElementById('aiWarnings')?.remove();
+    }
+
     fillForm(extracted);
     st.style.display='none';
     document.getElementById('btnAnalyze').disabled=false;
     goStep(2);
-    showToast('AI συμπλήρωσε τη φόρμα','success');
+    showToast('AI συμπλήρωσε τη φόρμα' + (warnings.length ? ' (με προειδοποιήσεις)' : ''),'success');
   }catch(e){
     st.className='status error';
     st.innerHTML='Σφάλμα: '+e.message;
@@ -612,6 +709,16 @@ function fillForm(d){
   if(d.pallet_exchange)document.getElementById('palletExchange').checked=true;
   if(d.veroia_switch)document.getElementById('veroiaSwitch').checked=true;
   if(d.notes)sv('notes',d.notes);
+  if(d.reference)sv('reference',d.reference);
+  // Normalize pallet type: AI returns "EUR" but Airtable uses "EUR/EPAL"
+  if(d.pallet_type){
+    const pt = d.pallet_type === 'EUR' ? 'EUR/EPAL' : d.pallet_type;
+    const sel = document.getElementById('palletType');
+    if (sel) {
+      const opt = [...sel.options].find(o => o.value === pt || o.value === d.pallet_type);
+      if (opt) sel.value = opt.value;
+    }
+  }
 
   // Aggregate stop_rows by block_address — JS does the math, not AI
   if(d.stop_rows&&d.stop_rows.length){
@@ -899,6 +1006,9 @@ async function createOrder(){
     const rm=safeStr('reeferMode'); if(rm) payload['Refrigerator Mode']=rm;
     const pt=safeStr('palletType'); if(pt) payload['Pallet Type']=pt;
 
+    // Reference / booking number
+    const refStr=safeStr('reference'); if(refStr) payload['Reference']=refStr;
+
     // Checkboxes — always boolean
     payload['Pallet Exchange']=document.getElementById('palletExchange')?.checked===true;
     payload['Veroia Switch ']=document.getElementById('veroiaSwitch')?.checked===true;
@@ -1083,7 +1193,8 @@ function showToast(msg,type){
 function resetApp(){
   fileB64=null;fileType=null;clearFile();
   ['clientSearch','clientId','direction','goods','temperature','weight','palletsNo','price',
-   'loadingDate','deliveryDate','reeferMode','notes'].forEach(id=>sv(id,''));
+   'loadingDate','deliveryDate','reeferMode','notes','reference'].forEach(id=>sv(id,''));
+  document.getElementById('aiWarnings')?.remove();
   document.getElementById('palletExchange').checked=false;
   if(document.getElementById('palletType'))document.getElementById('palletType').value='';
   document.getElementById('veroiaSwitch').checked=false;
