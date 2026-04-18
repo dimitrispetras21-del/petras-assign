@@ -320,6 +320,8 @@ textarea{resize:vertical;min-height:60px}
 const AT_TOKEN   = 'patpPJXnFYnxdgoK3.a2162b09fbb214628114ff2ce68bb5a7b30aea2061b14f9562a1ab222585cf08';
 const BASE_ID    = 'appElT5CQV6JQvym8';
 const ORDERS_TBL = 'tblgHlNmLBH3JTdIM';
+const ORDER_STOPS_TBL = 'tblaeY5QOHAS1gyE8';
+const VEROIA_LOC = 'recJucKOhC1zh4IP3';
 const ANTH_KEY   = ['sk-ant-api03-HG90hAxac0K9lx2mdS6fFKID6XMAICWl4FSbXeVM9zG3klf7diFSU',
                     'iNY056CRFBAeUZ1H_dZwDfhVbf7IRD3HQ-_nYO3gAA'].join('');
 
@@ -927,7 +929,19 @@ async function createOrder(){
     });
     const data=await r.json();
     if(data.error) throw new Error(data.error.message+' | Fields: '+JSON.stringify(Object.keys(payload)));
-    document.getElementById('successSub').textContent='Record: '+data.id;
+    const orderId = data.id;
+
+    // Create ORDER_STOPS records (ORDERS_STOPS = single source of truth)
+    try {
+      await createOrderStops(orderId, payload);
+    } catch(stopsErr) {
+      console.warn('ORDER_STOPS creation failed:', stopsErr);
+      if (dp) dp.textContent += '\n\n=== STOPS ERROR ===\n' + stopsErr.message;
+      // Non-fatal: order is created, flat fields still there as fallback
+      showToast('Order created but stops failed: ' + stopsErr.message, 'error');
+    }
+
+    document.getElementById('successSub').textContent='Record: '+orderId;
     st.style.display='none';
     goStep(4);
     showToast('Εντολη καταχωρηθηκε','success');
@@ -939,6 +953,105 @@ async function createOrder(){
     const dpErr=document.getElementById('debugPanel');
     if(dpErr) dpErr.classList.add('show');
   }
+}
+
+// ── Create ORDER_STOPS records after order creation ──────────
+// ORDER_STOPS are the single source of truth for locations/pallets.
+// For each Loading/Unloading Location 1-5 in payload, create one stop record.
+// For VS orders, also create a Cross-dock stop at Veroia.
+async function createOrderStops(orderId, payload) {
+  const stops = [];
+  const loadingDt = payload['Loading DateTime'] ? payload['Loading DateTime'] + 'T08:00:00.000Z' : null;
+  const deliveryDt = payload['Delivery DateTime'] ? payload['Delivery DateTime'] + 'T16:00:00.000Z' : null;
+  const clientId = Array.isArray(payload['Client']) ? payload['Client'][0] : null;
+  const goods = payload['Goods'] || null;
+  const temp = payload['Temperature °C'] ?? payload['Temperature'] ?? null;
+  const ref = payload['Reference'] || null;
+  const isVS = !!payload['Veroia Switch '];
+
+  // Loading stops 1-5
+  for (let i = 1; i <= 5; i++) {
+    const locArr = payload['Loading Location ' + i];
+    const pals = payload['Loading Pallets ' + i];
+    if (Array.isArray(locArr) && locArr[0]) {
+      const f = {
+        'Parent Order': [orderId],
+        'Stop Number': i,
+        'Stop Type': 'Loading',
+        'Location': [locArr[0]],
+      };
+      if (pals > 0) f['Pallets'] = pals;
+      if (loadingDt) f['DateTime'] = loadingDt;
+      if (clientId) f['Client at Stop'] = [clientId];
+      if (goods) f['Goods'] = goods;
+      if (temp !== null) f['Temperature'] = temp;
+      if (ref) f['Reference'] = ref;
+      stops.push(f);
+    }
+  }
+
+  // Cross-dock stop for Veroia Switch orders (between loading and unloading)
+  if (isVS) {
+    const direction = payload['Direction'];
+    // Export VS: cross-dock = Loading date + 1
+    // Import VS: cross-dock = Delivery date - 1
+    let crossDt = null;
+    if (direction === 'Export' && payload['Loading DateTime']) {
+      const d = new Date(payload['Loading DateTime'] + 'T12:00:00');
+      d.setDate(d.getDate() + 1);
+      crossDt = d.toISOString().slice(0, 10) + 'T12:00:00.000Z';
+    } else if (direction === 'Import' && payload['Delivery DateTime']) {
+      const d = new Date(payload['Delivery DateTime'] + 'T12:00:00');
+      d.setDate(d.getDate() - 1);
+      crossDt = d.toISOString().slice(0, 10) + 'T12:00:00.000Z';
+    }
+    const f = {
+      'Parent Order': [orderId],
+      'Stop Number': 99,
+      'Stop Type': 'Cross-dock',
+      'Location': [VEROIA_LOC],
+    };
+    if (crossDt) f['DateTime'] = crossDt;
+    if (clientId) f['Client at Stop'] = [clientId];
+    if (goods) f['Goods'] = goods;
+    if (temp !== null) f['Temperature'] = temp;
+    stops.push(f);
+  }
+
+  // Unloading stops 1-5
+  for (let i = 1; i <= 5; i++) {
+    const locArr = payload['Unloading Location ' + i];
+    const pals = payload['Unloading Pallets ' + i];
+    if (Array.isArray(locArr) && locArr[0]) {
+      const f = {
+        'Parent Order': [orderId],
+        'Stop Number': i,
+        'Stop Type': 'Unloading',
+        'Location': [locArr[0]],
+      };
+      if (pals > 0) f['Pallets'] = pals;
+      if (deliveryDt) f['DateTime'] = deliveryDt;
+      if (clientId) f['Client at Stop'] = [clientId];
+      if (goods) f['Goods'] = goods;
+      if (temp !== null) f['Temperature'] = temp;
+      if (ref) f['Reference'] = ref;
+      stops.push(f);
+    }
+  }
+
+  if (!stops.length) return;
+
+  // Batch create (10 per request, Airtable limit)
+  for (let b = 0; b < stops.length; b += 10) {
+    const batch = stops.slice(b, b + 10);
+    const r = await atFetch('/' + ORDER_STOPS_TBL, {
+      method: 'POST',
+      body: JSON.stringify({ records: batch.map(fields => ({ fields })), typecast: true })
+    });
+    const d = await r.json();
+    if (d.error) throw new Error('STOPS ' + d.error.message);
+  }
+  console.log('Created ' + stops.length + ' ORDER_STOPS for ' + orderId);
 }
 
 function toggleDebug(){
