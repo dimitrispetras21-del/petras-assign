@@ -255,6 +255,11 @@ textarea{resize:vertical;min-height:60px}
       <label>Loading Supplier</label>
       <select id="mSupplier"><option value="">— Επιλογή —</option></select>
     </div>
+    <div class="field" id="mOrderStopField" style="display:none">
+      <label>Order Stop <span style="color:#EF4444">*</span></label>
+      <select id="mOrderStop"><option value="">— pick stop —</option></select>
+      <div style="font-size:11px;color:#94A3B8;margin-top:4px">Μόνο Loading + Cross-dock stops (unloadings δεν δημιουργούν entries)</div>
+    </div>
     <div class="field" id="mPartnerChargeField" style="display:none">
       <label style="display:flex;align-items:center;gap:8px">
         <input type="checkbox" id="mPartnerCharge" onchange="togglePartnerCharge()" />
@@ -286,6 +291,12 @@ textarea{resize:vertical;min-height:60px}
 <script>
 const AT_TOKEN  = "patpPJXnFYnxdgoK3.a2162b09fbb214628114ff2ce68bb5a7b30aea2061b14f9562a1ab222585cf08";
 const BASE_ID   = "appElT5CQV6JQvym8";
+// 2-table model: SUPPLIERS (loading stops) + PARTNERS (INTL leg + crossdock)
+const TBL_SUPPLIERS = "tblAAH3N1bIcBRPXi"; // PALLET LEDGER - SUPPLIERS
+const TBL_PARTNERS  = "tblAUixdjwpgnJ1hK"; // PALLET LEDGER - PARTNERS
+const TBL_ORDER_STOPS = "tblaeY5QOHAS1gyE8";
+// Per-order ORDER_STOPS cache (loaded when order opens)
+let currentOrderStops = []; // [{id, type, number, location, date}]
 const MAKE_URL  = "https://hook.eu1.make.com/uboq8qbdmca6p59xxjfoku31d6dqk9me";
 const ANTH_KEY  = "sk-ant-api03-HG90hAxac0K9lx2mdS6fFKID6XMAICWl4FSbXeVM9"+ "zG3klf7diFSUiNY056CRFBAeUZ1H_dZwDfhVbf7IRD3HQ-_nYO3gAA";
 
@@ -355,7 +366,49 @@ async function loadOrder(id){
     if(f["Pallet Sheet 2 Uploaded"]){document.getElementById("tab2").classList.add("done");document.getElementById("tab2").querySelector(".tab-num").textContent="✓";}
     document.getElementById("freeModeFields").classList.remove("show");
     document.getElementById("mCounterpartyField").style.display="block";
+    // Load ORDER_STOPS for this order (Loading + Cross-dock only)
+    await loadStopsForCurrentOrder();
+    document.getElementById("mOrderStopField").style.display="block";
   }catch(e){showToast("Σφάλμα: "+e.message,"error");}
+}
+
+async function loadStopsForCurrentOrder(){
+  currentOrderStops = [];
+  const sel = document.getElementById("mOrderStop");
+  sel.innerHTML = '<option value="">loading...</option>';
+  if(!currentOrder){sel.innerHTML='<option value="">— no order —</option>';return;}
+  try{
+    const qs = new URLSearchParams();
+    qs.set("filterByFormula", `FIND("${currentOrder.id}",ARRAYJOIN({Parent Order},","))>0`);
+    ["Stop Number","Stop Type","Location","DateTime"].forEach(f=>qs.append("fields[]",f));
+    const r = await atFetch(`/${TBL_ORDER_STOPS}?${qs}`);
+    const d = await r.json();
+    const stops = (d.records||[]).sort((a,b)=>(a.fields["Stop Number"]||0)-(b.fields["Stop Number"]||0));
+    // Only Loading + Cross-dock (unloadings never create entries)
+    const eligible = stops.filter(s=>["Loading","Cross-dock"].includes(s.fields["Stop Type"]));
+    currentOrderStops = eligible.map(s=>({
+      id: s.id,
+      number: s.fields["Stop Number"]||0,
+      type: s.fields["Stop Type"]||"",
+      location: (s.fields["Location"]||[])[0]||"",
+      date: (s.fields["DateTime"]||"").slice(0,10)
+    }));
+    if(!eligible.length){sel.innerHTML='<option value="">no eligible stops</option>';return;}
+    // Get location names for display
+    const locIds = [...new Set(currentOrderStops.map(s=>s.location).filter(Boolean))];
+    const locNames = {};
+    if(locIds.length){
+      const lqs = new URLSearchParams();
+      lqs.set("filterByFormula",`OR(${locIds.map(id=>`RECORD_ID()="${id}"`).join(",")})`);
+      ["Name","City"].forEach(f=>lqs.append("fields[]",f));
+      const lr = await atFetch(`/LOCATIONS?${lqs}`);
+      const ld = await lr.json();
+      (ld.records||[]).forEach(l=>{ locNames[l.id] = l.fields["Name"]||l.fields["City"]||l.id; });
+    }
+    sel.innerHTML = '<option value="">— pick stop —</option>' + currentOrderStops.map(s=>
+      `<option value="${s.id}">${s.type} #${s.number} — ${locNames[s.location]||"?"}</option>`
+    ).join('');
+  }catch(e){console.warn("stops load failed:",e);sel.innerHTML='<option value="">error loading stops</option>';}
 }
 
 function selectSheet(n){
@@ -609,59 +662,78 @@ async function saveToAirtable(){
     btn.disabled=false;btn.textContent="💾 ΚΑΤΑΧΩΡΗΣΗ";return;
   }
 
-  const buildFields=(direction,pallets)=>{
+  // Require Order Stop in order mode
+  const orderStopId = MODE==="order" ? document.getElementById("mOrderStop").value : null;
+  if(MODE==="order" && !orderStopId){
+    ss.className="status error";ss.innerHTML="Διάλεξε Order Stop πρώτα";
+    btn.disabled=false;btn.textContent="💾 ΚΑΤΑΧΩΡΗΣΗ";return;
+  }
+  const orderStopRec = currentOrderStops.find(s=>s.id===orderStopId);
+  const useDate = MODE==="free" ? document.getElementById("freeDate").value : (orderStopRec?.date || date);
+  const noteParts = [transport?`Transport: ${transport}`:"", issuer?`Issuer: ${issuer}`:"", notes].filter(Boolean);
+  const notesStr = noteParts.length ? noteParts.join(" | ") : "";
+
+  // Build SUPPLIER entry fields (goes to PALLET LEDGER - SUPPLIERS)
+  const buildSupplierFields=(direction,pallets)=>{
     const f={
       "Direction":direction,"Pallets":pallets,"Pallet Type":"EUR/EPAL",
-      "Stop Type":stopType,"Counterparty Type":counterparty,
       "AI Extracted":true,"Verified":false
     };
-    // For crossdock, always link Partner Account
-    if(isCrossdock && crossdockPartnerId) f["Partner Account"]=[crossdockPartnerId];
-    const useDate=MODE==="free"?document.getElementById("freeDate").value:date;
     if(useDate) f["Date"]=useDate;
-    const noteParts=[transport?`Transport: ${transport}`:"",issuer?`Issuer: ${issuer}`:"",notes].filter(Boolean);
-    if(noteParts.length) f["Notes"]=noteParts.join(" | ");
-    if(currentOrder) f["Order"]=[currentOrder.id];
-    // Loading Supplier for sheet 1 in order mode
-    if(MODE==="order" && selectedSheet===1){
-      const sid=document.getElementById("mSupplier").value;
-      if(sid) f["Loading Supplier"]=[sid];
-    }
-    if(MODE==="free"){
-      if(counterparty==="Partner"){const pid=document.getElementById("freePartner").value;if(pid)f["Partner Account"]=[pid];}
-      else if(counterparty==="Client"){
-        const cid=document.getElementById("freeClient").value;if(cid)f["Client Account"]=[cid];
-        const sid=document.getElementById("freeSupplier").value;if(sid)f["Loading Supplier"]=[sid];
-      }
+    if(notesStr) f["Notes"]=notesStr;
+    if(orderStopId) f["Order Stop"]=[orderStopId];
+    // Loading Supplier: use stop's location (Order mode) or manual pick (Free mode)
+    if(MODE==="order" && orderStopRec?.location) f["Loading Supplier"]=[orderStopRec.location];
+    else if(MODE==="free"){
+      const sid=document.getElementById("freeSupplier")?.value;if(sid) f["Loading Supplier"]=[sid];
     }
     return f;
   };
 
+  // Build PARTNER entry fields (goes to PALLET LEDGER - PARTNERS)
+  const buildPartnerFields=(direction,pallets,partnerId)=>{
+    const f={
+      "Direction":direction,"Pallets":pallets,"Pallet Type":"EUR/EPAL",
+      "AI Extracted":true,"Verified":false,
+      "Partner":[partnerId]
+    };
+    if(useDate) f["Date"]=useDate;
+    if(notesStr) f["Notes"]=notesStr;
+    if(orderStopId) f["Order Stop"]=[orderStopId];
+    return f;
+  };
+
   try{
-    if(out>0){
-      const r=await atFetch("/PALLET%20LEDGER",{method:"POST",body:JSON.stringify({fields:buildFields("OUT",out)})});
-      if(!r.ok){const e=await r.json();throw new Error(e.error?.message||"Error saving OUT");}
+    // Determine which table(s) to write to
+    // isCrossdock → PARTNERS table only (partner handoff at Veroia)
+    // Regular Loading → SUPPLIERS; if partner charge → ALSO PARTNERS
+    const writeSupplier = !isCrossdock;
+    if(writeSupplier){
+      if(out>0){
+        const r=await atFetch(`/${TBL_SUPPLIERS}`,{method:"POST",body:JSON.stringify({fields:buildSupplierFields("OUT",out)})});
+        if(!r.ok){const e=await r.json();throw new Error(e.error?.message||"Error saving OUT");}
+      }
+      if(inn>0){
+        const r=await atFetch(`/${TBL_SUPPLIERS}`,{method:"POST",body:JSON.stringify({fields:buildSupplierFields("IN",inn)})});
+        if(!r.ok){const e=await r.json();throw new Error(e.error?.message||"Error saving IN");}
+      }
     }
-    if(inn>0){
-      const r=await atFetch("/PALLET%20LEDGER",{method:"POST",body:JSON.stringify({fields:buildFields("IN",inn)})});
-      if(!r.ok){const e=await r.json();throw new Error(e.error?.message||"Error saving IN");}
+    // Crossdock: always writes to PARTNERS table
+    if(isCrossdock && crossdockPartnerId){
+      if(out>0){
+        const r=await atFetch(`/${TBL_PARTNERS}`,{method:"POST",body:JSON.stringify({fields:buildPartnerFields("OUT",out,crossdockPartnerId)})});
+        if(!r.ok){const e=await r.json();throw new Error(e.error?.message||"Error saving crossdock OUT");}
+      }
+      if(inn>0){
+        const r=await atFetch(`/${TBL_PARTNERS}`,{method:"POST",body:JSON.stringify({fields:buildPartnerFields("IN",inn,crossdockPartnerId)})});
+        if(!r.ok){const e=await r.json();throw new Error(e.error?.message||"Error saving crossdock IN");}
+      }
     }
-    // Partner charge: create OUT record for partner (they took our pallets)
+    // Partner charge on Loading (INTL leg only — partner took our pallets)
     const chargePartner = document.getElementById("mPartnerCharge")?.checked;
     const partnerId = document.getElementById("mPartnerSelect")?.value;
-    if(chargePartner && partnerId && out > 0){
-      const pf = {
-        "Direction":"OUT", "Pallets":out, "Pallet Type":"EUR/EPAL",
-        "Stop Type":stopType, "Counterparty Type":"Partner",
-        "Partner Account":[partnerId],
-        "AI Extracted":true, "Verified":false
-      };
-      const useDate=MODE==="free"?document.getElementById("freeDate").value:date;
-      if(useDate) pf["Date"]=useDate;
-      if(currentOrder) pf["Order"]=[currentOrder.id];
-      const noteParts=[transport?`Transport: ${transport}`:"",notes].filter(Boolean);
-      if(noteParts.length) pf["Notes"]=noteParts.join(" | ");
-      const r=await atFetch("/PALLET%20LEDGER",{method:"POST",body:JSON.stringify({fields:pf})});
+    if(chargePartner && partnerId && out > 0 && !isCrossdock){
+      const r=await atFetch(`/${TBL_PARTNERS}`,{method:"POST",body:JSON.stringify({fields:buildPartnerFields("OUT",out,partnerId)})});
       if(!r.ok){const e=await r.json();throw new Error(e.error?.message||"Error saving Partner charge");}
     }
     if(MODE==="order"&&currentOrder){
