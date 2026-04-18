@@ -405,8 +405,10 @@ async function loadStopsForCurrentOrder(){
       const ld = await lr.json();
       (ld.records||[]).forEach(l=>{ locNames[l.id] = l.fields["Name"]||l.fields["City"]||l.id; });
     }
+    // Cache location name on each stop (for AI context)
+    currentOrderStops.forEach(s => { s._locName = locNames[s.location] || ""; });
     sel.innerHTML = '<option value="">— pick stop —</option>' + currentOrderStops.map(s=>
-      `<option value="${s.id}">${s.type} #${s.number} — ${locNames[s.location]||"?"}</option>`
+      `<option value="${s.id}">${s.type} #${s.number} — ${s._locName||"?"}</option>`
     ).join('');
   }catch(e){console.warn("stops load failed:",e);sel.innerHTML='<option value="">error loading stops</option>';}
 }
@@ -474,46 +476,133 @@ function clearFile(){
   document.getElementById("aiStatus").style.display="none";
 }
 
+// ── Client-side image compression for large files (>2MB) ──────
+async function compressImageIfLarge(b64, mime){
+  if (!mime.startsWith("image/") || b64.length < 2*1024*1024) return b64;
+  try {
+    const img = new Image();
+    img.src = `data:${mime};base64,${b64}`;
+    await new Promise(r => img.onload = r);
+    const maxSide = 1600;
+    const scale = Math.min(1, maxSide/Math.max(img.width, img.height));
+    const w = Math.round(img.width*scale), h = Math.round(img.height*scale);
+    const cv = document.createElement("canvas");
+    cv.width = w; cv.height = h;
+    cv.getContext("2d").drawImage(img, 0, 0, w, h);
+    return cv.toDataURL("image/jpeg", 0.85).split(",")[1];
+  } catch(e) { console.warn("compress failed, using original:", e); return b64; }
+}
+
+// ── Build AI context from current order (suppliers + stops) ────
+function buildAIContext(){
+  if (MODE !== "order" || !currentOrder) return "";
+  const f = currentOrder.fields;
+  const lines = [];
+  lines.push(`ORDER CONTEXT (use this to match the document to the correct stop):`);
+  lines.push(`- Order Number: ${f["Order Number"]||"?"}`);
+  if (f["Direction"]) lines.push(`- Direction: ${f["Direction"]}`);
+  if (f["Veroia Switch "] || f["Veroia Switch"]) lines.push(`- Veroia Switch: YES`);
+  if (f["Loading DateTime"]) lines.push(`- Expected Loading Date: ${(f["Loading DateTime"]||"").slice(0,10)}`);
+  if (currentOrderStops.length){
+    lines.push(`- Eligible Stops (Loading + Cross-dock only):`);
+    currentOrderStops.forEach(s => {
+      lines.push(`    #${s.number} ${s.type} @ ${s._locName||s.location} on ${s.date||"?"}`);
+    });
+    lines.push(`→ Return "matched_stop_number" with the stop # that matches the document supplier name/date.`);
+  }
+  return lines.join("\n");
+}
+
+// Retry wrapper for Anthropic API
+async function anthropicCall(payload){
+  let lastErr;
+  for (let i=0; i<2; i++){
+    try {
+      const res = await fetch("https://api.anthropic.com/v1/messages",{
+        method:"POST",
+        headers:{
+          "Content-Type":"application/json",
+          "x-api-key":ANTH_KEY,
+          "anthropic-version":"2023-06-01",
+          "anthropic-dangerous-direct-browser-access":"true"
+        },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok){
+        const e = await res.json().catch(()=>({}));
+        if (res.status >= 500 && i===0){ await new Promise(r=>setTimeout(r,1500)); continue; }
+        throw new Error(e.error?.message||"API error "+res.status);
+      }
+      return await res.json();
+    } catch(e){ lastErr = e; if (i===0) await new Promise(r=>setTimeout(r,1500)); }
+  }
+  throw lastErr;
+}
+
 async function extractWithAI(){
   document.getElementById("btnExtract").disabled=true;
   const ais=document.getElementById("aiStatus");
   ais.className="status loading";
-  ais.innerHTML=`<div class="spinner"></div><span>Το AI διαβάζει το document...</span>`;
+  ais.innerHTML=`<div class="spinner"></div><span>Compressing & extracting...</span>`;
   try{
     const isPDF=currentFileType==="application/pdf";
-    const cb=isPDF
-      ?{type:"document",source:{type:"base64",media_type:"application/pdf",data:currentFileB64}}
-      :{type:"image",source:{type:"base64",media_type:currentFileType,data:currentFileB64}};
-    const res=await fetch("https://api.anthropic.com/v1/messages",{
-      method:"POST",
-      headers:{
-        "Content-Type":"application/json",
-        "x-api-key":ANTH_KEY,
-        "anthropic-version":"2023-06-01",
-        "anthropic-dangerous-direct-browser-access":"true"
-      },
-      body:JSON.stringify({
-        model:"claude-sonnet-4-20250514",
-        max_tokens:1000,
-        system:"Extract pallet exchange data from logistics pallet sheets. Return ONLY valid JSON, no markdown. {\"transport_number\":\"string or null\",\"date\":\"YYYY-MM-DD or null\",\"issuer_company\":\"string or null\",\"carrier_company\":\"string or null\",\"pallets_loaded\":0,\"pallets_returned\":0,\"pallet_type\":\"EUR/EPAL or null\",\"driver_signed\":false,\"company_signed\":false,\"confidence\":\"HIGH or MEDIUM or LOW\"} Empty fields=0.",
-        messages:[{role:"user",content:[cb,{type:"text",text:"Extract all pallet data from this document."}]}]
-      })
+    // Compress image if too large (skip PDFs)
+    const b64 = isPDF ? currentFileB64 : await compressImageIfLarge(currentFileB64, currentFileType);
+    const mime = isPDF ? "application/pdf" : (currentFileType.startsWith("image/jpeg") || b64 !== currentFileB64 ? "image/jpeg" : currentFileType);
+    const cb = isPDF
+      ? {type:"document",source:{type:"base64",media_type:mime,data:b64}}
+      : {type:"image",   source:{type:"base64",media_type:mime,data:b64}};
+
+    const orderContext = buildAIContext();
+
+    const SYSTEM_PROMPT = `You extract pallet exchange data from logistics delivery notes and CMR/pallet sheets (Greek or English).
+
+CRITICAL FIELDS:
+- pallets_loaded = Γεμάτες παλέτες που ΠΗΡΕ ο οδηγός (full pallets truck TOOK from supplier). Greek: "Φόρτωση", "Παραλαβή", "ΠΗΡΕ", "Γέμισμα".
+- pallets_returned = Άδειες/κενές παλέτες που ΑΦΗΣΕ ο οδηγός (empty pallets truck LEFT). Greek: "Επιστροφή", "Άφησε", "Κενές".
+- pallet_type: Detect one of: "EUR/EPAL" (blue/brown stamped EUR, 120x80cm), "CHEP" (blue painted), "LPR" (red), "IPP" (brown), "ADPA", "Other". Default "EUR/EPAL" only if no other indication.
+- confidence: HIGH = all fields clear & signatures visible. MEDIUM = some fields unclear. LOW = handwriting illegible or missing key data.
+
+STOP MATCHING (if ORDER CONTEXT provided):
+- Find which stop # matches the document's supplier/issuer name OR date.
+- Return matched_stop_number (integer) or null if uncertain.
+
+Return ONLY valid JSON (no markdown):
+{"transport_number":"string or null","date":"YYYY-MM-DD or null","issuer_company":"string or null","carrier_company":"string or null","pallets_loaded":0,"pallets_returned":0,"pallet_type":"EUR/EPAL","driver_signed":false,"company_signed":false,"confidence":"HIGH","matched_stop_number":null,"notes":"string or null"}`;
+
+    const userText = orderContext
+      ? `${orderContext}\n\nNow extract all pallet data from the attached document.`
+      : "Extract all pallet data from this document (no order context).";
+
+    const d = await anthropicCall({
+      model:"claude-sonnet-4-20250514",
+      max_tokens:1200,
+      system: SYSTEM_PROMPT,
+      messages:[{role:"user",content:[cb,{type:"text",text:userText}]}]
     });
-    if(!res.ok){const e=await res.json();throw new Error(e.error?.message||"API error "+res.status);}
-    const d=await res.json();
     const raw=d.content.find(c=>c.type==="text")?.text||"{}";
-    const parsed=JSON.parse(raw.replace(/```json|```/g,"").trim());
+    let parsed;
+    try {
+      parsed = JSON.parse(raw.replace(/```json|```/g,"").trim());
+    } catch(parseErr) {
+      // One more attempt: extract JSON substring
+      const m = raw.match(/\{[\s\S]*\}/);
+      if (m) { try { parsed = JSON.parse(m[0]); } catch { throw new Error("AI returned invalid JSON: " + raw.slice(0,120)); } }
+      else throw new Error("AI returned no JSON: " + raw.slice(0,120));
+    }
     ais.style.display="none";
     document.getElementById("btnExtract").disabled=false;
     openConfirmModal(parsed);
   }catch(e){
     ais.className="status error";
-    ais.innerHTML="\u274C \u03A3\u03C6\u03AC\u03BB\u03BC\u03B1: "+e.message;
+    ais.innerHTML="❌ Σφάλμα: "+e.message;
     document.getElementById("btnExtract").disabled=false;
   }
 }
 
 function openConfirmModal(data){
+  // Store extracted data globally for save path
+  window._lastAIExtract = data;
   const out=data.pallets_loaded||0, inn=data.pallets_returned||0, bal=out-inn;
   const bel=document.getElementById("modalBalance");
   bel.textContent=bal===0?"ΙΣΟΦΑΡΙΣΜΟΣ":bal>0?`+${bal}`:String(bal);
@@ -529,6 +618,32 @@ function openConfirmModal(data){
   const confEl=document.getElementById("sumConf");
   confEl.textContent=conf;
   confEl.style.color=conf==="HIGH"?"var(--green)":conf==="MEDIUM"?"var(--warn)":"var(--red)";
+
+  // LOW confidence: show highlighted review banner at top of modal
+  const existingBanner = document.getElementById("aiReviewBanner");
+  if (existingBanner) existingBanner.remove();
+  if (conf === "LOW" || conf === "MEDIUM") {
+    const banner = document.createElement("div");
+    banner.id = "aiReviewBanner";
+    banner.style.cssText = `margin:-8px 0 16px;padding:12px;border-radius:6px;font-size:13px;font-weight:600;text-align:left;border:1px solid ${conf==="LOW"?"var(--red)":"var(--warn)"};background:${conf==="LOW"?"rgba(232,80,80,0.08)":"rgba(245,158,11,0.08)"};color:${conf==="LOW"?"var(--red)":"#D97706"}`;
+    banner.innerHTML = `${conf==="LOW"?"⚠️ ΠΡΟΣΟΧΗ":"⚠️"} AI confidence: <b>${conf}</b> — Έλεγξε προσεκτικά τις τιμές πριν τη καταχώρηση.`;
+    const modalBody = document.getElementById("modalBalance").parentElement;
+    modalBody.parentElement.insertBefore(banner, modalBody);
+  }
+
+  // Auto-select Order Stop if AI matched one
+  if (MODE==="order" && data.matched_stop_number && currentOrderStops.length) {
+    const matchedStop = currentOrderStops.find(s => s.number === data.matched_stop_number);
+    if (matchedStop) {
+      const stopSel = document.getElementById("mOrderStop");
+      if (stopSel) {
+        stopSel.value = matchedStop.id;
+        // Visual cue
+        stopSel.style.borderColor = "var(--green)";
+        setTimeout(() => { stopSel.style.borderColor = ""; }, 3000);
+      }
+    }
+  }
 
   // Sheet 1 (Loading): We visit supplier. We TAKE full pallets (IN), we LEAVE empties (OUT)
   //   OUT = empties left at supplier, IN = full pallets taken
@@ -673,16 +788,18 @@ async function saveToAirtable(){
   const noteParts = [transport?`Transport: ${transport}`:"", issuer?`Issuer: ${issuer}`:"", notes].filter(Boolean);
   const notesStr = noteParts.length ? noteParts.join(" | ") : "";
 
+  // Detected pallet type from AI (fallback to EUR/EPAL)
+  const palletType = (window._lastAIExtract?.pallet_type) || "EUR/EPAL";
+
   // Build SUPPLIER entry fields (goes to PALLET LEDGER - SUPPLIERS)
   const buildSupplierFields=(direction,pallets)=>{
     const f={
-      "Direction":direction,"Pallets":pallets,"Pallet Type":"EUR/EPAL",
+      "Direction":direction,"Pallets":pallets,"Pallet Type":palletType,
       "AI Extracted":true,"Verified":false
     };
     if(useDate) f["Date"]=useDate;
     if(notesStr) f["Notes"]=notesStr;
     if(orderStopId) f["Order Stop"]=[orderStopId];
-    // Loading Supplier: use stop's location (Order mode) or manual pick (Free mode)
     if(MODE==="order" && orderStopRec?.location) f["Loading Supplier"]=[orderStopRec.location];
     else if(MODE==="free"){
       const sid=document.getElementById("freeSupplier")?.value;if(sid) f["Loading Supplier"]=[sid];
@@ -693,7 +810,7 @@ async function saveToAirtable(){
   // Build PARTNER entry fields (goes to PALLET LEDGER - PARTNERS)
   const buildPartnerFields=(direction,pallets,partnerId)=>{
     const f={
-      "Direction":direction,"Pallets":pallets,"Pallet Type":"EUR/EPAL",
+      "Direction":direction,"Pallets":pallets,"Pallet Type":palletType,
       "AI Extracted":true,"Verified":false,
       "Partner":[partnerId]
     };
@@ -702,6 +819,32 @@ async function saveToAirtable(){
     if(orderStopId) f["Order Stop"]=[orderStopId];
     return f;
   };
+
+  // ── Duplicate detection: warn if any entries already exist for this stop ──
+  if (orderStopId) {
+    try {
+      const qsD = new URLSearchParams();
+      qsD.set("filterByFormula", `FIND("${orderStopId}",ARRAYJOIN({Order Stop},","))>0`);
+      ["Direction","Pallets"].forEach(f => qsD.append("fields[]", f));
+      const [rSup, rPart] = await Promise.all([
+        atFetch(`/${TBL_SUPPLIERS}?${qsD}`),
+        atFetch(`/${TBL_PARTNERS}?${qsD}`),
+      ]);
+      const [dSup, dPart] = await Promise.all([rSup.json(), rPart.json()]);
+      const total = (dSup.records?.length||0) + (dPart.records?.length||0);
+      if (total > 0) {
+        const proceed = confirm(
+          `⚠️ Προσοχή: Αυτό το stop έχει ήδη ${total} καταχώρηση(εις) στο ledger.\n\n`+
+          `Θέλεις να προσθέσεις άλλη μία ή θα ακυρώσεις; (OK = προσθήκη, Cancel = ακύρωση)`
+        );
+        if (!proceed) {
+          ss.className="status error"; ss.innerHTML="Ακυρώθηκε — stop έχει ήδη entries";
+          btn.disabled=false; btn.textContent="💾 ΚΑΤΑΧΩΡΗΣΗ";
+          return;
+        }
+      }
+    } catch(dupErr) { console.warn("duplicate check failed (proceeding):", dupErr); }
+  }
 
   try{
     // Determine which table(s) to write to
