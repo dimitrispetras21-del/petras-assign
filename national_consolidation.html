@@ -316,9 +316,24 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);dis
   </div>
   <div class="t-page">National Pick Ups</div>
   <div class="t-actions">
-    <button class="btn btn-ghost btn-sm" onclick="loadLines()">↻ Refresh</button>
-    <button class="btn btn-ghost btn-sm" onclick="clearAll()">Clear</button>
-    <button class="btn btn-ghost btn-sm" onclick="window.print()">⎙ Print</button>
+    <button id="undoBtn" class="btn btn-ghost btn-sm" onclick="undoLast()" title="Undo (z)" style="opacity:0.4" disabled>
+      <span style="display:inline-flex;align-items:center;gap:5px">${""}<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>Undo</span>
+    </button>
+    <button class="btn btn-ghost btn-sm" onclick="loadLines()" title="Refresh lines (r)">
+      <span style="display:inline-flex;align-items:center;gap:5px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>Refresh</span>
+    </button>
+    <button class="btn btn-ghost btn-sm" onclick="clearAll()" title="Clear all trucks">
+      <span style="display:inline-flex;align-items:center;gap:5px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>Clear</span>
+    </button>
+    <button class="btn btn-ghost btn-sm" onclick="window.print()" title="Print (⌘P)">
+      <span style="display:inline-flex;align-items:center;gap:5px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>Print</span>
+    </button>
+    <button class="btn btn-ghost btn-sm" onclick="showErrorLog()" title="View error log" style="padding:5px 8px">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    </button>
+    <button class="btn btn-ghost btn-sm" onclick="showHelpOverlay()" title="Keyboard shortcuts (?)" style="padding:5px 8px">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    </button>
   </div>
 </div>
 
@@ -376,8 +391,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);dis
 <div class="overlay" id="splitOverlay" onclick="if(event.target===this)closeSplit()">
   <div class="modal">
     <div class="mhd">
-      <div class="mttl">Διαχωρισμός Παλετών</div>
-      <div class="mcls" onclick="closeSplit()">✕</div>
+      <div class="mttl" style="display:inline-flex;align-items:center;gap:8px">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M8 3H3v5"/><path d="M12 22v-8.3a4 4 0 0 0-1.172-2.872L3 3"/><path d="M12 22v-8.3a4 4 0 0 1 1.172-2.872L21 3"/></svg>
+        Διαχωρισμός Παλετών
+      </div>
+      <div class="mcls" onclick="closeSplit()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>
     </div>
     <div class="mbdy">
       <div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:3px;" id="splitSupplier"></div>
@@ -392,7 +410,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);dis
     </div>
     <div class="mft">
       <button class="btn btn-ghost" onclick="closeSplit()">Άκυρο</button>
-      <button class="btn btn-primary" id="splitConfirm" onclick="confirmSplit()">✓ Διαχωρισμός</button>
+      <button class="btn btn-primary" id="splitConfirm" onclick="confirmSplit()"><span style="display:inline-flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Διαχωρισμός</span></button>
     </div>
   </div>
 </div>
@@ -414,6 +432,105 @@ const T_GL='tblxUAaIsUMEDl3qQ';
 let lines=[], trucks=[], tc=1, savedPlans=[];
 let colorMap={};  // persistent — never reset, hash-based
 let dragId=null, dragFrom=null, splitTarget=null;
+
+/* ═══════════════════════════════════════════════════════════
+   LUCIDE ICON SYSTEM (inline SVG — standalone, no external deps)
+   ═══════════════════════════════════════════════════════════ */
+const ICONS = {
+  refresh:    '<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>',
+  printer:    '<polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>',
+  x:          '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
+  check:      '<polyline points="20 6 9 17 4 12"/>',
+  plus:       '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
+  save:       '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>',
+  undo:       '<polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>',
+  trash:      '<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+  search:     '<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>',
+  restore:    '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>',
+  split:      '<path d="M16 3h5v5"/><path d="M8 3H3v5"/><path d="M12 22v-8.3a4 4 0 0 0-1.172-2.872L3 3"/><path d="M12 22v-8.3a4 4 0 0 1 1.172-2.872L21 3"/>',
+  alert:      '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
+  help:       '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
+  keyboard:   '<rect x="2" y="4" width="20" height="16" rx="2"/><line x1="6" y1="8" x2="6.01" y2="8"/><line x1="10" y1="8" x2="10.01" y2="8"/><line x1="14" y1="8" x2="14.01" y2="8"/><line x1="18" y1="8" x2="18.01" y2="8"/><line x1="6" y1="12" x2="6.01" y2="12"/><line x1="10" y1="12" x2="10.01" y2="12"/><line x1="14" y1="12" x2="14.01" y2="12"/><line x1="18" y1="12" x2="18.01" y2="12"/><line x1="7" y1="16" x2="17" y2="16"/>',
+};
+function ico(name, size = 14) {
+  const p = ICONS[name];
+  if (!p) return '';
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   UNDO STACK (10-deep history of reversible operations)
+   ═══════════════════════════════════════════════════════════ */
+const UNDO_MAX = 10;
+const undoStack = [];
+function undoPush(label, fn) {
+  undoStack.push({ label, fn, ts: Date.now() });
+  if (undoStack.length > UNDO_MAX) undoStack.shift();
+  updateUndoButton();
+}
+function undoLast() {
+  const op = undoStack.pop();
+  if (!op) { toast('Nothing to undo'); return; }
+  try { op.fn(); toast(`↶ Undone: ${op.label}`); }
+  catch(e) { toast('Undo failed'); logLocalErr(e, 'undo ' + op.label); }
+  updateUndoButton();
+}
+function updateUndoButton() {
+  const b = document.getElementById('undoBtn');
+  if (!b) return;
+  const n = undoStack.length;
+  b.style.opacity = n ? '1' : '0.4';
+  b.disabled = n === 0;
+  b.title = n ? `Undo ${n === 1 ? 'last action' : n + ' actions'} — ${undoStack[n-1].label}` : 'Nothing to undo';
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ERROR LOG (localStorage: np_errors, max 100)
+   ═══════════════════════════════════════════════════════════ */
+const ERR_MAX = 100;
+function logLocalErr(err, ctx = '') {
+  try {
+    const arr = JSON.parse(localStorage.getItem('np_errors') || '[]');
+    arr.push({
+      ts: new Date().toISOString(),
+      msg: err?.message || String(err),
+      stack: err?.stack?.split('\n').slice(0, 6).join('\n') || '',
+      ctx,
+    });
+    while (arr.length > ERR_MAX) arr.shift();
+    localStorage.setItem('np_errors', JSON.stringify(arr));
+  } catch {}
+  console.error('[NP]', ctx + ':', err);
+}
+function showErrorLog() {
+  const arr = JSON.parse(localStorage.getItem('np_errors') || '[]').reverse();
+  const ov = document.createElement('div');
+  ov.className = 'overlay show';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:24px';
+  ov.innerHTML = `<div class="modal" style="max-width:720px;width:100%;max-height:80vh;display:flex;flex-direction:column">
+    <div class="mhd" style="flex-shrink:0">
+      <div class="mttl" style="display:inline-flex;align-items:center;gap:8px;color:#DC2626">${ico('alert', 16)} Error Log (${arr.length})</div>
+      <div class="mcls" onclick="this.closest('.overlay').remove()">${ico('x', 14)}</div>
+    </div>
+    <div class="mbdy" style="overflow-y:auto;flex:1">
+      ${arr.length ? arr.map(e => `<div style="padding:10px;border:1px solid var(--border);border-radius:6px;margin-bottom:8px;background:#FEF2F2">
+        <div style="font-size:10px;color:#94A3B8;font-family:monospace">${new Date(e.ts).toLocaleString('el-GR')} · ${e.ctx||'—'}</div>
+        <div style="font-size:12px;color:#0F172A;margin-top:3px;font-weight:600">${e.msg.replace(/</g,'&lt;')}</div>
+        ${e.stack?`<pre style="font-size:10px;color:#475569;margin-top:4px;white-space:pre-wrap;max-height:100px;overflow:auto">${e.stack.replace(/</g,'&lt;')}</pre>`:''}
+      </div>`).join('')
+      : '<div style="padding:40px;text-align:center;color:#94A3B8">No errors logged</div>'}
+    </div>
+    <div class="mft" style="flex-shrink:0">
+      <button class="btn btn-ghost" onclick="localStorage.removeItem('np_errors');this.closest('.overlay').remove();toast('Error log cleared')">Clear</button>
+      <button class="btn btn-primary" onclick="this.closest('.overlay').remove()">Close</button>
+    </div>
+  </div>`;
+  document.body.appendChild(ov);
+}
+
+/* Global error catchers */
+window.addEventListener('error', e => logLocalErr(e.error || new Error(e.message), 'window.onerror'));
+window.addEventListener('unhandledrejection', e => logLocalErr(e.reason || new Error('unhandledrejection'), 'promise'));
 
 /* DATE DEFAULTS */
 (function(){
@@ -651,8 +768,8 @@ function renderTrucks(){
       <div class="tcol-hd">
         <div class="tcol-nrow">
           <input class="tcol-name" value="${truck.name}" onchange="renameTruck('${truck.id}',this.value)" onclick="this.select()">
-          <button class="tcol-save" onclick="saveTruck('${truck.id}')" title="Αποθήκευση">↓</button>
-          <button class="tcol-del" onclick="delTruck('${truck.id}')">✕</button>
+          <button class="tcol-save" onclick="saveTruck('${truck.id}')" title="Αποθήκευση (s)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg></button>
+          <button class="tcol-del" onclick="delTruck('${truck.id}')" title="Διαγραφή"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         </div>
         <div class="tcol-date-row">
           <input type="date" class="tcol-date"
@@ -1678,10 +1795,91 @@ async function loadSavedPlans(){
   }
 }
 
+/* ═══════════════════════════════════════════════════════════
+   KEYBOARD SHORTCUTS
+   ═══════════════════════════════════════════════════════════ */
+function showHelpOverlay() {
+  const ov = document.createElement('div');
+  ov.className = 'overlay show';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:24px';
+  ov.innerHTML = `<div class="modal" style="max-width:460px;width:100%">
+    <div class="mhd">
+      <div class="mttl" style="display:inline-flex;align-items:center;gap:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="6" y1="8" x2="6.01" y2="8"/><line x1="10" y1="8" x2="10.01" y2="8"/><line x1="14" y1="8" x2="14.01" y2="8"/><line x1="18" y1="8" x2="18.01" y2="8"/><line x1="7" y1="16" x2="17" y2="16"/></svg>Keyboard Shortcuts</div>
+      <div class="mcls" onclick="this.closest('.overlay').remove()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>
+    </div>
+    <div class="mbdy" style="font-size:12px">
+      ${[
+        ['n','Add new truck'],
+        ['z / Ctrl+Z','Undo last action'],
+        ['r','Refresh lines'],
+        ['c','Clear all trucks'],
+        ['s','Save all active trucks'],
+        ['Esc','Close modal'],
+        ['?','Show this help'],
+      ].map(([k,d]) => `<div style="display:flex;align-items:center;padding:7px 0;border-bottom:1px solid var(--border)">
+        <kbd style="font-family:inherit;background:var(--bg);border:1px solid var(--border-mid);border-radius:4px;padding:2px 8px;font-size:11px;font-weight:600;color:var(--text);min-width:80px;text-align:center">${k}</kbd>
+        <span style="margin-left:12px;color:var(--text-mid)">${d}</span>
+      </div>`).join('')}
+    </div>
+  </div>`;
+  document.body.appendChild(ov);
+  ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+}
+document.addEventListener('keydown', e => {
+  // Skip if typing in input/textarea/select
+  const tag = (document.activeElement?.tagName || '').toLowerCase();
+  if (['input','textarea','select'].includes(tag)) return;
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.overlay.show, .overlay').forEach(o => {
+      if (o.id === 'splitOverlay') closeSplit();
+      else if (!o.closest('body')) return;
+      else o.remove();
+    });
+    return;
+  }
+  if (e.key === 'n') { e.preventDefault(); addTruck(); toast('+ Νέο φορτηγό'); return; }
+  if (e.key === 'z' || (e.key === 'z' && (e.metaKey || e.ctrlKey))) { e.preventDefault(); undoLast(); return; }
+  if (e.key === 'r') { e.preventDefault(); loadLines(); return; }
+  if (e.key === 'c') { e.preventDefault(); clearAll(); return; }
+  if (e.key === 's') { e.preventDefault(); savePlan(); return; }
+  if (e.key === '?' || (e.key === '/' && e.shiftKey)) { e.preventDefault(); showHelpOverlay(); return; }
+});
+
+/* Wrap handleDrop with undo tracking (without replacing it — uses Proxy pattern) */
+const _origHandleDrop = handleDrop;
+handleDrop = function(tid) {
+  const movingLine = lines.find(l => l.id === dragId);
+  const prevFrom = dragFrom;
+  const prevId = dragId;
+  _origHandleDrop(tid);
+  if (movingLine) {
+    undoPush(`move ${movingLine.supplier}`, () => {
+      const currentTruck = trucks.find(t => t.lines.some(l => l.id === prevId));
+      if (currentTruck) currentTruck.lines = currentTruck.lines.filter(l => l.id !== prevId);
+      if (prevFrom && prevFrom !== 'pool') {
+        const origTruck = trucks.find(t => t.id === prevFrom);
+        if (origTruck && !origTruck.lines.find(l => l.id === prevId)) origTruck.lines.push(movingLine);
+      }
+      renderTrucks(); renderPool(); persistTrucks();
+    });
+  }
+};
+
+const _origAddTruck = addTruck;
+addTruck = function() {
+  _origAddTruck();
+  const added = trucks[trucks.length - 1];
+  undoPush(`add ${added.name}`, () => {
+    trucks = trucks.filter(t => t.id !== added.id);
+    renderTrucks(); persistTrucks();
+  });
+};
+
 /* INIT */
 restoreTrucks();
-// Always maintain at least 3 trucks
-while(trucks.length < 3){ addTruck(); }
+// Always maintain at least 3 trucks (bypass undo for initial setup)
+while(trucks.length < 3){ _origAddTruck(); }
+updateUndoButton();
 Promise.all([loadLines(), loadSavedPlans()]);
 </script>
 </body>
