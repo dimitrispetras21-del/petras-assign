@@ -888,11 +888,23 @@ function handleDrop(tid){
   if(!dragId)return;
   const line=lines.find(l=>l.id===dragId);
   if(!line){dragId=null;return;}
+  // CRITICAL FIX (crash test): enforce 33-PAL truck limit BEFORE adding.
+  // Previously the UI only colored the bar red when over, but the line was added
+  // anyway — allowing a CL to be saved with >33 pallets (physical load failure).
+  const tgt=trucks.find(t=>t.id===tid);
+  if(tgt){
+    const currentTotal = tgt.lines.reduce((s,l)=>s+(l.pal||0),0);
+    const wouldBe = currentTotal + (line.pal||0);
+    if(wouldBe > 33){
+      toast(`❌ ${tgt.name} θα ξεπεράσει τα 33 PAL (${wouldBe}) — ακυρώνεται`, 'error');
+      dragId=null; dragFrom=null;
+      return;
+    }
+  }
   if(dragFrom&&dragFrom!=='pool'){
     const src=trucks.find(t=>t.id===dragFrom);
     if(src)src.lines=src.lines.filter(l=>l.id!==dragId);
   }
-  const tgt=trucks.find(t=>t.id===tid);
   if(tgt&&!tgt.lines.find(l=>l.id===dragId)){
     tgt.lines.push(line);
     toast(`✓ ${line.supplier} — ${line.pal} PAL → ${tgt.name}`);
