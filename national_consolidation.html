@@ -1389,13 +1389,29 @@ async function _undoPlan(p){
   }
 
   // 5. DELETE split remainder GL records (Part B — created during split, not original data)
+  // H17 fix: check if record exists before delete to avoid silent 404 failures on repeated restores
   for(const remId of splitRemainderIds){
     try{
-      await fetch(`https://api.airtable.com/v0/${BASE}/${T_GL}/${remId}`,{
+      // Verify the record exists before deleting (avoid silent 404 from already-deleted records)
+      const check = await fetch(`https://api.airtable.com/v0/${BASE}/${T_GL}/${remId}`,{
+        headers:{Authorization:`Bearer ${AT}`}
+      });
+      if(check.status === 404){
+        logLocalErr && logLocalErr(new Error(`GL ${remId} already deleted`), 'restore split remainder');
+        continue;
+      }
+      const del = await fetch(`https://api.airtable.com/v0/${BASE}/${T_GL}/${remId}`,{
         method:'DELETE',
         headers:{Authorization:`Bearer ${AT}`}
       });
-    }catch(e){console.warn('split remainder delete',e);}
+      if(!del.ok){
+        const errBody = await del.json().catch(()=>({}));
+        logLocalErr && logLocalErr(new Error(`DELETE ${remId} failed: ${del.status}`), 'restore split remainder');
+      }
+    }catch(e){
+      console.warn('split remainder delete',e);
+      logLocalErr && logLocalErr(e, 'restore split remainder');
+    }
   }
 
   // 5. Mark NATIONAL ORDERS → Pending
